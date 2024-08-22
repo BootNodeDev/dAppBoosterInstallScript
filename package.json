@@ -12,9 +12,10 @@
   "keywords": [
     "dappbooster",
     "bootnode",
+    "cloner",
     "installer",
     "dapp"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "MIT"
 }
