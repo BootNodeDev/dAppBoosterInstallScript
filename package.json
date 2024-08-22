@@ -1,0 +1,20 @@
+{
+  "name": "dappbooster",
+  "version": "0.1.0",
+  "description": "Script to easily start your project with dAppBooster",
+  "main": "index.js",
+  "bin": {
+    "dappbooster": "./index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "dappbooster",
+    "bootnode",
+    "installer",
+    "dapp"
+  ],
+  "author": "",
+  "license": "ISC"
+}
