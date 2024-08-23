@@ -1,4 +1,4 @@
-# dAB-cloner
+# dAppBooster starter
 
 A script to clone dAppBooster and cleanup the history to freshly start your new project
 
