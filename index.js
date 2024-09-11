@@ -30,6 +30,17 @@ function execQuiet(command) {
   return execSync(command, options);
 }
 
+function getLatestTag() {
+  // Get all tags, sorted by version
+  const tags = execSync("git tag -l --sort=-v:refname")
+    .toString()
+    .trim()
+    .split("\n");
+
+  // Return the first (latest) tag
+  return tags[0];
+}
+
 function cloneRepo(projectName) {
   const sanitizedProjectName = projectName.replace(/[^a-zA-Z0-9-_]/g, "-");
   const projectDir = path.join(process.cwd(), sanitizedProjectName);
@@ -47,11 +58,11 @@ function cloneRepo(projectName) {
     execQuiet("git fetch --tags");
 
     // Get the latest tag
-    const latestTag = execSync(
-      "git describe --tags $(git rev-list --tags --max-count=1)"
-    )
-      .toString()
-      .trim();
+    const latestTag = getLatestTag();
+
+    if (!latestTag) {
+      throw new Error("No tags found in the repository");
+    }
 
     // Checkout the latest tag
     execQuiet(`git checkout "${latestTag}"`);
@@ -63,6 +74,7 @@ function cloneRepo(projectName) {
     execQuiet("git init");
 
     console.log(`DappBooster repository cloned in ${projectDir}`);
+    console.log(`Latest version: ${latestTag}`);
   } catch (error) {
     console.error("An error occurred:", error.message);
     process.exit(1);
