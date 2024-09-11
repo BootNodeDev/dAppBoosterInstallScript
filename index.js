@@ -3,7 +3,6 @@
 const { execSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
-const os = require("os");
 
 const repoUrl = "https://github.com/bootnodedev/dappbooster.git";
 const projectName = process.argv[2];
@@ -14,21 +13,6 @@ if (!projectName || !/^[a-zA-Z0-9-_]+$/.test(projectName)) {
 }
 
 cloneRepo(projectName);
-
-function execQuiet(command) {
-  const options = {
-    stdio: "pipe",
-    shell: true,
-  };
-
-  if (os.platform() === "win32") {
-    command = `${command} > nul 2>&1`;
-  } else {
-    command = `${command} > /dev/null 2>&1`;
-  }
-
-  return execSync(command, options);
-}
 
 function getLatestTag() {
   // Get all tags, sorted by version
@@ -44,18 +28,25 @@ function getLatestTag() {
 function cloneRepo(projectName) {
   const sanitizedProjectName = projectName.replace(/[^a-zA-Z0-9-_]/g, "-");
   const projectDir = path.join(process.cwd(), sanitizedProjectName);
+  const execOptions = {
+    stdio: "pipe",
+    shell: true,
+  };
 
   try {
     console.log(`Cloning DappBooster...`);
 
     // Clone the repository
-    execQuiet(`git clone --depth 1 --no-checkout "${repoUrl}" "${projectDir}"`);
+    execSync(
+      `git clone --depth 1 --no-checkout "${repoUrl}" "${projectDir}"`,
+      execOptions
+    );
 
     // Change to the project directory
     process.chdir(projectDir);
 
     // Fetch all tags
-    execQuiet("git fetch --tags");
+    execSync("git fetch --tags", execOptions);
 
     // Get the latest tag
     const latestTag = getLatestTag();
@@ -65,13 +56,13 @@ function cloneRepo(projectName) {
     }
 
     // Checkout the latest tag
-    execQuiet(`git checkout "${latestTag}"`);
+    execSync(`git checkout "${latestTag}"`, execOptions);
 
     // Remove the .git directory
     fs.rmSync(path.join(projectDir, ".git"), { recursive: true, force: true });
 
     // Initialize a new git repository
-    execQuiet("git init");
+    execSync("git init", execOptions);
 
     console.log(`DappBooster repository cloned in ${projectDir}`);
     console.log(`Latest version: ${latestTag}`);
