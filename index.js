@@ -65,7 +65,7 @@ function cloneRepo(projectName) {
     // Initialize a new git repository
     execSync("git init", execOptions);
 
-    console.log(`DappBooster repository cloned in ${chalk.bold(projectDir)}`);
+    console.log(`dAppBooster repository cloned in ${chalk.bold(projectDir)}`);
     console.log(`Latest version: ${chalk.bold(latestTag)}`);
     console.log(`
 ${chalk.green.bold(
