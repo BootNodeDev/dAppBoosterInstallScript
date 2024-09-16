@@ -1,6 +1,6 @@
 {
   "name": "dappbooster",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Script to easily start your project with dAppBooster",
   "main": "index.js",
   "bin": {
