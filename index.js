@@ -35,7 +35,7 @@ function cloneRepo(projectName) {
   };
 
   try {
-    console.log(`Cloning DappBooster...`);
+    console.log(`Cloning dAppBooster...`);
 
     // Clone the repository
     execSync(
