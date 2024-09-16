@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-const { execSync } = require("child_process");
-const path = require("path");
-const fs = require("fs");
+import { execSync } from "child_process";
+import { join } from "path";
+import { rmSync } from "fs";
+import chalk from "chalk";
 
 const repoUrl = "https://github.com/bootnodedev/dappbooster.git";
 const projectName = process.argv[2];
@@ -27,7 +28,7 @@ function getLatestTag() {
 
 function cloneRepo(projectName) {
   const sanitizedProjectName = projectName.replace(/[^a-zA-Z0-9-_]/g, "-");
-  const projectDir = path.join(process.cwd(), sanitizedProjectName);
+  const projectDir = join(process.cwd(), sanitizedProjectName);
   const execOptions = {
     stdio: "pipe",
     shell: true,
@@ -59,15 +60,32 @@ function cloneRepo(projectName) {
     execSync(`git checkout "${latestTag}"`, execOptions);
 
     // Remove the .git directory
-    fs.rmSync(path.join(projectDir, ".git"), { recursive: true, force: true });
+    rmSync(join(projectDir, ".git"), { recursive: true, force: true });
 
     // Initialize a new git repository
     execSync("git init", execOptions);
 
-    console.log(`DappBooster repository cloned in ${projectDir}`);
-    console.log(`Latest version: ${latestTag}`);
+    console.log(`DappBooster repository cloned in ${chalk.bold(projectDir)}`);
+    console.log(`Latest version: ${chalk.bold(latestTag)}`);
+    console.log(`
+${chalk.green.bold(
+  "You can now start your project with the following commands:"
+)}
+
+${chalk.blue("# Change to the project directory")}
+$ ${chalk.cyan(`cd ${sanitizedProjectName}`)}
+
+${chalk.blue("# Install dependencies")}
+$ ${chalk.cyan("pnpm install")}
+
+${chalk.blue("# Copy the example environment file")}
+$ ${chalk.cyan("cp .env.example .env.local")}
+
+${chalk.blue("# Start the development server")}
+$ ${chalk.cyan("pnpm dev")}
+`);
   } catch (error) {
-    console.error("An error occurred:", error.message);
+    console.error(`${chalk.bold.red("An error occurred:")}`, error.message);
     process.exit(1);
   }
 }
