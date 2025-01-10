@@ -5,6 +5,9 @@ import { join } from "path";
 import { rmSync } from "fs";
 import readline from "readline";
 import chalk from "chalk";
+import os from "os";
+
+const commandSilencer = os.platform() === "win32" ? '> nul 2>&1' : '> /dev/null 2>&1'
 
 const repoUrls = {
   barebones: "https://github.com/BootNodeDev/dAppBooster.git",
@@ -65,7 +68,7 @@ function promptUserForRepoType() {
  */
 function getLatestTag(execOptions) {
   // Fetch all tags
-  execSync("git fetch --tags", execOptions);
+  execSync(`git fetch --tags ${commandSilencer}`, execOptions);
 
   // Get all tags, sorted by version
   const tags = execSync("git tag -l --sort=-v:refname")
