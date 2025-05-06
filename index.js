@@ -210,8 +210,6 @@ function removeSubgraphReferencesFromList() {
     .filter((line) => !importRegex.test(line) && !line.trim().startsWith(`${subgraphListItem},`))
     .join('\n')
 
-  // if (!existsSync(DEST_DIR)) mkdirSync(DEST_DIR)
-
   writeFileSync(listFile, cleaned)
 }
 
@@ -300,7 +298,7 @@ function subgraphInstructions() {
       `${chalk.yellow.bold('##################################################################################')}`,
     )
     console.log(
-      `${chalk.yellow.bold('# WARNING: Your project includes subgraph support, before you continue you MUST: #')}`,
+      `${chalk.yellow.bold('# WARNING: Your project support subgraphs , before you continue you MUST:        #')}`,
     )
     console.log(
       `${chalk.yellow.bold('##################################################################################')}`,
