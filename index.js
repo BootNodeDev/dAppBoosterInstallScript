@@ -10,14 +10,23 @@ import chalk from 'chalk'
 const commandSilencer = os.platform() === 'win32' ? '> nul 2>&1' : '> /dev/null 2>&1'
 const repoUrl = 'https://github.com/BootNodeDev/dAppBooster.git'
 const homeFolder = '/src/components/pageComponents/home'
+const subgraphsDemoFolder = '/Examples/demos/subgraphs'
 const projectName = process.argv[2].replace(/[^a-zA-Z0-9-_]/g, '-')
 const defaultExecOptions = {
   stdio: 'pipe',
   shell: true,
 }
+const installPackageExecOptions = {
+  stdio: 'inherit',
+  shell: true,
+}
+const fileExecOptions = {
+  recursive: true,
+  force: true,
+}
 
-let removedDemoFolder = false
-let removedSubgraphSupport = false
+let demoSupport = true
+let subgraphSupport = true
 
 main()
 
@@ -28,7 +37,7 @@ async function main() {
   checkProjectName()
   cloneRepo()
   createEnvFile()
-  await removeDemoFolder()
+  await removeDemos()
   await installPackages()
   removeInstallFiles()
   postInstallInstructions()
@@ -39,25 +48,25 @@ async function main() {
  */
 function checkProjectName() {
   const error = !projectName
-    ? `${chalk.red.bold(`
+    ? `
 #################################################
 # A directory name is mandatory.                #
 #                                               #
 # Letters (a–z, A–Z), numbers (0–9),            #
 # hyphens (-), and underscores (_) are allowed. #
-#################################################`)}`
+#################################################`
     : !/^[a-zA-Z0-9-_]+$/.test(projectName)
-      ? `${chalk.red.bold(`
+      ? `
 #################################################
 # Invalid project name.                         #
 #                                               #
 # Letters (a–z, A–Z), numbers (0–9),            #
 # hyphens (-), and underscores (_) are allowed. #
-#################################################`)}`
+#################################################`
       : ''
 
   if (error) {
-    console.error(error.trim())
+    console.error(`${chalk.red.bold(error.trim())}`)
     process.exit(1)
   }
 }
@@ -100,7 +109,7 @@ function cloneRepo() {
     execSync('git checkout main-tmp', defaultExecOptions)
 
     // Remove .git, and initialize the repo
-    rmSync(join(projectDir, '.git'), { recursive: true, force: true })
+    rmSync(join(projectDir, '.git'), fileExecOptions)
     execSync('git init', defaultExecOptions)
 
     console.log(`Repository cloned in ${chalk.bold(projectDir)}`)
@@ -133,6 +142,9 @@ function createEnvFile() {
   console.log('\n---\n')
 }
 
+/**
+ * @description Asks a question to the user
+ */
 function askQuestion(query) {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -147,20 +159,20 @@ function askQuestion(query) {
 }
 
 /**
- * @description Asks the user if they want to remove the demo folder
+ * @description Asks the user if they want to remove the demos
  * @returns {Promise<void>}
  */
-async function removeDemoFolder() {
+async function removeDemos() {
   const answer = await askQuestion('Do you want to remove the home page and all the demos? (y/N) ')
 
   if (answer.toLowerCase() === 'y') {
     const fullHomeFolder = join(process.cwd(), homeFolder)
-    removedDemoFolder = true
+    demoSupport = false
 
     console.log('')
     console.log(`${chalk.bold.red('Removed')} ${chalk.bold(`${fullHomeFolder}`)}`)
 
-    rmSync(fullHomeFolder, { recursive: true, force: true })
+    rmSync(fullHomeFolder, fileExecOptions)
 
     execSync(`mkdir -p ${fullHomeFolder}`, defaultExecOptions)
     execSync(
@@ -177,7 +189,7 @@ async function removeDemoFolder() {
 /**
  * @description Cleans the package.json file by removing unused scripts
  */
-function cleanPackageJson() {
+function cleanPackageJsonScripts() {
   const pkgPath = join(process.cwd(), 'package.json')
   const pkgJson = JSON.parse(readFileSync(pkgPath, 'utf8'))
 
@@ -188,33 +200,88 @@ function cleanPackageJson() {
 }
 
 /**
+ * @description Removes subgraph references from the demos list
+ */
+function removeSubgraphReferencesFromList() {
+  const importRegex = /^\s*import\s+subgraphs\b/
+  const subgraphListItem = '...subgraphs'
+  const listFile = join(process.cwd(), `${homeFolder}/Examples/index.tsx`)
+
+  const original = readFileSync(listFile, 'utf8')
+  const cleaned = original
+    .split('\n')
+    .filter((line) => !importRegex.test(line) && !line.trim().startsWith(`${subgraphListItem},`))
+    .join('\n')
+
+  // if (!existsSync(DEST_DIR)) mkdirSync(DEST_DIR)
+
+  writeFileSync(listFile, cleaned)
+}
+
+/**
+ * @description Removes subgraph support by removing:
+ * - Subgraph packages
+ * - Subgraphs folder
+ * - Codegen script from package.json
+ * - Subgraph demos and references to them in the demos list
+ */
+function removeSubgraphSupport() {
+  const subgraphsFolder = '/src/subgraphs'
+  const subgraphsFullPathDemoFolder = `${homeFolder}${subgraphsDemoFolder}`
+  const subgraphPackages = [
+    '@bootnodedev/db-subgraph',
+    'graphql graphql-request',
+    '@graphql-codegen/cli',
+    '@graphql-typed-document-node/core',
+  ].join(' ')
+
+  // Gotta tell the world if we don't support this anymore...
+  subgraphSupport = false
+
+  console.log('')
+  console.log('')
+
+  execSync(`pnpm remove ${subgraphPackages}`, installPackageExecOptions)
+  console.log(`${chalk.bold.red('Removed')} packages ${chalk.bold(subgraphPackages)}`)
+
+  rmSync(join(process.cwd(), subgraphsFolder), fileExecOptions)
+  console.log(`${chalk.bold.red('Removed')} folder ${chalk.bold(subgraphsFolder)}`)
+
+  cleanPackageJsonScripts()
+  console.log(
+    `${chalk.bold.red('Removed')} script ${chalk.bold('subgraph-codegen')} from package.json`,
+  )
+
+  // Only remove the demos if we didn't remove them
+  if (demoSupport) {
+    rmSync(join(process.cwd(), `${subgraphsFullPathDemoFolder}`), fileExecOptions)
+    console.log(`${chalk.bold.red('Removed')} folder ${chalk.bold(subgraphsFullPathDemoFolder)}`)
+
+    removeSubgraphReferencesFromList()
+    console.log(
+      `${chalk.bold.red('Removed')} subgraph references from the ${chalk.bold('demos list')}`,
+    )
+  }
+}
+
+/**
  * @description Installs the project packages, asks the user if they want to remove
  * subgraph support, and removes the subgraph packages if needed
  * @returns {Promise<void>}
  */
 async function installPackages() {
-  const installPackageExecOptions = { stdio: 'inherit', shell: true }
   console.log('Installing project packages')
   console.log('')
 
   const answer = await askQuestion('Does your project need subgraph support? (y/N) ')
   console.log('')
 
-  if (answer.toLowerCase() === 'y') {
-    execSync('pnpm i', installPackageExecOptions)
-  } else {
-    removedSubgraphSupport = true
+  // Just install everything
+  execSync('pnpm i', installPackageExecOptions)
 
-    execSync(
-      'pnpm remove @bootnodedev/db-subgraph graphql graphql-request @graphql-codegen/cli @graphql-typed-document-node/core',
-      installPackageExecOptions,
-    )
-    rmSync(join(process.cwd(), '/src/subgraphs'), { recursive: true, force: true })
-    cleanPackageJson()
-
-    console.log('')
-    console.log(`${chalk.bold.red('Removed')} subgraph packages and folder.`)
-    console.log(`${chalk.bold.red('Removed')} subgraph-codegen script from package.json`)
+  // Remove everything subgraph-related
+  if (answer.toLowerCase() !== 'y') {
+    removeSubgraphSupport()
   }
 
   console.log('\n---\n')
@@ -224,14 +291,14 @@ async function installPackages() {
  * @description Removes the .install-files folder
  */
 function removeInstallFiles() {
-  rmSync(join(process.cwd(), '.install-files'), { recursive: true, force: true })
+  rmSync(join(process.cwd(), '.install-files'), fileExecOptions)
 }
 
 /**
  * @description Prints instructions for subgraph support
  */
 function subgraphInstructions() {
-  if (!removedSubgraphSupport) {
+  if (subgraphSupport) {
     console.log(
       `${chalk.yellow.bold('##################################################################################')}`,
     )
@@ -248,7 +315,9 @@ function subgraphInstructions() {
     console.log(
       `${chalk.white(`   You can get one at ${chalk.bold.underline('https://thegraph.com/studio/apikeys/')}`)}`,
     )
-    console.log(`2- Run ${chalk.bold('pnpm subgraph-codegen')} in your console.`)
+    console.log(
+      `2- Run ${chalk.bold('pnpm subgraph-codegen')} in your console from the project's folder`,
+    )
     console.log('')
     console.log('Only after you followed these steps you may proceed.')
     console.log('\n---\n')
