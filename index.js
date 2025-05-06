@@ -1,109 +1,42 @@
 #!/usr/bin/env node
 
-import { execSync } from 'child_process'
-import { rmSync } from 'fs'
-import os from 'os'
-import { join } from 'path'
-import readline from 'readline'
+import { execSync } from 'node:child_process'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import os from 'node:os'
+import { join } from 'node:path'
+import readline from 'node:readline'
 import chalk from 'chalk'
 
 const commandSilencer = os.platform() === 'win32' ? '> nul 2>&1' : '> /dev/null 2>&1'
 const repoUrl = 'https://github.com/BootNodeDev/dAppBooster.git'
-const projectName = process.argv[2]
+const homeFolder = '/src/components/pageComponents/home'
+const projectName = process.argv[2].replace(/[^a-zA-Z0-9-_]/g, '-')
+const defaultExecOptions = {
+  stdio: 'pipe',
+  shell: true,
+}
+
 let removedDemoFolder = false
 let removedSubgraphSupport = false
 
 main()
 
+/**
+ * @description Main entry point
+ */
 async function main() {
-  console.clear()
   checkProjectName()
-  cloneRepo(projectName, repoUrl)
+  cloneRepo()
   createEnvFile()
   await removeDemoFolder()
   await installPackages()
-  userInstructions(projectName)
+  removeInstallFiles()
+  postInstallInstructions()
 }
 
-function createEnvFile() {
-  const envFilePath = join(process.cwd(), '.env.local')
-  const exampleFilePath = join(process.cwd(), '.env.example')
-
-  try {
-    execSync(`cp ${exampleFilePath} ${envFilePath}`, { stdio: 'pipe', shell: true })
-    console.log(chalk.green.bold('Created .env.local file from .env.example'))
-  } catch (error) {
-    console.error(chalk.red.bold('Error creating .env.local file:'), error.message)
-  }
-  console.log('\n---\n')
-}
-
-function askQuestion(query) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-  return new Promise((resolve) => {
-    rl.question(query, (answer) => {
-      rl.close()
-      resolve(answer)
-    })
-  })
-}
-
-async function removeDemoFolder() {
-  const answer = await askQuestion(
-    'Do you want to delete the examples page with all the demos (it will be replaced by a placeholder)? (y/N) ',
-  )
-
-  if (answer.toLowerCase() === 'y') {
-    const pagesFolder = './src/components/pageComponents'
-    removedDemoFolder = true
-
-    console.log(chalk.red.bold(`Deleting ${pagesFolder}/home`))
-    rmSync(join(process.cwd(), `${pagesFolder}/home`), { recursive: true, force: true })
-    console.log(chalk.red.bold('Demo folder deleted.'))
-
-    const emptyIndexFile = join(process.cwd(), pagesFolder, 'home.tsx')
-    const emptyIndexContent = `
-import React from 'react'
-
-export const Home = () => <div>Welcome to <a href='https://dappbooster.dev' rel='noreferrer' target='_blank'>dAppBooster</a>!</div>
-
-export default Home`.trim()
-
-    execSync(`mkdir -p ${pagesFolder}`, { stdio: 'pipe', shell: true })
-    execSync(`echo "${emptyIndexContent}" > ${emptyIndexFile}`, {
-      stdio: 'pipe',
-      shell: true,
-    })
-
-    console.log(chalk.green.bold('Placeholder home.tsx file created.'))
-  }
-
-  console.log('\n---\n')
-}
-
-async function installPackages() {
-  console.log('Installing project packages...\n')
-  const answer = await askQuestion('Does your project need Subgraph support? (y/N) ')
-
-  if (answer.toLowerCase() === 'y') {
-    execSync('pnpm i', { stdio: 'pipe', shell: true })
-  } else {
-    removedSubgraphSupport = true
-    console.log(chalk.red.bold('Removing subgraph packages...'))
-
-    execSync(
-      'pnpm remove @bootnodedev/db-subgraph graphql graphql-request @graphql-codegen/cli @graphql-typed-document-node/core',
-      { stdio: 'pipe', shell: true },
-    )
-    console.log(chalk.red.bold('Subgraph packages removed.'))
-  }
-
-  console.log('\n---\n')
-}
-
+/**
+ * @description Check if the project name is valid
+ */
 function checkProjectName() {
   const error = !projectName
     ? `${chalk.red.bold(`
@@ -129,80 +62,214 @@ function checkProjectName() {
   }
 }
 
-function getLatestTag(execOptions) {
-  execSync(`git fetch --tags ${commandSilencer}`, execOptions)
+/**
+ * @description Get the latest tag from the repository
+ * @returns {string} The latest tag
+ */
+function getLatestTag() {
+  execSync(`git fetch --tags ${commandSilencer}`, defaultExecOptions)
   const tags = execSync('git tag -l --sort=-v:refname').toString().trim().split('\n')
   return tags[0]
 }
 
-function cloneRepo(projectName, repoUrl) {
-  const sanitizedProjectName = projectName.replace(/[^a-zA-Z0-9-_]/g, '-')
-  const projectDir = join(process.cwd(), sanitizedProjectName)
-  const execOptions = {
-    stdio: 'pipe',
-    shell: true,
-  }
+/**
+ * @description Clone the repository
+ */
+function cloneRepo() {
+  const projectDir = join(process.cwd(), projectName)
 
   try {
-    console.log(`\nCloning dAppBooster into ${chalk.italic.green(`./${projectName}`)}`)
-    execSync(`git clone --depth 1 --no-checkout "${repoUrl}" "${projectDir}"`, execOptions)
+    console.log(`Installing dAppBooster in ${chalk.bold(`${projectName}`)}`)
+    // execSync(`git clone --depth 1 --no-checkout "${repoUrl}" "${projectDir}"`, defaultExecOptions)
+    execSync(`git clone "${repoUrl}" "${projectDir}"`, defaultExecOptions)
 
-    console.log(`Moving into ${chalk.italic.green(`./${projectName}`)}`)
+    console.log('')
+    console.log(`Moving into ${chalk.bold(`${projectName}`)}`)
     process.chdir(projectDir)
 
-    const latestTag = getLatestTag(execOptions)
+    // const latestTag = getLatestTag()
 
-    if (latestTag) {
-      console.log(`Checking out latest tag: ${chalk.bold(latestTag)}`)
-      execSync(`git checkout "${latestTag}"`, execOptions)
-    } else {
-      console.log(`No tags found, checking out ${chalk.bold('main')} branch...`)
-      execSync('git checkout main', execOptions)
-    }
+    // if (latestTag) {
+    //   console.log(`Checking out latest tag: ${chalk.bold(latestTag)}`)
+    //   execSync(`git checkout "${latestTag}"`, defaultExecOptions)
+    // } else {
+    //   console.log(`No tags found, checking out ${chalk.bold('main')} branch...`)
+    //   execSync('git checkout main', defaultExecOptions)
+    // }
 
+    execSync('git checkout main-tmp', defaultExecOptions)
+
+    // Remove .git, and initialize the repo
     rmSync(join(projectDir, '.git'), { recursive: true, force: true })
-    execSync('git init', execOptions)
+    execSync('git init', defaultExecOptions)
 
-    console.log(`\ndAppBooster repository cloned in ${chalk.bold(projectDir)}`)
-    if (latestTag) {
-      console.log(`Latest version: ${chalk.bold(latestTag)}`)
-    }
-
-    console.log('\n---\n')
+    console.log(`Repository cloned in ${chalk.bold(projectDir)}`)
+    // if (latestTag) {
+    //   console.log(`Version: ${chalk.bold(latestTag)}`)
+    // }
   } catch (error) {
     console.error(`${chalk.bold.red('An error occurred:')}`, error.message)
     process.exit(1)
   }
+
+  console.log('\n---\n')
 }
 
+/**
+ * @description Create the .env.local file
+ */
+function createEnvFile() {
+  const envFilePath = join(process.cwd(), '.env.local')
+  const exampleFilePath = join(process.cwd(), '.env.example')
+
+  try {
+    execSync(`cp ${exampleFilePath} ${envFilePath}`, defaultExecOptions)
+    console.log('Creating .env file')
+    console.log('')
+    console.log(`${chalk.green.bold('Created')} ${chalk.bold('.env.local')}`)
+  } catch (error) {
+    console.error(chalk.red.bold('Error creating .env.local file:'), error.message)
+  }
+  console.log('\n---\n')
+}
+
+function askQuestion(query) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+  return new Promise((resolve) => {
+    rl.question(query, (answer) => {
+      rl.close()
+      resolve(answer)
+    })
+  })
+}
+
+/**
+ * @description Asks the user if they want to remove the demo folder
+ * @returns {Promise<void>}
+ */
+async function removeDemoFolder() {
+  const answer = await askQuestion('Do you want to remove the home page and all the demos? (y/N) ')
+
+  if (answer.toLowerCase() === 'y') {
+    const fullHomeFolder = join(process.cwd(), homeFolder)
+    removedDemoFolder = true
+
+    console.log('')
+    console.log(`${chalk.bold.red('Removed')} ${chalk.bold(`${fullHomeFolder}`)}`)
+
+    rmSync(fullHomeFolder, { recursive: true, force: true })
+
+    execSync(`mkdir -p ${fullHomeFolder}`, defaultExecOptions)
+    execSync(
+      `cp -r ${join(process.cwd(), '.install-files/home/index.tsx')} ${fullHomeFolder}/index.tsx`,
+      defaultExecOptions,
+    )
+
+    console.log(`${chalk.bold.green('Created')} ${chalk.bold(`${fullHomeFolder}/index.tsx`)}`)
+  }
+
+  console.log('\n---\n')
+}
+
+/**
+ * @description Cleans the package.json file by removing unused scripts
+ */
+function cleanPackageJson() {
+  const pkgPath = join(process.cwd(), 'package.json')
+  const pkgJson = JSON.parse(readFileSync(pkgPath, 'utf8'))
+
+  if (pkgJson.scripts?.['subgraph-codegen']) {
+    pkgJson.scripts['subgraph-codegen'] = undefined
+    writeFileSync(pkgPath, `${JSON.stringify(pkgJson, null, 2)}\n`)
+  }
+}
+
+/**
+ * @description Installs the project packages, asks the user if they want to remove
+ * subgraph support, and removes the subgraph packages if needed
+ * @returns {Promise<void>}
+ */
+async function installPackages() {
+  const installPackageExecOptions = { stdio: 'inherit', shell: true }
+  console.log('Installing project packages')
+  console.log('')
+
+  const answer = await askQuestion('Does your project need subgraph support? (y/N) ')
+  console.log('')
+
+  if (answer.toLowerCase() === 'y') {
+    execSync('pnpm i', installPackageExecOptions)
+  } else {
+    removedSubgraphSupport = true
+
+    execSync(
+      'pnpm remove @bootnodedev/db-subgraph graphql graphql-request @graphql-codegen/cli @graphql-typed-document-node/core',
+      installPackageExecOptions,
+    )
+    rmSync(join(process.cwd(), '/src/subgraphs'), { recursive: true, force: true })
+    cleanPackageJson()
+
+    console.log('')
+    console.log(`${chalk.bold.red('Removed')} subgraph packages and folder.`)
+    console.log(`${chalk.bold.red('Removed')} subgraph-codegen script from package.json`)
+  }
+
+  console.log('\n---\n')
+}
+
+/**
+ * @description Removes the .install-files folder
+ */
+function removeInstallFiles() {
+  rmSync(join(process.cwd(), '.install-files'), { recursive: true, force: true })
+}
+
+/**
+ * @description Prints instructions for subgraph support
+ */
 function subgraphInstructions() {
-  return removedSubgraphSupport
-    ? ''
-    : `
-${chalk.blue.bold('# WARNING: Your project has subgraph support, before you continue you MUST:')}
-${chalk.blue.bold(`# 1- Complete PUBLIC_SUBGRAPHS_API_KEY with your own API key in ${chalk.italic('.env.local')}`)}
-${chalk.blue.bold('#    get one at https://thegraph.com/studio/apikeys/')}
-${chalk.blue.bold(`# 2- Run ${chalk.italic('pnpm subgraph-codegen')} in your console.`)}`
+  if (!removedSubgraphSupport) {
+    console.log(
+      `${chalk.yellow.bold('##################################################################################')}`,
+    )
+    console.log(
+      `${chalk.yellow.bold('# WARNING: Your project includes subgraph support, before you continue you MUST: #')}`,
+    )
+    console.log(
+      `${chalk.yellow.bold('##################################################################################')}`,
+    )
+    console.log('')
+    console.log(
+      `${chalk.white(`1- Provide your own API key for the var ${chalk.bold('PUBLIC_SUBGRAPHS_API_KEY')} in ${chalk.italic('.env.local')}`)}`,
+    )
+    console.log(
+      `${chalk.white(`   You can get one at ${chalk.bold.underline('https://thegraph.com/studio/apikeys/')}`)}`,
+    )
+    console.log(`2- Run ${chalk.bold('pnpm subgraph-codegen')} in your console.`)
+    console.log('')
+    console.log('Only after you followed these steps you may proceed.')
+    console.log('\n---\n')
+  }
 }
 
-function userInstructions(sanitizedProjectName) {
-  console.log(`
-
-${subgraphInstructions()}
-
-${chalk.blue.bold('# You can now start your project with the following commands:')}
-
-${chalk.gray.italic('# Change to the project directory')}
-${chalk.cyan(`$ cd ${sanitizedProjectName}`)}
-
-${chalk.gray.italic('# Start the development server')}
-${chalk.cyan('$ pnpm dev')}
-
-${chalk.gray.italic(`# Check ${chalk.bold('.env.local')} for extra configurations.`)}
-
-
----
-
-Remember to also check out the docs in ${chalk.green.bold('https://docs.dappbooster.dev/')}
-`)
+/**
+ * @description Prints post-install instructions
+ */
+function postInstallInstructions() {
+  subgraphInstructions()
+  console.log('To start development on your project:')
+  console.log('')
+  console.log('1- Move into the project directory')
+  console.log(chalk.cyan(`$ cd ${projectName}`))
+  console.log('')
+  console.log('2- Start the development server')
+  console.log(chalk.cyan('$ pnpm dev'))
+  console.log('')
+  console.log(`You can edit the home page in ${chalk.bold(join(process.cwd(), homeFolder))}`)
+  console.log('\n---\n')
+  console.log(`Check out ${chalk.bold('.env.local')} for more project configurations.`)
+  console.log(`Check out the docs at ${chalk.bold.underline('https://docs.dappbooster.dev/')}`)
 }
