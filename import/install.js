@@ -73,10 +73,8 @@ export function installPackages(
     execSync(`pnpm run postinstall`, installPackageExecOptions)
     console.log('\n---\n')
 
-    // Remove package-related files
+    // Remove package-related files and scripts
     packageFilesCleanup(subgraphSupport, typedocSupport, vocsSupport, huskySupport)
-    // Remove scripts
-    packageJsonScriptsCleanup(subgraphSupport, typedocSupport, vocsSupport, huskySupport)
   }
 
   // Remove installer files
@@ -164,57 +162,38 @@ function installFilesCleanup() {
  * @description Cleans up the files associated with removed packages
  */
 function packageFilesCleanup(subgraphSupport, typedocSupport, vocsSupport, huskySupport) {
-  console.log(`${chalk.bold.red('Removing')} files associated with uninstalled packages`)
+  const pkgPath = join(process.cwd(), 'package.json')
+  const pkgJson = JSON.parse(readFileSync(pkgPath, 'utf8'))
+
+  console.log(
+    `${chalk.bold.red('Removing')} files and scripts associated with uninstalled packages`,
+  )
 
   // Remove everything subgraph-related
   if (!subgraphSupport) {
     subgraphCleanup()
+    pkgJson.scripts['subgraph-codegen'] = undefined
   }
 
   // Remove everything typedoc-related
   if (!typedocSupport) {
     typedocCleanup()
+    pkgJson.scripts['typedoc:build'] = undefined
   }
 
   // Remove everything vocs-related
   if (!vocsSupport) {
     vocsCleanup()
+    pkgJson.scripts['docs:build'] = undefined
+    pkgJson.scripts['docs:dev'] = undefined
+    pkgJson.scripts['docs:preview'] = undefined
   }
 
   // Remove everything husky-related
   if (!huskySupport) {
     huskyCleanup()
+    pkgJson.scripts['prepare'] = undefined
   }
-}
 
-/**
- * @description Cleans up the package.json file by removing unused scripts
- */
-function packageJsonScriptsCleanup(subgraphSupport, typedocSupport, vocsSupport, huskySupport) {
-  const pkgPath = join(process.cwd(), 'package.json')
-  const pkgJson = JSON.parse(readFileSync(pkgPath, 'utf8'))
-
-  console.log(`${chalk.bold.red('Removing')} scripts associated with uninstalled packages`)
-
-  if (pkgJson.scripts?.['subgraph-codegen']) {
-    if (!subgraphSupport) {
-      pkgJson.scripts['subgraph-codegen'] = undefined
-    }
-
-    if (!typedocSupport) {
-      pkgJson.scripts['generateDocs'] = undefined
-    }
-
-    if (!vocsSupport) {
-      pkgJson.scripts['docs:build'] = undefined
-      pkgJson.scripts['docs:dev'] = undefined
-      pkgJson.scripts['docs:preview'] = undefined
-    }
-
-    if (!huskySupport) {
-      pkgJson.scripts['prepare'] = undefined
-    }
-
-    writeFileSync(pkgPath, `${JSON.stringify(pkgJson, null, 2)}\n`)
-  }
+  writeFileSync(pkgPath, `${JSON.stringify(pkgJson, null, 2)}\n`)
 }
