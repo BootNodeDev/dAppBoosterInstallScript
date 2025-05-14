@@ -1,17 +1,14 @@
 #!/usr/bin/env node
 
-import { defaultExecOptions, fileExecOptions } from './import/config.js'
-import {
-  cleanPackageJsonScripts,
-  createEnvFile,
-  filesCleanup,
-  installFilesCleanup,
-  installPackages,
-} from './import/file-utils.js'
+import { createEnvFile, installPackages } from './import/install.js'
 import { cloneRepo } from './import/git.js'
-import { checkProjectName, postInstallInstructions, setupQuestions } from './import/user-prompts.js'
+import {
+  checkProjectName,
+  installationSetup,
+  postInstallInstructions,
+} from './import/user-prompts.js'
 
-main()
+main().then(() => console.log('\n👻\n'))
 
 /**
  * @description Main entry point
@@ -22,23 +19,15 @@ async function main() {
 
   // Clone, create .env.local file
   cloneRepo(projectName)
-  createEnvFile()
+  createEnvFile(projectName)
 
   // Ask setup questions
-  const { demoSupport, subgraphSupport } = await setupQuestions()
+  const { demoSupport, subgraphSupport, typedocSupport, vocsSupport, huskySupport } =
+    await installationSetup()
 
   // Install the required packages
-  installPackages()
-
-  // Remove unwanted files and packages
-  filesCleanup(demoSupport, subgraphSupport)
-
-  // Remove unwanted scripts
-  cleanPackageJsonScripts(subgraphSupport)
-
-  // Remove the install files
-  installFilesCleanup()
+  installPackages(demoSupport, subgraphSupport, typedocSupport, vocsSupport, huskySupport)
 
   // Tell the user what to do after installation is finished
-  postInstallInstructions(subgraphSupport)
+  postInstallInstructions(subgraphSupport, projectName)
 }

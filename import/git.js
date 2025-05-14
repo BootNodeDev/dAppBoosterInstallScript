@@ -26,12 +26,10 @@ export function cloneRepo(projectName) {
   const projectDir = join(process.cwd(), projectName)
 
   try {
-    console.log(`Installing dAppBooster in ${chalk.bold(`${projectName}`)}`)
+    console.log(`Cloning dAppBooster in ${chalk.bold(`${projectName}`)}`)
     // execSync(`git clone --depth 1 --no-checkout "${repoUrl}" "${projectDir}"`, defaultExecOptions)
     execSync(`git clone "${repoUrl}" "${projectDir}"`, defaultExecOptions)
 
-    console.log('')
-    console.log(`Moving into ${chalk.bold(`${projectName}`)}`)
     process.chdir(projectDir)
 
     // const latestTag = getLatestTag(defaultExecOptions)
@@ -50,6 +48,7 @@ export function cloneRepo(projectName) {
     execSync('git init', defaultExecOptions)
 
     console.log(`Repository cloned in ${chalk.bold(projectDir)}`)
+
     // if (latestTag) {
     //   console.log(`Version: ${chalk.bold(latestTag)}`)
     // }

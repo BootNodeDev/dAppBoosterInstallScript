@@ -1,6 +1,5 @@
 export const repoUrl = 'https://github.com/BootNodeDev/dAppBooster.git'
 export const homeFolder = '/src/components/pageComponents/home'
-export const subgraphsDemoFolder = '/Examples/demos/subgraphs'
 
 export const defaultExecOptions = {
   stdio: 'pipe',

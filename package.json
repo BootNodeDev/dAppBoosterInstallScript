@@ -1,15 +1,17 @@
 {
   "name": "dappbooster",
+  "author": "bootnodedev",
   "version": "0.3.4",
   "description": "Script to easily start your project with dAppBooster",
   "main": "index.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "bin": {
     "dappbooster": "index.js"
   },
   "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "dependencies": {
     "chalk": "^5.3.0"
   },
@@ -20,9 +22,7 @@
     "installer",
     "dapp"
   ],
-  "author": "bootnodedev",
-  "license": "MIT",
-  "engines": {
-    "node": ">=20.0.0"
+  "devDependencies": {
+    "prettier": "^3.5.3"
   }
 }

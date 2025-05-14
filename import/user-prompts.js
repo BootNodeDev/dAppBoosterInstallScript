@@ -41,6 +41,7 @@ function askQuestion(query) {
     input: process.stdin,
     output: process.stdout,
   })
+
   return new Promise((resolve) => {
     rl.question(query, (answer) => {
       rl.close()
@@ -49,16 +50,45 @@ function askQuestion(query) {
   })
 }
 
-export async function setupQuestions() {
+/**
+ * @description Asks the user for setup options
+ * @returns {Promise<{demoSupport: boolean, subgraphSupport: boolean, typedocSupport: boolean, vocsSupport: boolean, commitHookPackagesSupport: boolean}>}
+ */
+export async function installationSetup() {
   const demoSupport =
-    (
-      await askQuestion('Do you want to keep the home page and all the demos? (Y/n) ')
-    ).toLowerCase() === 'y'
+    (await askQuestion(`Keep the ${chalk.bold('home page demos')}? (Y/n) `)).toLowerCase() !== 'n'
 
   const subgraphSupport =
-    (await askQuestion('Does your project need subgraph support? (Y/n) ')).toLowerCase() === 'y'
+    (await askQuestion(`Keep ${chalk.bold('subgraph')} support? (Y/n) `)).toLowerCase() !== 'n'
 
-  return { demoSupport, subgraphSupport }
+  const typedocSupport =
+    (
+      await askQuestion(
+        `Keep ${chalk.bold('Typedoc')} (converts TypeScript comments to HTML documentation) support? (Y/n) `,
+      )
+    ).toLowerCase() !== 'n'
+
+  const vocsSupport =
+    (
+      await askQuestion(
+        `Keep ${chalk.bold('Vocs')} (static markdown documentation generation) support? (Y/n) `,
+      )
+    ).toLowerCase() !== 'n'
+
+  const huskySupport =
+    (
+      await askQuestion(
+        `Keep ${chalk.bold('Husky')} (Git hooks) support? Note: removing this will also remove ${chalk.bold('lint-staged')} and ${chalk.bold('commitlint')} (Y/n) `,
+      )
+    ).toLowerCase() !== 'n'
+
+  return {
+    demoSupport,
+    subgraphSupport,
+    typedocSupport,
+    vocsSupport,
+    huskySupport,
+  }
 }
 
 /**
@@ -69,17 +99,17 @@ function subgraphInstructions() {
     `${chalk.yellow.bold('##################################################################################')}`,
   )
   console.log(
-    `${chalk.yellow.bold('# WARNING: Your project support subgraphs , before you continue you MUST:        #')}`,
+    `${chalk.yellow.bold('# WARNING: Your project support subgraphs, before you continue you MUST:         #')}`,
   )
   console.log(
     `${chalk.yellow.bold('##################################################################################')}`,
   )
   console.log('')
   console.log(
-    `${chalk.white(`1- Provide your own API key for the var ${chalk.bold('PUBLIC_SUBGRAPHS_API_KEY')} in ${chalk.italic('.env.local')}`)}`,
+    `1- Provide your own API key for the var ${chalk.bold('PUBLIC_SUBGRAPHS_API_KEY')} in ${chalk.italic('.env.local')}`,
   )
   console.log(
-    `${chalk.white(`   You can get one at ${chalk.bold.underline('https://thegraph.com/studio/apikeys/')}`)}`,
+    `   You can get one at ${chalk.bold.underline('https://thegraph.com/studio/apikeys/')}`,
   )
   console.log(
     `2- Run ${chalk.bold('pnpm subgraph-codegen')} in your console from the project's folder`,
@@ -93,10 +123,6 @@ function subgraphInstructions() {
  * @description Prints post-install instructions
  */
 export function postInstallInstructions(subgraphSupport, projectName) {
-  if (subgraphSupport) {
-    subgraphInstructions()
-  }
-
   console.log('To start development on your project:')
   console.log('')
   console.log('1- Move into the project directory')
@@ -111,4 +137,9 @@ export function postInstallInstructions(subgraphSupport, projectName) {
   console.log('\n---\n')
   console.log(`Check out ${chalk.bold('.env.local')} for more project configurations.`)
   console.log(`Check out the docs at ${chalk.bold.underline('https://docs.dappbooster.dev/')}`)
+  console.log('\n---\n')
+
+  if (subgraphSupport) {
+    subgraphInstructions()
+  }
 }
