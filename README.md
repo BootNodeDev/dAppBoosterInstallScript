@@ -1,6 +1,8 @@
 # dAppBooster starter
 
-A script to clone dAppBooster and cleanup the history to freshly start your new project
+A script to clone dAppBooster and cleanup the history to freshly start your new project.
+
+Clones the latest tag from https://github.com/BootNodeDev/dAppBooster (so you might not see the last changes in `main`).
 
 ## Usage
 
@@ -13,11 +15,22 @@ $ pnpm dlx dappbooster <projectName>
 Move into the script's folder and then
 
 ```shell
-# First remove the test directory
-$ rm -rf test
+# Clone the repo
+git clone git@github.com:BootNodeDev/dAppBooster-starter.git
 
-# Test the script
-$ node index.js test
+# Install dependencies
+pnpm i
+
+# Move into the script's folder
+cd dAppBooster-starter
 ```
 
-This will create a folder called `test`, which git should ignore by usage of `.gitignore`
+The common loop for testing the script looks something like
+
+```shell
+# Test the script, creates a folder called test
+$ node index.js test
+
+# Remove the test directory (ignored in .gitignore)
+$ rm -rf test
+```
