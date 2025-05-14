@@ -138,6 +138,7 @@ function typedocCleanup() {
  * @description Removes Vocs files
  */
 function vocsCleanup() {
+  rmSync(join(process.cwd(), 'vocs.config.ts'), fileExecOptions)
   rmSync(join(process.cwd(), 'docs'), fileExecOptions)
 }
 
