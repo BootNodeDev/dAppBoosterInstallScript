@@ -27,31 +27,26 @@ export function cloneRepo(projectName) {
 
   try {
     console.log(`Cloning dAppBooster in ${chalk.bold(`${projectName}`)}`)
-    // execSync(`git clone --depth 1 --no-checkout "${repoUrl}" "${projectDir}"`, defaultExecOptions)
-    execSync(`git clone "${repoUrl}" "${projectDir}"`, defaultExecOptions)
+    execSync(`git clone --depth 1 --no-checkout "${repoUrl}" "${projectDir}"`, defaultExecOptions)
 
     process.chdir(projectDir)
 
-    // const latestTag = getLatestTag(defaultExecOptions)
+    const latestTag = getLatestTag(defaultExecOptions)
 
-    // if (latestTag) {
-    //   console.log(`Checking out latest tag: ${chalk.bold(latestTag)}`)
-    //   execSync(`git checkout "${latestTag}"`, defaultExecOptions)
-    // } else {
-    //   console.log(`No tags found, checking out ${chalk.bold('main')} branch...`)
-    //   execSync('git checkout main', defaultExecOptions)
-    // }
-    execSync('git checkout develop', defaultExecOptions)
+    if (latestTag) {
+      console.log(`Checking out latest tag`)
+      execSync(`git checkout "${latestTag}"`, defaultExecOptions)
+    } else {
+      console.log(`No tags found, checking out ${chalk.bold('main')} branch...`)
+      execSync('git checkout main', defaultExecOptions)
+    }
 
     // Remove .git, and initialize the repo
     rmSync(join(projectDir, '.git'), fileExecOptions)
     execSync('git init', defaultExecOptions)
 
     console.log(`Repository cloned in ${chalk.bold(projectDir)}`)
-
-    // if (latestTag) {
-    //   console.log(`Version: ${chalk.bold(latestTag)}`)
-    // }
+    console.log(`Version: ${latestTag ? chalk.bold(latestTag) : chalk.bold('main')}`)
   } catch (error) {
     console.error(`${chalk.bold.red('An error occurred:')}`, error.message)
     process.exit(1)
