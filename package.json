@@ -1,7 +1,7 @@
 {
   "name": "dappbooster",
   "author": "bootnodedev",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Script to easily start your project with dAppBooster",
   "main": "index.js",
   "license": "MIT",
