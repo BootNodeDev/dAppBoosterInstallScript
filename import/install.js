@@ -131,7 +131,6 @@ function subgraphCleanup() {
  */
 function typedocCleanup() {
   rmSync(join(process.cwd(), 'typedoc.json'), fileExecOptions)
-  rmSync(join(process.cwd(), '.github/workflows/typedoc.yml'), fileExecOptions)
 }
 
 /**
