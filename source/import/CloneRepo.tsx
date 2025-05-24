@@ -1,113 +1,97 @@
-import { execSync } from 'node:child_process'
-import { rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { defaultExecOptions, fileExecOptions, repoUrl } from './config.js'
-import React, { useState, type FC, ReactNode, useEffect } from 'react'
+import { repoUrl } from './config.js'
+import React, { useState, type FC } from 'react'
 import { Text, Box } from 'ink'
-import Spinner from 'ink-spinner'
+import Working from './Working.js'
 import { Script, Spawn } from 'ink-spawn'
-
-/**
- * @description Get the latest tag from the repository
- * @returns {string} The latest tag
- */
-const getLatestTag = (): string | undefined => {
-  const commandSilencer = '> /dev/null 2>&1'
-
-  execSync(`git fetch --tags ${commandSilencer}`, defaultExecOptions)
-
-  const tags = execSync('git tag -l --sort=-v:refname').toString().trim().split('\n')
-
-  return tags[0]
-}
-
-const Working: FC<{ isWorking: boolean; children: ReactNode }> = ({ isWorking, children }) => (
-  <Box>
-    {isWorking && <Spinner type="dots" />}
-    {children}
-  </Box>
-)
+import * as process from 'node:process'
 
 /**
  * @description Clone the repository
  */
 const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
   const projectDir = join(process.cwd(), projectName)
-  const [step, setStep] = useState(0)
-  const [error, setError] = useState<string | undefined>()
-  const [latestTag, setLatestTag] = useState<string | undefined>()
-
-  useEffect(() => {
-    const cloneRepo = () => {
-      try {
-        setStep(1)
-        execSync(
-          `git clone --depth 1 --no-checkout "${repoUrl}" "${projectDir}"`,
-          defaultExecOptions,
-        )
-
-        process.chdir(projectDir)
-
-        setLatestTag(getLatestTag())
-
-        setStep(2)
-        if (latestTag) {
-          execSync(`git checkout "${latestTag}"`, defaultExecOptions)
-        } else {
-          execSync('git checkout main', defaultExecOptions)
-        }
-
-        // Remove .git, and initialize the repo
-        rmSync(join(projectDir, '.git'), fileExecOptions)
-        execSync('git init', defaultExecOptions)
-
-        setStep(3)
-      } catch (error: any) {
-        setError(`An error occurred: ${error.message}`)
-      }
-    }
-
-    cloneRepo()
-  }, [projectName])
+  const [step, setStep] = useState(1)
 
   return (
-    <>
-      <Box>
-        {error ? (
-          <Text bold color={'red'}>
-            {error}
-          </Text>
-        ) : (
-          step > 0 && (
-            <Working isWorking={step === 1}>
-              <Text color={'whiteBright'}>Cloning dAppBooster in </Text>
-              <Text italic>{projectName}</Text>
-            </Working>
-          )
-        )}
-        {step > 1 && (
-          <Working isWorking={step === 2}>
-            {latestTag ? (
-              <Text color={'whiteBright'}>Checking out latest tag...</Text>
-            ) : (
-              <Text color={'whiteBright'}>
-                No tags found, checking out<Text italic>main</Text> branch...
-              </Text>
-            )}
-          </Working>
-        )}
-        {step > 2 && (
-          <>
-            <Text color={'whiteBright'}>
-              Repository cloned in <Text italic>${projectDir}</Text>
-            </Text>
-            <Text color={'whiteBright'}>
-              Version: <Text italic>${latestTag ? latestTag : 'main branch'}</Text>
-            </Text>
-          </>
-        )}
-      </Box>
-    </>
+    <Box flexDirection={'column'} gap={0}>
+      <Script>
+        <Working isWorking={step === 1}>
+          <Text color={'whiteBright'}>Cloning dAppBooster in </Text>
+          <Text italic>{projectName}</Text>
+        </Working>
+        <Spawn
+          shell
+          silent
+          successText={'Finished cloning!'}
+          failureText={`Failed to clone the project, check if a folder with the name "${projectName}" already exists and your read/write permissions...`}
+          runningText={'Working...'}
+          onCompletion={() => {
+            setStep(step + 1)
+          }}
+          command="git"
+          args={['clone', '--depth', '1', '--no-checkout', repoUrl, projectName]}
+        />
+        <Working show={step > 1} isWorking={step === 2}>
+          <Text color={'whiteBright'}>Fetching tags</Text>
+        </Working>
+        <Spawn
+          shell
+          cwd={projectDir}
+          silent
+          command={'git'}
+          args={['fetch', '--tags']}
+          runningText={'Working...'}
+          successText={'Fetched tags'}
+          failureText={'Error fetching tags'}
+          onCompletion={() => {
+            setStep(step + 1)
+          }}
+        />
+        <Working show={step > 2} isWorking={step === 3}>
+          <Text color={'whiteBright'}>Checking out latest tag</Text>
+        </Working>
+        <Spawn
+          shell
+          cwd={projectDir}
+          command="git"
+          args={['checkout $(git describe --tags `git rev-list --tags --max-count=1`)']}
+          successText="Checked out latest tag"
+          failureText={`Failed to checkout latest tag`}
+          onCompletion={() => {
+            setStep(step + 1)
+          }}
+        />
+        <Working show={step > 3} isWorking={step === 4}>
+          <Text color={'whiteBright'}>Removing .git folder</Text>
+        </Working>
+        <Spawn
+          shell
+          cwd={projectDir}
+          command="rm"
+          args={['-rf', '.git']}
+          successText="Removed .git folder"
+          failureText={'Failed to remove .git folder'}
+          onCompletion={() => {
+            setStep(step + 1)
+          }}
+        />
+        <Working show={step > 4} isWorking={step === 5}>
+          <Text color={'whiteBright'}>Initializing Git repository</Text>
+        </Working>
+        <Spawn
+          shell
+          cwd={projectDir}
+          command="git"
+          args={['init']}
+          successText="Initialized Git repository"
+          failureText={'Failed to initialize Git repository'}
+          onCompletion={() => {
+            setStep(step + 1)
+          }}
+        />
+      </Script>
+    </Box>
   )
 }
 
