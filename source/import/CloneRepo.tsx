@@ -6,12 +6,19 @@ import Working from './Working.js'
 import { Script, Spawn } from 'ink-spawn'
 import * as process from 'node:process'
 
+interface Props {
+  projectName: string
+  onCompletion: () => void
+}
+
 /**
  * @description Clone the repository
  */
-const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
+const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
   const projectDir = join(process.cwd(), projectName)
   const [step, setStep] = useState(1)
+
+  const finishStep = () => setStep(step + 1)
 
   return (
     <Box flexDirection={'column'} gap={0}>
@@ -27,7 +34,7 @@ const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
           failureText={`Failed to clone the project, check if a folder called "${projectName}" already exists and your read/write permissions...`}
           runningText={'Working...'}
           onCompletion={() => {
-            setStep(step + 1)
+            finishStep()
           }}
           command="git"
           args={['clone', '--depth', '1', '--no-checkout', repoUrl, projectName]}
@@ -45,7 +52,7 @@ const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
           successText={'Done!'}
           failureText={'Error...'}
           onCompletion={() => {
-            setStep(step + 1)
+            finishStep()
           }}
         />
         <Working show={step > 2} isWorking={step === 3}>
@@ -59,7 +66,7 @@ const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
           successText="Done!"
           failureText={'Error...'}
           onCompletion={() => {
-            setStep(step + 1)
+            finishStep()
           }}
         />
         <Working show={step > 3} isWorking={step === 4}>
@@ -73,7 +80,7 @@ const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
           successText="Done!"
           failureText={'Error...'}
           onCompletion={() => {
-            setStep(step + 1)
+            finishStep()
           }}
         />
         <Working show={step > 4} isWorking={step === 5}>
@@ -87,7 +94,8 @@ const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
           successText="Done!"
           failureText={'Error...'}
           onCompletion={() => {
-            setStep(step + 1)
+            finishStep()
+            onCompletion()
           }}
         />
       </Script>
