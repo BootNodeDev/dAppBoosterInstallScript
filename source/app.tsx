@@ -1,14 +1,47 @@
-import React, { useState } from 'react'
-import { Text } from 'ink'
-import { Ask } from './import/Ask.js'
+import React, { useEffect, useState, useMemo } from 'react'
+import Ask from './import/Ask.js'
+import CloneRepo from './import/CloneRepo.js'
+import { Box } from 'ink'
+import { validateName, isAnswerConfirmed } from './import/utils.js'
+import Divider from 'ink-divider'
+import Gradient from 'ink-gradient'
+import BigText from 'ink-big-text'
 
 const App = () => {
-  const [project, setProject] = useState<string | null>(null)
+  const [projectName, setProjectName] = useState<string>('')
+  const [errorMessage, setErrormessage] = useState<string | undefined>()
+  const answered = useMemo(
+    () => isAnswerConfirmed(projectName, errorMessage),
+    [projectName, errorMessage],
+  )
 
-  return !project ? (
-    <Ask question="Project name?" onSubmit={setProject} />
-  ) : (
-    <Text>Project name: {project}</Text>
+  useEffect(() => {
+    setErrormessage(validateName(projectName))
+  }, [projectName])
+
+  return (
+    <Box flexDirection={'column'} rowGap={1}>
+      <Gradient colors={['#ff438c', '#bb1d79', '#8b46a4', '#6a2581']}>
+        <BigText lineHeight={1} font={'chrome'} text="dAppBooster" />
+      </Gradient>
+      <Ask
+        answer={projectName}
+        errorMessage={errorMessage}
+        onSubmit={setProjectName}
+        question={'Project name?'}
+        tip={'Letters (a–z, A–Z), numbers (0–9), hyphens (-), and underscores (_) are allowed.'}
+      />
+      {answered && (
+        <>
+          <Divider
+            titlePadding={2}
+            titleColor={'whiteBright'}
+            title={`Installing "${projectName}"`}
+          />
+          <CloneRepo projectName={projectName} />
+        </>
+      )}
+    </Box>
   )
 }
 
