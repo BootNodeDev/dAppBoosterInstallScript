@@ -33,11 +33,7 @@ const App = () => {
       />
       {answered && (
         <>
-          <Divider
-            titlePadding={2}
-            titleColor={'whiteBright'}
-            title={`Installing "${projectName}"`}
-          />
+          <Divider titlePadding={2} titleColor={'whiteBright'} title={`Cloning "${projectName}"`} />
           <CloneRepo projectName={projectName} />
         </>
       )}
