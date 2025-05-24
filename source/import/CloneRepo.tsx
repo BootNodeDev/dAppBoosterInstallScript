@@ -23,8 +23,8 @@ const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
         <Spawn
           shell
           silent
-          successText={'Finished cloning!'}
-          failureText={`Failed to clone the project, check if a folder with the name "${projectName}" already exists and your read/write permissions...`}
+          successText={'Done!'}
+          failureText={`Failed to clone the project, check if a folder called "${projectName}" already exists and your read/write permissions...`}
           runningText={'Working...'}
           onCompletion={() => {
             setStep(step + 1)
@@ -42,8 +42,8 @@ const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
           command={'git'}
           args={['fetch', '--tags']}
           runningText={'Working...'}
-          successText={'Fetched tags'}
-          failureText={'Error fetching tags'}
+          successText={'Done!'}
+          failureText={'Error...'}
           onCompletion={() => {
             setStep(step + 1)
           }}
@@ -56,8 +56,8 @@ const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
           cwd={projectDir}
           command="git"
           args={['checkout $(git describe --tags `git rev-list --tags --max-count=1`)']}
-          successText="Checked out latest tag"
-          failureText={`Failed to checkout latest tag`}
+          successText="Done!"
+          failureText={'Error...'}
           onCompletion={() => {
             setStep(step + 1)
           }}
@@ -70,8 +70,8 @@ const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
           cwd={projectDir}
           command="rm"
           args={['-rf', '.git']}
-          successText="Removed .git folder"
-          failureText={'Failed to remove .git folder'}
+          successText="Done!"
+          failureText={'Error...'}
           onCompletion={() => {
             setStep(step + 1)
           }}
@@ -84,8 +84,8 @@ const CloneRepo: FC<{ projectName: string }> = ({ projectName }) => {
           cwd={projectDir}
           command="git"
           args={['init']}
-          successText="Initialized Git repository"
-          failureText={'Failed to initialize Git repository'}
+          successText="Done!"
+          failureText={'Error...'}
           onCompletion={() => {
             setStep(step + 1)
           }}
