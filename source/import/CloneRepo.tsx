@@ -2,7 +2,6 @@ import { join } from 'node:path'
 import { repoUrl } from './config.js'
 import React, { useState, type FC } from 'react'
 import { Text, Box } from 'ink'
-import Working from './Working.js'
 import { Script, Spawn } from 'ink-spawn'
 import * as process from 'node:process'
 
@@ -20,13 +19,19 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
 
   const finishStep = () => setStep(step + 1)
 
+  const canShowStep = (currentStep: number) => {
+    return step > currentStep - 1
+  }
+
   return (
     <Box flexDirection={'column'} gap={0}>
       <Script>
-        <Working isWorking={step === 1}>
-          <Text color={'whiteBright'}>Cloning dAppBooster in </Text>
-          <Text italic>{projectName}</Text>
-        </Working>
+        {canShowStep(1) && (
+          <>
+            <Text color={'whiteBright'}>Cloning dAppBooster in </Text>
+            <Text italic>{projectName}</Text>
+          </>
+        )}
         <Spawn
           shell
           silent
@@ -39,9 +44,7 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
           command="git"
           args={['clone', '--depth', '1', '--no-checkout', repoUrl, projectName]}
         />
-        <Working show={step > 1} isWorking={step === 2}>
-          <Text color={'whiteBright'}>Fetching tags</Text>
-        </Working>
+        {canShowStep(2) && <Text color={'whiteBright'}>Fetching tags</Text>}
         <Spawn
           shell
           cwd={projectDir}
@@ -55,9 +58,7 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
             finishStep()
           }}
         />
-        <Working show={step > 2} isWorking={step === 3}>
-          <Text color={'whiteBright'}>Checking out latest tag</Text>
-        </Working>
+        {canShowStep(3) && <Text color={'whiteBright'}>Checking out latest tag</Text>}
         <Spawn
           shell
           cwd={projectDir}
@@ -69,9 +70,7 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
             finishStep()
           }}
         />
-        <Working show={step > 3} isWorking={step === 4}>
-          <Text color={'whiteBright'}>Removing .git folder</Text>
-        </Working>
+        {canShowStep(4) && <Text color={'whiteBright'}>Removing .git folder</Text>}
         <Spawn
           shell
           cwd={projectDir}
@@ -83,9 +82,7 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
             finishStep()
           }}
         />
-        <Working show={step > 4} isWorking={step === 5}>
-          <Text color={'whiteBright'}>Initializing Git repository</Text>
-        </Working>
+        {canShowStep(5) && <Text color={'whiteBright'}>Initializing Git repository</Text>}
         <Spawn
           shell
           cwd={projectDir}
