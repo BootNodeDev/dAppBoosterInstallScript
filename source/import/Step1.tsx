@@ -1,8 +1,8 @@
 import BigText from 'ink-big-text'
 import Gradient from 'ink-gradient'
-import React, { type FC, useMemo, useCallback } from 'react'
+import React, {type FC, useMemo, useCallback} from 'react'
 import Ask from './Ask.js'
-import { isValidName } from './utils.js'
+import {isValidName} from './utils.js'
 
 interface Props {
   onCompletion: () => void
@@ -10,7 +10,7 @@ interface Props {
   projectName: string
 }
 
-const Step1: FC<Props> = ({ projectName, onSubmit, onCompletion }) => {
+const Step1: FC<Props> = ({projectName, onSubmit, onCompletion}) => {
   const validateName = useCallback((name: string): string => {
     if (name.length > 0 && !isValidName(name)) return 'Not a valid name!'
 
@@ -44,7 +44,7 @@ const Step1: FC<Props> = ({ projectName, onSubmit, onCompletion }) => {
         errorMessage={errorMessage}
         onSubmit={handleSubmit}
         question={'Project name?'}
-        tip={'Letters (a–z, A–Z), numbers (0–9), hyphens (-), and underscores (_) are allowed.'}
+        tip={'Letters (a–z, A–Z), numbers (0–9), and underscores (_) are allowed.'}
       />
     </>
   )
