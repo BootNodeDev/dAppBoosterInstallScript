@@ -9,11 +9,11 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "lint": "pnpm biome check",
+    "lint:fix": "pnpm biome check --write"
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "dependencies": {
     "ink": "^5.2.1",
     "ink-big-text": "^2.0.0",
@@ -24,13 +24,11 @@
     "react": "^18.3.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@sindresorhus/tsconfig": "^7.0.0",
     "@types/node": "^22.15.21",
     "@types/react": "^18.3.22",
     "chalk": "^5.4.1",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "prettier": "^3.5.3",
     "ts-node": "^10.9.1",
     "typescript": "^5.8.3"
   }
