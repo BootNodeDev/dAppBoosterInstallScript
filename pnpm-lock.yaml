@@ -20,6 +20,9 @@ importers:
       ink-gradient:
         specifier: ^3.0.0
         version: 3.0.0(ink@5.2.1(@types/react@18.3.22)(react@18.3.1))
+      ink-select-input:
+        specifier: ^6.2.0
+        version: 6.2.0(ink@5.2.1(@types/react@18.3.22)(react@18.3.1))(react@18.3.1)
       ink-spawn:
         specifier: ^0.1.4
         version: 0.1.4(ink@5.2.1(@types/react@18.3.22)(react@18.3.1))(react@18.3.1)
@@ -42,9 +45,6 @@ importers:
       '@types/react':
         specifier: ^18.3.22
         version: 18.3.22
-      chalk:
-        specifier: ^5.4.1
-        version: 5.4.1
       ts-node:
         specifier: ^10.9.1
         version: 10.9.2(@types/node@22.15.21)(typescript@5.8.3)
@@ -263,6 +263,10 @@ packages:
     resolution: {integrity: sha512-UpzcLCXolUWcNu5HtVMHYdXJjArjsF9C0aNnquZYY4uW/Vu0miy5YoWvbV345HauVvcAUnpRuhMMcqTcGOY2+w==}
     engines: {node: '>=8'}
 
+  figures@6.1.0:
+    resolution: {integrity: sha512-d+l3qxjSesT4V7v2fh+QnmFnUWv9lSpjarhShNTgBOfA0ttejbQUAlHLitbjkoRiDulW0OPoQPYIGhIC8ohejg==}
+    engines: {node: '>=18'}
+
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
 
@@ -301,6 +305,13 @@ packages:
     engines: {node: '>=16'}
     peerDependencies:
       ink: '>=4'
+
+  ink-select-input@6.2.0:
+    resolution: {integrity: sha512-304fZXxkpYxJ9si5lxRCaX01GNlmPBgOZumXXRnPYbHW/iI31cgQynqk2tRypGLOF1cMIwPUzL2LSm6q4I5rQQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      ink: '>=5.0.0'
+      react: '>=18.0.0'
 
   ink-spawn@0.1.4:
     resolution: {integrity: sha512-z3qd7IEncwbz1DxlOpoT7QvnaK4WMzjeFKvdxoTiN0K0K71DrbOePyWOwUjsP/GZ9ne2TwtldDfjYUtZigI6pg==}
@@ -366,6 +377,10 @@ packages:
   is-number@3.0.0:
     resolution: {integrity: sha512-4cboCqIpliH+mAvFNegjZQ4kgKc3ZUhQVr3HvWbSh5q3WH2v82ct+T2Y1hdU5Gdtorx/cLifQjqCbL7bpznLTg==}
     engines: {node: '>=0.10.0'}
+
+  is-unicode-supported@2.1.0:
+    resolution: {integrity: sha512-mE00Gnza5EEB3Ds0HfMyllZzbBrmLOX3vfWoj9A9PEnTfratQ/BcaJOuMhnkhjXvb2+FkY3VuHqtAGpTPmglFQ==}
+    engines: {node: '>=18'}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -456,6 +471,10 @@ packages:
 
   tinygradient@1.1.5:
     resolution: {integrity: sha512-8nIfc2vgQ4TeLnk2lFj4tRLvvJwEfQuabdsmvDdQPT0xlk9TaNtpGd6nNRxXoK6vQhN6RSzj+Cnp5tTQmpxmbw==}
+
+  to-rotated@1.0.0:
+    resolution: {integrity: sha512-KsEID8AfgUy+pxVRLsWp0VzCa69wxzUDZnzGbyIST/bcgcrMvTYoFBX/QORH4YApoD89EDuUovx4BTdpOn319Q==}
+    engines: {node: '>=18'}
 
   ts-node@10.9.2:
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
@@ -679,6 +698,10 @@ snapshots:
 
   escape-string-regexp@2.0.0: {}
 
+  figures@6.1.0:
+    dependencies:
+      is-unicode-supported: 2.1.0
+
   function-bind@1.1.2: {}
 
   get-east-asian-width@1.3.0: {}
@@ -720,6 +743,13 @@ snapshots:
       ink: 5.2.1(@types/react@18.3.22)(react@18.3.1)
       prop-types: 15.8.1
       strip-ansi: 7.1.0
+
+  ink-select-input@6.2.0(ink@5.2.1(@types/react@18.3.22)(react@18.3.1))(react@18.3.1):
+    dependencies:
+      figures: 6.1.0
+      ink: 5.2.1(@types/react@18.3.22)(react@18.3.1)
+      react: 18.3.1
+      to-rotated: 1.0.0
 
   ink-spawn@0.1.4(ink@5.2.1(@types/react@18.3.22)(react@18.3.1))(react@18.3.1):
     dependencies:
@@ -800,6 +830,8 @@ snapshots:
   is-number@3.0.0:
     dependencies:
       kind-of: 3.2.2
+
+  is-unicode-supported@2.1.0: {}
 
   js-tokens@4.0.0: {}
 
@@ -890,6 +922,8 @@ snapshots:
     dependencies:
       '@types/tinycolor2': 1.4.6
       tinycolor2: 1.6.0
+
+  to-rotated@1.0.0: {}
 
   ts-node@10.9.2(@types/node@22.15.21)(typescript@5.8.3):
     dependencies:
