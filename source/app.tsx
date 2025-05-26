@@ -35,7 +35,7 @@ const App = () => {
       {isProjectNameSet && (
         <>
           {/* Step 1 */}
-          {canShowStep(1) && <Step1 projectName={projectName} onSubmit={finishStep} />}
+          {canShowStep(1) && <Step1 projectName={projectName} onCompletion={finishStep} />}
           {/* Step 2 */}
           {canShowStep(2) && (
             <>

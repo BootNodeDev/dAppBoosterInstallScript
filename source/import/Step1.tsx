@@ -4,13 +4,13 @@ import React, { type FC } from 'react'
 
 interface Props {
   projectName: string
-  onSubmit: () => void
+  onCompletion: () => void
 }
 
-const Step1: FC<Props> = ({ projectName, onSubmit }) => (
+const Step1: FC<Props> = ({ projectName, onCompletion }) => (
   <>
     <Divider titlePadding={2} titleColor={'whiteBright'} title={`Cloning "${projectName}"`} />
-    <CloneRepo projectName={projectName} onCompletion={onSubmit} />
+    <CloneRepo projectName={projectName} onCompletion={onCompletion} />
   </>
 )
 
