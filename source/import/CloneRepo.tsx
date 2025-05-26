@@ -1,10 +1,10 @@
-import {join} from 'node:path'
+import { join } from 'node:path'
 import * as process from 'node:process'
-import {Box, Text} from 'ink'
-import {Script, Spawn} from 'ink-spawn'
-import React, {useState, type FC} from 'react'
-import {repoUrl} from './config.js'
-import {canShowStep} from './utils.js'
+import { Box, Text } from 'ink'
+import { Script, Spawn } from 'ink-spawn'
+import React, { useState, type FC } from 'react'
+import { repoUrl } from './config.js'
+import { canShowStep } from './utils.js'
 
 interface Props {
   projectName: string
@@ -14,7 +14,7 @@ interface Props {
 /**
  * @description Clone the repository
  */
-const CloneRepo: FC<Props> = ({projectName, onCompletion}) => {
+const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
   const projectDir = join(process.cwd(), projectName)
   const [currentStep, setCurrentStep] = useState(1)
 
@@ -82,7 +82,9 @@ const CloneRepo: FC<Props> = ({projectName, onCompletion}) => {
             finishStep()
           }}
         />
-        {canShowStep(currentStep, 5) && <Text color={'whiteBright'}>Initializing Git repository</Text>}
+        {canShowStep(currentStep, 5) && (
+          <Text color={'whiteBright'}>Initializing Git repository</Text>
+        )}
         <Spawn
           shell
           cwd={projectDir}

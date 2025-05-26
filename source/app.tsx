@@ -1,9 +1,9 @@
-import {Box} from 'ink'
-import Divider from 'ink-divider'
-import React, {useState} from 'react'
+import { Box } from 'ink'
+import React, { useState } from 'react'
 import Step1 from './import/Step1.js'
 import Step2 from './import/Step2.js'
-import {canShowStep} from './import/utils.js'
+import Step3 from './import/Step3.js'
+import { canShowStep } from './import/utils.js'
 
 const App = () => {
   const [projectName, setProjectName] = useState<string>('')
@@ -28,10 +28,9 @@ const App = () => {
         />
       )}
       {canShowStep(currentStep, 3) && (
-        <Divider
-          titlePadding={2}
-          titleColor={'whiteBright'}
-          title={'Installation setup'}
+        <Step3
+          projectName={projectName}
+          onCompletion={finishStep}
         />
       )}
     </Box>

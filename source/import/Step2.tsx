@@ -1,5 +1,5 @@
 import Divider from 'ink-divider'
-import React, {type FC} from 'react'
+import React, { type FC } from 'react'
 import CloneRepo from './CloneRepo.js'
 
 interface Props {
@@ -7,7 +7,7 @@ interface Props {
   onCompletion: () => void
 }
 
-const Step2: FC<Props> = ({projectName, onCompletion}) => (
+const Step2: FC<Props> = ({ projectName, onCompletion }) => (
   <>
     <Divider
       titlePadding={2}
