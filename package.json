@@ -13,7 +13,9 @@
     "lint": "pnpm biome check",
     "lint:fix": "pnpm biome check --write"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "ink": "^5.2.1",
     "ink-big-text": "^2.0.0",
@@ -28,7 +30,6 @@
     "@sindresorhus/tsconfig": "^7.0.0",
     "@types/node": "^22.15.21",
     "@types/react": "^18.3.22",
-    "chalk": "^5.4.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.8.3"
   }
