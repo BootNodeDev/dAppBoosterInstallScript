@@ -42,12 +42,8 @@ const CustomInstallation: FC<Props> = ({ projectName, onCompletion, customOption
     return featureSelected(feature, customOptions) ? [] : packages?.length ? packages : []
   }
 
-  const demoSupport = featureSelected('demo', customOptions)
-  const subgraphSupport = featureSelected('subgraph', customOptions)
-  const typedocSupport = featureSelected('typedoc', customOptions)
-  const vocsSupport = featureSelected('vocs', customOptions)
-  const huskySupport = featureSelected('husky', customOptions)
-
+  // Collects the packages to remove based on the selected features and makes
+  // a string out of them so that we can pass it to `pnpm remove` command.
   const packagesToRemove = [
     ...getPackages('subgraph'),
     ...getPackages('typedoc'),
@@ -62,11 +58,6 @@ const CustomInstallation: FC<Props> = ({ projectName, onCompletion, customOption
       flexDirection={'column'}
       gap={0}
     >
-      <Text color={'whiteBright'}>demo selected: {demoSupport ? 'true' : 'false'}</Text>
-      <Text color={'whiteBright'}>subgraph selected: {subgraphSupport ? 'true' : 'false'}</Text>
-      <Text color={'whiteBright'}>typedoc selected: {typedocSupport ? 'true' : 'false'}</Text>
-      <Text color={'whiteBright'}>vocs selected: {vocsSupport ? 'true' : 'false'}</Text>
-      <Text color={'whiteBright'}>husky selected: {huskySupport ? 'true' : 'false'}</Text>
       {!packagesToRemove ? (
         <Script>
           {/* If there are no packages to remove simply install everything... */}
@@ -90,13 +81,12 @@ const CustomInstallation: FC<Props> = ({ projectName, onCompletion, customOption
           <Spawn
             shell
             cwd={projectDir}
-            // silent
+            silent
             command={'pnpm'}
             args={['remove', packagesToRemove]}
-            // runningText={'Working...'}
-            // successText={'Done!'}
-            // failureText={'Error...'}
-            // onCompletion={onCompletion}
+            runningText={'Working...'}
+            successText={'Done!'}
+            failureText={'Error...'}
           />
           {/* ... but it won't run the post-install script, so we run the post-install scripts manually */}
           <Text color={'whiteBright'}>Executing post-install scripts</Text>
