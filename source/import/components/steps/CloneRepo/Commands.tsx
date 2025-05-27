@@ -2,9 +2,8 @@ import { join } from 'node:path'
 import * as process from 'node:process'
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
-import React, { useState, type FC } from 'react'
+import React, { type FC } from 'react'
 import { repoUrl } from '../../../constants/config.js'
-import { canShowStep } from '../../../utils/utils.js'
 
 interface Props {
   projectName: string

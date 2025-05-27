@@ -52,7 +52,7 @@ const App = () => {
       projectName={projectName}
       key={5}
     />,
-    <Text key={6}>Done! Go fuck yourself.</Text>,
+    <Text key={6}>Done!</Text>,
   ]
 
   return (
