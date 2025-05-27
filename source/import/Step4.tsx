@@ -1,72 +1,85 @@
-import { join } from 'node:path'
-import process from 'node:process'
-import { Box, Text } from 'ink'
-import Divider from 'ink-divider'
-import { Script, Spawn } from 'ink-spawn'
-import React, { type FC, useState } from 'react'
-import CustomInstallation from './CustomInstallation.js'
-import FullInstallation from './FullInstallation.js'
-import fullInstallation from './FullInstallation.js'
+import { Text } from 'ink'
+import MultiSelect from './Multiselect/index.js'
+
+import React, { useState, type FC, useEffect } from 'react'
 import type { Installation } from './Step3.js'
 
-interface Props {
-  installation: Installation | undefined
-  projectName: string
-  onCompletion: () => void
+interface Item {
+  label: string
+  value: string
 }
 
-const Step4: FC<Props> = ({ projectName, onCompletion, installation }) => {
-  const projectDir = join(process.cwd(), projectName)
-  const [canInstall, setCanInstall] = useState(false)
+interface Props {
+  onCompletion: () => void
+  onSubmit: (item: Item) => void
+  installation: Installation | undefined
+}
 
-  return (
+const customPackages: Array<Item> = [
+  {
+    label: 'Component Demos',
+    value: 'demo',
+  },
+  {
+    label: 'Subgraph support',
+    value: 'subgraph',
+  },
+  {
+    label: 'Typedoc documentation support',
+    value: 'typedoc',
+  },
+  {
+    label: 'Vocs documentation support',
+    value: 'vocs',
+  },
+  {
+    label: 'Husky Git hooks support',
+    value: 'husky',
+  },
+]
+
+const Step4: FC<Props> = ({ onCompletion, onSubmit, installation }) => {
+  const [isFocused, setIsFocused] = useState(true)
+  const [showCustomOptions, setShowCustomOptions] = useState(false)
+  const skip = installation === 'full'
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Run this only once
+  useEffect(() => {
+    if (skip) {
+      onCompletion()
+    }
+  }, [])
+
+  const onHandleSubmit = (item: Array<Item>) => {
+    // onSubmit(item)
+    //
+    // if (item.value === 'full') {
+    //   onCompletion()
+    // } else {
+    //   setShowCustomOptions(true)
+    // }
+    // setIsFocused(false)
+  }
+
+  return skip ? null : (
     <>
-      <Divider
-        titlePadding={2}
-        titleColor={'whiteBright'}
-        title={`Performing ${installation ?? 'full'} installation`}
+      <Text color={'whiteBright'}>Choose optional packages</Text>
+      <MultiSelect
+        // indicatorComponent={({ isSelected }) => (
+        //   <Text color="green">{isSelected ? '> ' : '  '}</Text>
+        // )}
+        // itemComponent={({ label, isSelected }) => (
+        //   <Text
+        //     color={isSelected ? 'green' : 'white'}
+        //     bold={isSelected}
+        //   >
+        //     {label}
+        //   </Text>
+        // )}
+        // isFocused={isFocused}
+        items={customPackages}
+        onSubmit={onHandleSubmit}
       />
-      <Box
-        flexDirection={'column'}
-        gap={0}
-      >
-        <Script>
-          <Box columnGap={1}>
-            <Text color={'whiteBright'}>
-              Creating{' '}
-              <Text
-                italic
-                color={'white'}
-              >
-                .env.local
-              </Text>{' '}
-              file
-            </Text>
-          </Box>
-          <Spawn
-            shell
-            cwd={projectDir}
-            silent
-            command={'cp'}
-            args={['.env.example', '.env.local']}
-            runningText={'Working...'}
-            successText={'Done!'}
-            failureText={'Error...'}
-            onCompletion={() => setCanInstall(true)}
-          />
-        </Script>
-        {canInstall && installation === 'full' ? (
-          <FullInstallation
-            projectName={projectName}
-            onCompletion={() => console.log()}
-          />
-        ) : (
-          <CustomInstallation
-            projectName={projectName}
-            onCompletion={() => console.log()}
-          />
-        )}
-      </Box>
     </>
   )
 }

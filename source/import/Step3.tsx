@@ -1,3 +1,4 @@
+import figures from 'figures'
 import { Text } from 'ink'
 import Divider from 'ink-divider'
 import SelectInput from 'ink-select-input'
@@ -45,7 +46,7 @@ const Step3: FC<Props> = ({ onCompletion, onSelect }) => {
       <Text color={'whiteBright'}>Choose installation type</Text>
       <SelectInput
         indicatorComponent={({ isSelected }) => (
-          <Text color="green">{isSelected ? '> ' : '  '}</Text>
+          <Text color="green">{isSelected ? `${figures.pointer} ` : '  '}</Text>
         )}
         itemComponent={({ label, isSelected }) => (
           <Text
