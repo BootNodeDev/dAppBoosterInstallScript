@@ -5,22 +5,27 @@ import { Script, Spawn } from 'ink-spawn'
 import React, { type FC, useState } from 'react'
 import Divider from '../../Divider.js'
 import type { Installation } from '../InstallationType.js'
+import type { Item as CustomOptionsItem } from '../OptionalPackages.js'
 import CustomInstallation from './CustomInstallation.js'
 import FullInstallation from './FullInstallation.js'
 
 interface Props {
-  installation: Installation | undefined
+  installation: {
+    installationType: Installation | undefined
+    customOptions?: Array<CustomOptionsItem>
+  }
   projectName: string
   onCompletion: () => void
 }
 
 const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
+  const { installationType, customOptions } = installation
   const projectDir = join(process.cwd(), projectName)
   const [canInstall, setCanInstall] = useState(false)
 
   return (
     <>
-      <Divider title={`Performing ${installation ?? 'full'} installation`} />
+      <Divider title={`Performing ${installation.installationType ?? 'full'} installation`} />
       <Box
         flexDirection={'column'}
         gap={0}
@@ -50,16 +55,22 @@ const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
             onCompletion={() => setCanInstall(true)}
           />
         </Script>
-        {canInstall && installation === 'full' ? (
-          <FullInstallation
-            projectName={projectName}
-            onCompletion={() => console.log()}
-          />
-        ) : (
-          <CustomInstallation
-            projectName={projectName}
-            onCompletion={() => console.log()}
-          />
+        {canInstall && (
+          <>
+            {installationType === 'full' && (
+              <FullInstallation
+                projectName={projectName}
+                onCompletion={onCompletion}
+              />
+            )}
+            {installationType === 'custom' && (
+              <CustomInstallation
+                installationPackages={customOptions}
+                projectName={projectName}
+                onCompletion={onCompletion}
+              />
+            )}
+          </>
         )}
       </Box>
     </>

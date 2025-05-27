@@ -25,8 +25,8 @@ const App = () => {
 
   const steps: Array<ReactNode> = [
     <ProjectName
-      onSubmit={setProjectName}
       onCompletion={finishStep}
+      onSubmit={setProjectName}
       projectName={projectName}
       key={1}
     />,
@@ -41,17 +41,18 @@ const App = () => {
       key={3}
     />,
     <OptionalPackages
+      installation={setupType?.value}
       onCompletion={finishStep}
       onSubmit={onSelectCustomOptions}
-      installation={setupType?.value}
       key={4}
     />,
     <Install
+      installation={{ installationType: setupType?.value, customOptions: customOptions }}
       onCompletion={finishStep}
       projectName={projectName}
-      installation={setupType?.value}
       key={5}
     />,
+    <Text key={6}>Done! Go fuck yourself.</Text>,
   ]
 
   return (
@@ -61,11 +62,6 @@ const App = () => {
     >
       <MainTitle />
       {steps.map((item, index) => canShowStep(currentStep, index + 1) && item)}
-      {customOptions?.map((item) => (
-        <Text key={item.value}>
-          {item.label} / {item.value}
-        </Text>
-      ))}
     </Box>
   )
 }

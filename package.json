@@ -32,5 +32,8 @@
     "@types/react": "^18.3.22",
     "ts-node": "^10.9.1",
     "typescript": "^5.8.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@biomejs/biome"]
   }
 }
