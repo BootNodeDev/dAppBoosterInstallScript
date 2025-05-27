@@ -2,21 +2,15 @@ import figures from 'figures'
 import { Text } from 'ink'
 import SelectInput from 'ink-select-input'
 import React, { useState, type FC } from 'react'
+import type { InstallationSelectItem } from '../../types/types.js'
 import Divider from '../Divider.js'
-
-export type Installation = 'full' | 'custom'
-
-export interface Item {
-  label: string
-  value: Installation
-}
 
 interface Props {
   onCompletion: () => void
-  onSelect: (item: Item) => void
+  onSelect: (item: InstallationSelectItem) => void
 }
 
-const installationTypeItems: Array<Item> = [
+const installationTypeItems: Array<InstallationSelectItem> = [
   {
     label: 'Full',
     value: 'full',
@@ -27,10 +21,10 @@ const installationTypeItems: Array<Item> = [
   },
 ]
 
-const InstallationType: FC<Props> = ({ onCompletion, onSelect }) => {
+const InstallationMode: FC<Props> = ({ onCompletion, onSelect }) => {
   const [isFocused, setIsFocused] = useState(true)
 
-  const handleSelect = (item: Item) => {
+  const handleSelect = (item: InstallationSelectItem) => {
     onSelect(item)
     onCompletion()
     setIsFocused(false)
@@ -60,4 +54,4 @@ const InstallationType: FC<Props> = ({ onCompletion, onSelect }) => {
   )
 }
 
-export default InstallationType
+export default InstallationMode

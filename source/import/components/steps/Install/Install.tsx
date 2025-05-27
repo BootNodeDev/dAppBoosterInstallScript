@@ -3,28 +3,27 @@ import process from 'node:process'
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
 import React, { type FC } from 'react'
+import type { InstallationType, MultiSelectItem } from '../../../types/types.js'
 import Divider from '../../Divider.js'
-import type { Installation } from '../InstallationType.js'
-import type { Item as CustomOptionsItem } from '../OptionalPackages.js'
 import CustomInstallation from './CustomInstallation.js'
 import FullInstallation from './FullInstallation.js'
 
 interface Props {
   installation: {
-    installationType: Installation | undefined
-    customOptions?: Array<CustomOptionsItem>
+    installationType: InstallationType | undefined
+    customOptions?: Array<MultiSelectItem>
   }
   projectName: string
   onCompletion: () => void
 }
 
 const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
-  const projectDir = join(process.cwd(), projectName)
+  const projectFolder = join(process.cwd(), projectName)
   const { installationType, customOptions } = installation
 
   return (
     <>
-      <Divider title={`Performing ${installation.installationType ?? 'full'} installation`} />
+      <Divider title={`Executing ${installation.installationType ?? 'full'} installation`} />
       <Box
         flexDirection={'column'}
         gap={0}
@@ -44,7 +43,7 @@ const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
           </Box>
           <Spawn
             shell
-            cwd={projectDir}
+            cwd={projectFolder}
             silent
             command={'cp'}
             args={['.env.example', '.env.local']}
@@ -55,14 +54,14 @@ const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
           {installationType === 'full' && (
             <FullInstallation
               onCompletion={onCompletion}
-              projectDir={projectDir}
+              projectFolder={projectFolder}
             />
           )}
           {installationType === 'custom' && (
             <CustomInstallation
               customOptions={customOptions}
               onCompletion={onCompletion}
-              projectDir={projectDir}
+              projectFolder={projectFolder}
             />
           )}
         </Script>

@@ -1,21 +1,15 @@
 import { Text } from 'ink'
+import React, { useState, type FC, useEffect } from 'react'
+import type { InstallationType, MultiSelectItem } from '../../types/types.js'
 import MultiSelect from '../Multiselect/index.js'
 
-import React, { useState, type FC, useEffect } from 'react'
-import type { Installation } from './InstallationType.js'
-
-export interface Item {
-  label: string
-  value: string
-}
-
 interface Props {
-  installation: Installation | undefined
+  installation: InstallationType | undefined
   onCompletion: () => void
-  onSubmit: (selectedItems: Array<Item>) => void
+  onSubmit: (selectedItems: Array<MultiSelectItem>) => void
 }
 
-const customPackages: Array<Item> = [
+const customPackages: Array<MultiSelectItem> = [
   {
     label: 'Component Demos',
     value: 'demo',
@@ -56,7 +50,7 @@ const OptionalPackages: FC<Props> = ({ onCompletion, onSubmit, installation }) =
     }
   }, [])
 
-  const onHandleSubmit = (selectedItems: Array<Item>) => {
+  const onHandleSubmit = (selectedItems: Array<MultiSelectItem>) => {
     onSubmit(selectedItems)
     setIsFocused(false)
     onCompletion()

@@ -4,16 +4,16 @@ import React, { type FC } from 'react'
 
 interface Props {
   onCompletion?: () => void
-  projectDir: string
+  projectFolder: string
 }
 
-const InstallAllPackages: FC<Props> = ({ projectDir, onCompletion }) => {
+const InstallAllPackages: FC<Props> = ({ projectFolder, onCompletion }) => {
   return (
     <>
       <Text color={'whiteBright'}>Installing packages</Text>
       <Spawn
         shell
-        cwd={projectDir}
+        cwd={projectFolder}
         silent
         command={'pnpm'}
         args={['i']}

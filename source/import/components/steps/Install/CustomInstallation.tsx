@@ -1,16 +1,14 @@
-import { join } from 'node:path'
-import process from 'node:process'
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
 import React, { type FC } from 'react'
 import { featurePackages, homeFolder } from '../../../constants/config.js'
-import type { Item as CustomOptionsItem } from '../OptionalPackages.js'
+import type { MultiSelectItem } from '../../../types/types.js'
 import InstallAllPackages from './InstallAllPackages.js'
 
 interface Props {
-  customOptions?: Array<CustomOptionsItem>
+  customOptions?: Array<MultiSelectItem>
   onCompletion: () => void
-  projectDir: string
+  projectFolder: string
 }
 
 /**
@@ -18,18 +16,19 @@ interface Props {
  * features to remove (everything's included in package.json by default to simplify things)
  * @param onCompletion
  * @param customOptions
- * @param projectDir
+ * @param projectFolder
  */
-const CustomInstallation: FC<Props> = ({ onCompletion, customOptions, projectDir }) => {
-  const demosFolder = join(process.cwd(), homeFolder)
+const CustomInstallation: FC<Props> = ({ onCompletion, customOptions, projectFolder }) => {
+  const currentHomeFolder = `${projectFolder}${homeFolder}`
+  const cleanHomeFile = `${projectFolder}/.install-files/home/index.tsx`
 
   /**
    * Selected features won't be removed, unselected features will be.
    * @param feature
    * @param featuresList
    */
-  const featureSelected = (feature: string, featuresList: Array<CustomOptionsItem> | undefined) => {
-    return !!featuresList?.find((item: CustomOptionsItem) => item.value === feature)
+  const featureSelected = (feature: string, featuresList: Array<MultiSelectItem> | undefined) => {
+    return !!featuresList?.find((item: MultiSelectItem) => item.value === feature)
   }
 
   /**
@@ -63,7 +62,7 @@ const CustomInstallation: FC<Props> = ({ onCompletion, customOptions, projectDir
         <Script>
           {/* If there are no packages to remove simply install everything... */}
           <InstallAllPackages
-            projectDir={projectDir}
+            projectFolder={projectFolder}
             onCompletion={onCompletion}
           />
         </Script>
@@ -73,7 +72,7 @@ const CustomInstallation: FC<Props> = ({ onCompletion, customOptions, projectDir
           <Text color={'whiteBright'}>Installing packages</Text>
           <Spawn
             shell
-            cwd={projectDir}
+            cwd={projectFolder}
             silent
             command={'pnpm'}
             args={['remove', packagesToRemove]}
@@ -85,29 +84,51 @@ const CustomInstallation: FC<Props> = ({ onCompletion, customOptions, projectDir
           <Text color={'whiteBright'}>Executing post-install scripts</Text>
           <Spawn
             shell
-            cwd={projectDir}
+            cwd={projectFolder}
             silent
             command={'pnpm'}
             args={['run', 'postinstall']}
             runningText={'Working...'}
             successText={'Done!'}
             failureText={'Error...'}
+            onCompletion={onCompletion}
           />
           {!featureSelected('demo', customOptions) && (
-            <>
+            <Script>
               <Text color={'whiteBright'}>Removing component demos</Text>
               <Spawn
                 shell
-                cwd={projectDir}
-                silent
-                command={'pnpm'}
-                args={['run', 'postinstall']}
-                runningText={'Working...'}
-                successText={'Done!'}
-                failureText={'Error...'}
-                // onCompletion={onCompletion}
+                cwd={projectFolder}
+                // silent
+                command="rm"
+                args={['-rf', currentHomeFolder]}
+                // runningText={'Working...'}
+                // successText={'Done!'}
+                // failureText={'Error...'}
               />
-            </>
+              <Text color={'whiteBright'}>Creating new home folder</Text>
+              <Spawn
+                shell
+                cwd={projectFolder}
+                // silent
+                command="mkdir"
+                args={['-p', currentHomeFolder]}
+                // runningText={'Working...'}
+                // successText={'Done!'}
+                // failureText={'Error...'}
+              />
+              <Text color={'whiteBright'}>Creating new home page</Text>
+              <Spawn
+                shell
+                cwd={projectFolder}
+                // silent
+                command="cp"
+                args={[cleanHomeFile, currentHomeFolder]}
+                // runningText={'Working...'}
+                // successText={'Done!'}
+                // failureText={'Error...'}
+              />
+            </Script>
           )}
         </Script>
       )}

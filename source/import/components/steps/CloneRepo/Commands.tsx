@@ -16,7 +16,7 @@ interface Props {
  * @param onCompletion
  */
 const Commands: FC<Props> = ({ projectName, onCompletion }) => {
-  const projectDir = join(process.cwd(), projectName)
+  const projectFolder = join(process.cwd(), projectName)
 
   return (
     <Box
@@ -40,7 +40,7 @@ const Commands: FC<Props> = ({ projectName, onCompletion }) => {
         <Text color={'whiteBright'}>Fetching tags</Text>
         <Spawn
           shell
-          cwd={projectDir}
+          cwd={projectFolder}
           silent
           command={'git'}
           args={['fetch', '--tags']}
@@ -51,7 +51,7 @@ const Commands: FC<Props> = ({ projectName, onCompletion }) => {
         <Text color={'whiteBright'}>Checking out latest tag</Text>
         <Spawn
           shell
-          cwd={projectDir}
+          cwd={projectFolder}
           command="git"
           args={['checkout $(git describe --tags `git rev-list --tags --max-count=1`)']}
           successText="Done!"
@@ -60,7 +60,7 @@ const Commands: FC<Props> = ({ projectName, onCompletion }) => {
         <Text color={'whiteBright'}>Removing .git folder</Text>
         <Spawn
           shell
-          cwd={projectDir}
+          cwd={projectFolder}
           command="rm"
           args={['-rf', '.git']}
           successText="Done!"
@@ -69,7 +69,7 @@ const Commands: FC<Props> = ({ projectName, onCompletion }) => {
         <Text color={'whiteBright'}>Initializing Git repository</Text>
         <Spawn
           shell
-          cwd={projectDir}
+          cwd={projectFolder}
           command="git"
           args={['init']}
           successText="Done!"

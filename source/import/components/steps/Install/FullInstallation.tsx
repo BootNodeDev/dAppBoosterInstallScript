@@ -4,11 +4,11 @@ import React, { type FC } from 'react'
 import InstallAllPackages from './InstallAllPackages.js'
 
 interface Props {
-  projectDir: string
+  projectFolder: string
   onCompletion?: () => void
 }
 
-const FullInstallation: FC<Props> = ({ onCompletion, projectDir }) => {
+const FullInstallation: FC<Props> = ({ onCompletion, projectFolder }) => {
   return (
     <Box
       flexDirection={'column'}
@@ -16,7 +16,7 @@ const FullInstallation: FC<Props> = ({ onCompletion, projectDir }) => {
     >
       <Script>
         <InstallAllPackages
-          projectDir={projectDir}
+          projectFolder={projectFolder}
           onCompletion={onCompletion}
         />
       </Script>
