@@ -21,11 +21,11 @@ const Step1: FC<Props> = ({ projectName, onSubmit, onCompletion }) => {
     (name: string) => {
       onSubmit(name)
 
-      if (validateName(name) === '') {
+      if (isValidName(name)) {
         onCompletion()
       }
     },
-    [onSubmit, onCompletion, validateName],
+    [onSubmit, onCompletion],
   )
 
   return (
