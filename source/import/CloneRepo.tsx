@@ -28,7 +28,7 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
       <Script>
         {canShowStep(currentStep, 1) && (
           <Box columnGap={1}>
-            <Text color={'whiteBright'}>Cloning dAppBooster in </Text>
+            <Text color={'whiteBright'}>Cloning dAppBooster in</Text>
             <Text italic>{projectName}</Text>
           </Box>
         )}
@@ -38,9 +38,7 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
           successText={'Done!'}
           failureText={`Failed to clone the project, check if a folder called "${projectName}" already exists and your read/write permissions...`}
           runningText={'Working...'}
-          onCompletion={() => {
-            finishStep()
-          }}
+          onCompletion={() => finishStep()}
           command="git"
           args={['clone', '--depth', '1', '--no-checkout', repoUrl, projectName]}
         />
@@ -54,9 +52,7 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
           runningText={'Working...'}
           successText={'Done!'}
           failureText={'Error...'}
-          onCompletion={() => {
-            finishStep()
-          }}
+          onCompletion={() => finishStep()}
         />
         {canShowStep(currentStep, 3) && <Text color={'whiteBright'}>Checking out latest tag</Text>}
         <Spawn
@@ -66,9 +62,7 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
           args={['checkout $(git describe --tags `git rev-list --tags --max-count=1`)']}
           successText="Done!"
           failureText={'Error...'}
-          onCompletion={() => {
-            finishStep()
-          }}
+          onCompletion={() => finishStep()}
         />
         {canShowStep(currentStep, 4) && <Text color={'whiteBright'}>Removing .git folder</Text>}
         <Spawn
@@ -78,9 +72,7 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
           args={['-rf', '.git']}
           successText="Done!"
           failureText={'Error...'}
-          onCompletion={() => {
-            finishStep()
-          }}
+          onCompletion={() => finishStep()}
         />
         {canShowStep(currentStep, 5) && (
           <Text color={'whiteBright'}>Initializing Git repository</Text>
