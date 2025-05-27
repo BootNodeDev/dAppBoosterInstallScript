@@ -27,10 +27,10 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
     >
       <Script>
         {canShowStep(currentStep, 1) && (
-          <>
+          <Box columnGap={1}>
             <Text color={'whiteBright'}>Cloning dAppBooster in </Text>
             <Text italic>{projectName}</Text>
-          </>
+          </Box>
         )}
         <Spawn
           shell
