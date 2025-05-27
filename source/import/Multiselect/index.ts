@@ -1,1 +1,1 @@
-export {default, Item, Indicator, CheckBox, ItemComponent} from './MultiSelect.js';
+export { default, type Item, Indicator, CheckBox, ItemComponent } from './MultiSelect.js'

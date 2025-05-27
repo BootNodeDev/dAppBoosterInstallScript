@@ -1,6 +1,6 @@
-import Divider from 'ink-divider'
 import React, { type FC } from 'react'
 import CloneRepo from './CloneRepo.js'
+import Divider from './Divider.js'
 
 interface Props {
   projectName: string
@@ -9,11 +9,7 @@ interface Props {
 
 const Step2: FC<Props> = ({ projectName, onCompletion }) => (
   <>
-    <Divider
-      titlePadding={2}
-      titleColor={'whiteBright'}
-      title={`Cloning "${projectName}"`}
-    />
+    <Divider title={`Cloning "${projectName}"`} />
     <CloneRepo
       projectName={projectName}
       onCompletion={onCompletion}

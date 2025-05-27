@@ -1,10 +1,10 @@
 import { join } from 'node:path'
 import process from 'node:process'
 import { Box, Text } from 'ink'
-import Divider from 'ink-divider'
 import { Script, Spawn } from 'ink-spawn'
 import React, { type FC, useState } from 'react'
 import CustomInstallation from './CustomInstallation.js'
+import Divider from './Divider.js'
 import FullInstallation from './FullInstallation.js'
 import type { Installation } from './Step3.js'
 
@@ -20,11 +20,7 @@ const Step5: FC<Props> = ({ projectName, onCompletion, installation }) => {
 
   return (
     <>
-      <Divider
-        titlePadding={2}
-        titleColor={'whiteBright'}
-        title={`Performing ${installation ?? 'full'} installation`}
-      />
+      <Divider title={`Performing ${installation ?? 'full'} installation`} />
       <Box
         flexDirection={'column'}
         gap={0}
