@@ -4,6 +4,7 @@ import MainTitle from './import/MainTitle.js'
 import Step1 from './import/Step1.js'
 import Step2 from './import/Step2.js'
 import Step3, { type Item } from './import/Step3.js'
+import Step4 from './import/Step4.js'
 import { canShowStep } from './import/utils.js'
 
 const App = () => {
@@ -31,6 +32,12 @@ const App = () => {
       onSelect={onSelect}
       key={3}
     />,
+    <Step4
+      onCompletion={finishStep}
+      projectName={projectName}
+      installation={setupOption?.value}
+      key={4}
+    />,
   ]
 
   return (
@@ -40,7 +47,6 @@ const App = () => {
     >
       <MainTitle />
       {steps.map((item, index) => canShowStep(currentStep, index + 1) && item)}
-      {canShowStep(currentStep, 4) && <Text>{setupOption?.value}</Text>}
     </Box>
   )
 }
