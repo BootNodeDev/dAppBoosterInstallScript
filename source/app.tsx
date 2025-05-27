@@ -1,12 +1,16 @@
 import { Box, Text } from 'ink'
 import React, { useState, type ReactNode } from 'react'
-import MainTitle from './import/MainTitle.js'
-import Step1 from './import/Step1.js'
-import Step2 from './import/Step2.js'
-import Step3, { type Item as SetupTypeItem } from './import/Step3.js'
-import Step4, { type Item as CustomOptionsItem } from './import/Step4.js'
-import Step5 from './import/Step5.js'
-import { canShowStep } from './import/utils.js'
+import MainTitle from './import/components/MainTitle.js'
+import CloneRepo from './import/components/steps/CloneRepo/CloneRepo.js'
+import Install from './import/components/steps/Install/Install.js'
+import InstallationType, {
+  type Item as SetupTypeItem,
+} from './import/components/steps/InstallationType.js'
+import OptionalPackages, {
+  type Item as CustomOptionsItem,
+} from './import/components/steps/OptionalPackages.js'
+import ProjectName from './import/components/steps/ProjectName.js'
+import { canShowStep } from './import/utils/utils.js'
 
 const App = () => {
   const [projectName, setProjectName] = useState<string>('')
@@ -20,29 +24,29 @@ const App = () => {
     setCustomOptions([...selectedItems])
 
   const steps: Array<ReactNode> = [
-    <Step1
+    <ProjectName
       onSubmit={setProjectName}
       onCompletion={finishStep}
       projectName={projectName}
       key={1}
     />,
-    <Step2
+    <CloneRepo
       onCompletion={finishStep}
       projectName={projectName}
       key={2}
     />,
-    <Step3
+    <InstallationType
       onCompletion={finishStep}
       onSelect={onSelectSetupType}
       key={3}
     />,
-    <Step4
+    <OptionalPackages
       onCompletion={finishStep}
       onSubmit={onSelectCustomOptions}
       installation={setupType?.value}
       key={4}
     />,
-    <Step5
+    <Install
       onCompletion={finishStep}
       projectName={projectName}
       installation={setupType?.value}
@@ -57,8 +61,8 @@ const App = () => {
     >
       <MainTitle />
       {steps.map((item, index) => canShowStep(currentStep, index + 1) && item)}
-      {customOptions?.map((item, index) => (
-        <Text key={index}>
+      {customOptions?.map((item) => (
+        <Text key={item.value}>
           {item.label} / {item.value}
         </Text>
       ))}

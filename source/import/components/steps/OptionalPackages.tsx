@@ -1,8 +1,8 @@
 import { Text } from 'ink'
-import MultiSelect from './Multiselect/index.js'
+import MultiSelect from '../Multiselect/index.js'
 
 import React, { useState, type FC, useEffect } from 'react'
-import type { Installation } from './Step3.js'
+import type { Installation } from './InstallationType.js'
 
 export interface Item {
   label: string
@@ -38,7 +38,13 @@ const customPackages: Array<Item> = [
   },
 ]
 
-const Step4: FC<Props> = ({ onCompletion, onSubmit, installation }) => {
+/**
+ * Step for selecting optional packages. Skipped if installation type is 'full'.
+ * @param onCompletion
+ * @param onSubmit
+ * @param installation
+ */
+const OptionalPackages: FC<Props> = ({ onCompletion, onSubmit, installation }) => {
   const [isFocused, setIsFocused] = useState(true)
   const skip = installation === 'full'
 
@@ -68,4 +74,4 @@ const Step4: FC<Props> = ({ onCompletion, onSubmit, installation }) => {
   )
 }
 
-export default Step4
+export default OptionalPackages

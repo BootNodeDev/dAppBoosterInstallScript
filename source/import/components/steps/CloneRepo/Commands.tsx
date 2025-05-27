@@ -3,8 +3,8 @@ import * as process from 'node:process'
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
 import React, { useState, type FC } from 'react'
-import { repoUrl } from './config.js'
-import { canShowStep } from './utils.js'
+import { repoUrl } from '../../../constants/config.js'
+import { canShowStep } from '../../../utils/utils.js'
 
 interface Props {
   projectName: string
@@ -12,9 +12,11 @@ interface Props {
 }
 
 /**
- * @description Clone the repository
+ * Executes all the commands to clone the dAppBooster repository.
+ * @param projectName
+ * @param onCompletion
  */
-const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
+const Commands: FC<Props> = ({ projectName, onCompletion }) => {
   const projectDir = join(process.cwd(), projectName)
   const [currentStep, setCurrentStep] = useState(1)
 
@@ -94,4 +96,4 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
   )
 }
 
-export default CloneRepo
+export default Commands

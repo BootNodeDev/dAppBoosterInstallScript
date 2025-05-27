@@ -1,6 +1,6 @@
 import React, { type FC, useMemo, useCallback } from 'react'
-import Ask from './Ask.js'
-import { isValidName } from './utils.js'
+import { isValidName } from '../../utils/utils.js'
+import Ask from '../Ask.js'
 
 interface Props {
   onCompletion: () => void
@@ -8,7 +8,13 @@ interface Props {
   projectName: string
 }
 
-const Step1: FC<Props> = ({ projectName, onSubmit, onCompletion }) => {
+/**
+ * Component to ask for the project name.
+ * @param projectName
+ * @param onSubmit
+ * @param onCompletion
+ */
+const ProjectName: FC<Props> = ({ projectName, onSubmit, onCompletion }) => {
   const validateName = useCallback((name: string): string => {
     if (name.length > 0 && !isValidName(name)) return 'Not a valid name!'
 
@@ -39,4 +45,4 @@ const Step1: FC<Props> = ({ projectName, onSubmit, onCompletion }) => {
   )
 }
 
-export default Step1
+export default ProjectName

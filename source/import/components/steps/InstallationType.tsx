@@ -2,7 +2,7 @@ import figures from 'figures'
 import { Text } from 'ink'
 import SelectInput from 'ink-select-input'
 import React, { useState, type FC } from 'react'
-import Divider from './Divider.js'
+import Divider from '../Divider.js'
 
 export type Installation = 'full' | 'custom'
 
@@ -27,7 +27,7 @@ const installationTypeItems: Array<Item> = [
   },
 ]
 
-const Step3: FC<Props> = ({ onCompletion, onSelect }) => {
+const InstallationType: FC<Props> = ({ onCompletion, onSelect }) => {
   const [isFocused, setIsFocused] = useState(true)
 
   const handleSelect = (item: Item) => {
@@ -60,4 +60,4 @@ const Step3: FC<Props> = ({ onCompletion, onSelect }) => {
   )
 }
 
-export default Step3
+export default InstallationType

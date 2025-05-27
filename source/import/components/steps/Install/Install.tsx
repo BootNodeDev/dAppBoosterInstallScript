@@ -3,10 +3,10 @@ import process from 'node:process'
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
 import React, { type FC, useState } from 'react'
+import Divider from '../../Divider.js'
+import type { Installation } from '../InstallationType.js'
 import CustomInstallation from './CustomInstallation.js'
-import Divider from './Divider.js'
 import FullInstallation from './FullInstallation.js'
-import type { Installation } from './Step3.js'
 
 interface Props {
   installation: Installation | undefined
@@ -14,7 +14,7 @@ interface Props {
   onCompletion: () => void
 }
 
-const Step5: FC<Props> = ({ projectName, onCompletion, installation }) => {
+const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
   const projectDir = join(process.cwd(), projectName)
   const [canInstall, setCanInstall] = useState(false)
 
@@ -66,4 +66,4 @@ const Step5: FC<Props> = ({ projectName, onCompletion, installation }) => {
   )
 }
 
-export default Step5
+export default Install
