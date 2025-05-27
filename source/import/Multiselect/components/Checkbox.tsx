@@ -1,17 +1,17 @@
-import React from "react";
-import { Box, Text } from "ink";
-import figures from "figures";
+import figures from 'figures'
+import { Box, Text } from 'ink'
+import React from 'react'
 
 type CheckBoxProps = {
-  isSelected: boolean;
-};
+  isSelected: boolean
+}
 
 const CheckBox = ({ isSelected = false }: CheckBoxProps) => (
   <Box marginRight={1}>
-    <Text color="green">
+    <Text color={isSelected ? 'green' : 'white'}>
       {isSelected ? figures.circleFilled : figures.circle}
     </Text>
   </Box>
-);
+)
 
-export default CheckBox;
+export default CheckBox

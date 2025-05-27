@@ -1,17 +1,15 @@
-import React from "react";
-import { Box, Text } from "ink";
-import figures from "figures";
+import figures from 'figures'
+import { Box, Text } from 'ink'
+import React from 'react'
 
 type IndicatorProps = {
-  isHighlighted: boolean;
-};
+  isHighlighted: boolean
+}
 
 const Indicator = ({ isHighlighted = false }: IndicatorProps) => (
   <Box marginRight={1}>
-    <Text color={isHighlighted ? "blue" : undefined}>
-      {isHighlighted ? figures.pointer : " "}
-    </Text>
+    <Text color={isHighlighted ? 'green' : undefined}>{isHighlighted ? figures.pointer : ' '}</Text>
   </Box>
-);
+)
 
-export default Indicator;
+export default Indicator

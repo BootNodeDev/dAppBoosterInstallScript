@@ -1,13 +1,18 @@
-import React from "react";
-import { Text } from "ink";
+import { Text } from 'ink'
+import React from 'react'
 
 type ItemProps = {
-  isHighlighted: boolean;
-  label: string;
-};
+  isHighlighted: boolean
+  label: string
+}
 
 const Item = ({ isHighlighted = false, label }: ItemProps) => (
-  <Text color={isHighlighted ? "blue" : undefined}>{label}</Text>
-);
+  <Text
+    color={isHighlighted ? 'green' : 'white'}
+    bold={isHighlighted}
+  >
+    {label}
+  </Text>
+)
 
-export default Item;
+export default Item
