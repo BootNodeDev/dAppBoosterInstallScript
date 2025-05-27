@@ -1,25 +1,30 @@
-import { Box, Text } from 'ink'
+import { Text } from 'ink'
 import Divider from 'ink-divider'
 import SelectInput from 'ink-select-input'
-import React, { type FC } from 'react'
+import React, { useState, type FC } from 'react'
 
-export interface ItemProps {
+type Installation = 'full' | 'custom'
+
+export interface Item {
   label: string
-  value: string
+  value: Installation
 }
 
 interface Props {
   onCompletion: () => void
-  onSelect: (item: ItemProps) => void
+  onSelect: (item: Item) => void
 }
 
 const Step3: FC<Props> = ({ onCompletion, onSelect }) => {
-  const handleSelect = (item: ItemProps) => {
+  const [isFocused, setIsFocused] = useState(true)
+
+  const handleSelect = (item: Item) => {
     onSelect(item)
     onCompletion()
+    setIsFocused(false)
   }
 
-  const items = [
+  const items: Array<Item> = [
     {
       label: 'Full',
       value: 'full',
@@ -39,6 +44,18 @@ const Step3: FC<Props> = ({ onCompletion, onSelect }) => {
       />
       <Text color={'whiteBright'}>Choose installation type</Text>
       <SelectInput
+        indicatorComponent={({ isSelected }) => (
+          <Text color="green">{isSelected ? '> ' : '  '}</Text>
+        )}
+        itemComponent={({ label, isSelected }) => (
+          <Text
+            color={isSelected ? 'green' : 'white'}
+            bold={isSelected}
+          >
+            {label}
+          </Text>
+        )}
+        isFocused={isFocused}
         items={items}
         onSelect={handleSelect}
       />

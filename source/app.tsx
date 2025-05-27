@@ -3,16 +3,16 @@ import React, { useState, type ReactNode } from 'react'
 import MainTitle from './import/MainTitle.js'
 import Step1 from './import/Step1.js'
 import Step2 from './import/Step2.js'
-import Step3, { type ItemProps } from './import/Step3.js'
+import Step3, { type Item } from './import/Step3.js'
 import { canShowStep } from './import/utils.js'
 
 const App = () => {
   const [projectName, setProjectName] = useState<string>('')
   const [currentStep, setCurrentStep] = useState(1)
-  const [setupOption, setSetupOption] = useState<ItemProps | undefined>()
+  const [setupOption, setSetupOption] = useState<Item | undefined>()
 
   const finishStep = () => setCurrentStep(currentStep + 1)
-  const onSelect = (item: ItemProps) => setSetupOption(item)
+  const onSelect = (item: Item) => setSetupOption(item)
 
   const steps: Array<ReactNode> = [
     <Step1
