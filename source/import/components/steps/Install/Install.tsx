@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import process from 'node:process'
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
-import React, { type FC, useState } from 'react'
+import React, { type FC } from 'react'
 import Divider from '../../Divider.js'
 import type { Installation } from '../InstallationType.js'
 import type { Item as CustomOptionsItem } from '../OptionalPackages.js'
@@ -21,7 +21,6 @@ interface Props {
 const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
   const { installationType, customOptions } = installation
   const projectDir = join(process.cwd(), projectName)
-  const [canInstall, setCanInstall] = useState(false)
 
   return (
     <>
@@ -52,26 +51,21 @@ const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
             runningText={'Working...'}
             successText={'Done!'}
             failureText={'Error...'}
-            onCompletion={() => setCanInstall(true)}
           />
+          {installationType === 'full' && (
+            <FullInstallation
+              projectName={projectName}
+              onCompletion={onCompletion}
+            />
+          )}
+          {installationType === 'custom' && (
+            <CustomInstallation
+              customOptions={customOptions}
+              projectName={projectName}
+              onCompletion={onCompletion}
+            />
+          )}
         </Script>
-        {canInstall && (
-          <>
-            {installationType === 'full' && (
-              <FullInstallation
-                projectName={projectName}
-                onCompletion={onCompletion}
-              />
-            )}
-            {installationType === 'custom' && (
-              <CustomInstallation
-                installationPackages={customOptions}
-                projectName={projectName}
-                onCompletion={onCompletion}
-              />
-            )}
-          </>
-        )}
       </Box>
     </>
   )

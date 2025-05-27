@@ -66,6 +66,7 @@ const OptionalPackages: FC<Props> = ({ onCompletion, onSubmit, installation }) =
     <>
       <Text color={'whiteBright'}>Choose optional packages</Text>
       <MultiSelect
+        defaultSelected={customPackages}
         focus={isFocused}
         items={customPackages}
         onSubmit={onHandleSubmit}
