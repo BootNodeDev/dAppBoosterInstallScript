@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import process from 'node:process'
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
-import React, { type FC } from 'react'
+import React, { type FC, useMemo } from 'react'
 import type { InstallationType, MultiSelectItem } from '../../../types/types.js'
 import Divider from '../../Divider.js'
 import CustomInstallation from './CustomInstallation.js'
@@ -18,7 +18,7 @@ interface Props {
 }
 
 const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
-  const projectFolder = join(process.cwd(), projectName)
+  const projectFolder = useMemo(() => join(process.cwd(), projectName), [projectName])
   const { installationType, customOptions } = installation
 
   return (

@@ -3,24 +3,21 @@ import React, { useState, type ReactNode } from 'react'
 import MainTitle from './import/components/MainTitle.js'
 import CloneRepo from './import/components/steps/CloneRepo/CloneRepo.js'
 import Install from './import/components/steps/Install/Install.js'
-import InstallationType, {
-  type Item as SetupTypeItem,
-} from './import/components/steps/InstallationType.js'
-import OptionalPackages, {
-  type Item as CustomOptionsItem,
-} from './import/components/steps/OptionalPackages.js'
+import InstallationMode from './import/components/steps/InstallationMode.js'
+import OptionalPackages from './import/components/steps/OptionalPackages.js'
 import ProjectName from './import/components/steps/ProjectName.js'
+import type { InstallationSelectItem, MultiSelectItem } from './import/types/types.js'
 import { canShowStep } from './import/utils/utils.js'
 
 const App = () => {
   const [projectName, setProjectName] = useState<string>('')
   const [currentStep, setCurrentStep] = useState(1)
-  const [setupType, setSetupType] = useState<SetupTypeItem | undefined>()
-  const [customOptions, setCustomOptions] = useState<Array<CustomOptionsItem> | undefined>()
+  const [setupType, setSetupType] = useState<InstallationSelectItem | undefined>()
+  const [customOptions, setCustomOptions] = useState<Array<MultiSelectItem> | undefined>()
 
   const finishStep = () => setCurrentStep(currentStep + 1)
-  const onSelectSetupType = (item: SetupTypeItem) => setSetupType(item)
-  const onSelectCustomOptions = (selectedItems: Array<CustomOptionsItem>) =>
+  const onSelectSetupType = (item: InstallationSelectItem) => setSetupType(item)
+  const onSelectCustomOptions = (selectedItems: Array<MultiSelectItem>) =>
     setCustomOptions([...selectedItems])
 
   const steps: Array<ReactNode> = [
@@ -35,7 +32,7 @@ const App = () => {
       projectName={projectName}
       key={2}
     />,
-    <InstallationType
+    <InstallationMode
       onCompletion={finishStep}
       onSelect={onSelectSetupType}
       key={3}
