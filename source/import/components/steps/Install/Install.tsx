@@ -19,8 +19,8 @@ interface Props {
 }
 
 const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
-  const { installationType, customOptions } = installation
   const projectDir = join(process.cwd(), projectName)
+  const { installationType, customOptions } = installation
 
   return (
     <>
@@ -54,15 +54,15 @@ const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
           />
           {installationType === 'full' && (
             <FullInstallation
-              projectName={projectName}
               onCompletion={onCompletion}
+              projectDir={projectDir}
             />
           )}
           {installationType === 'custom' && (
             <CustomInstallation
               customOptions={customOptions}
-              projectName={projectName}
               onCompletion={onCompletion}
+              projectDir={projectDir}
             />
           )}
         </Script>

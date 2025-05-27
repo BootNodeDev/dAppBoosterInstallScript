@@ -3,24 +3,25 @@ import process from 'node:process'
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
 import React, { type FC } from 'react'
-import { featurePackages } from '../../../constants/config.js'
+import { featurePackages, homeFolder } from '../../../constants/config.js'
 import type { Item as CustomOptionsItem } from '../OptionalPackages.js'
+import InstallAllPackages from './InstallAllPackages.js'
 
 interface Props {
   customOptions?: Array<CustomOptionsItem>
   onCompletion: () => void
-  projectName: string
+  projectDir: string
 }
 
 /**
  * Performs a custom installation based on the selected features: basically we tell `pnpm` what
  * features to remove (everything's included in package.json by default to simplify things)
- * @param projectName
  * @param onCompletion
  * @param customOptions
+ * @param projectDir
  */
-const CustomInstallation: FC<Props> = ({ projectName, onCompletion, customOptions }) => {
-  const projectDir = join(process.cwd(), projectName)
+const CustomInstallation: FC<Props> = ({ onCompletion, customOptions, projectDir }) => {
+  const demosFolder = join(process.cwd(), homeFolder)
 
   /**
    * Selected features won't be removed, unselected features will be.
@@ -61,16 +62,8 @@ const CustomInstallation: FC<Props> = ({ projectName, onCompletion, customOption
       {!packagesToRemove ? (
         <Script>
           {/* If there are no packages to remove simply install everything... */}
-          <Text color={'whiteBright'}>Installing packages</Text>
-          <Spawn
-            shell
-            cwd={projectDir}
-            silent
-            command={'pnpm'}
-            args={['i']}
-            runningText={'Working...'}
-            successText={'Done!'}
-            failureText={'Error...'}
+          <InstallAllPackages
+            projectDir={projectDir}
             onCompletion={onCompletion}
           />
         </Script>
@@ -99,8 +92,23 @@ const CustomInstallation: FC<Props> = ({ projectName, onCompletion, customOption
             runningText={'Working...'}
             successText={'Done!'}
             failureText={'Error...'}
-            // onCompletion={onCompletion}
           />
+          {!featureSelected('demo', customOptions) && (
+            <>
+              <Text color={'whiteBright'}>Removing component demos</Text>
+              <Spawn
+                shell
+                cwd={projectDir}
+                silent
+                command={'pnpm'}
+                args={['run', 'postinstall']}
+                runningText={'Working...'}
+                successText={'Done!'}
+                failureText={'Error...'}
+                // onCompletion={onCompletion}
+              />
+            </>
+          )}
         </Script>
       )}
     </Box>
