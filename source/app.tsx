@@ -1,7 +1,8 @@
 import { Box, Text } from 'ink'
-import React, { useState, type ReactNode } from 'react'
+import React, { useState, type ReactNode, useMemo, useCallback } from 'react'
 import MainTitle from './import/components/MainTitle.js'
 import CloneRepo from './import/components/steps/CloneRepo/CloneRepo.js'
+import FileCleanup from './import/components/steps/FileCleanup.js'
 import Install from './import/components/steps/Install/Install.js'
 import InstallationMode from './import/components/steps/InstallationMode.js'
 import OptionalPackages from './import/components/steps/OptionalPackages.js'
@@ -13,44 +14,68 @@ const App = () => {
   const [projectName, setProjectName] = useState<string>('')
   const [currentStep, setCurrentStep] = useState(1)
   const [setupType, setSetupType] = useState<InstallationSelectItem | undefined>()
-  const [customOptions, setCustomOptions] = useState<Array<MultiSelectItem> | undefined>()
+  const [selectedFeatures, setSelectedFeatures] = useState<Array<MultiSelectItem> | undefined>()
 
-  const finishStep = () => setCurrentStep(currentStep + 1)
-  const onSelectSetupType = (item: InstallationSelectItem) => setSetupType(item)
-  const onSelectCustomOptions = (selectedItems: Array<MultiSelectItem>) =>
-    setCustomOptions([...selectedItems])
+  const finishStep = useCallback(() => setCurrentStep(currentStep + 1), [currentStep])
+  const onSelectSetupType = useCallback((item: InstallationSelectItem) => setSetupType(item), [])
+  const onSelectSelectedFeatures = useCallback(
+    (selectedItems: Array<MultiSelectItem>) => setSelectedFeatures([...selectedItems]),
+    [],
+  )
 
-  const steps: Array<ReactNode> = [
-    <ProjectName
-      onCompletion={finishStep}
-      onSubmit={setProjectName}
-      projectName={projectName}
-      key={1}
-    />,
-    <CloneRepo
-      onCompletion={finishStep}
-      projectName={projectName}
-      key={2}
-    />,
-    <InstallationMode
-      onCompletion={finishStep}
-      onSelect={onSelectSetupType}
-      key={3}
-    />,
-    <OptionalPackages
-      installation={setupType?.value}
-      onCompletion={finishStep}
-      onSubmit={onSelectCustomOptions}
-      key={4}
-    />,
-    <Install
-      installation={{ installationType: setupType?.value, customOptions: customOptions }}
-      onCompletion={finishStep}
-      projectName={projectName}
-      key={5}
-    />,
-    <Text key={6}>Done!</Text>,
-  ]
+  const steps: Array<ReactNode> = useMemo(
+    () => [
+      <ProjectName
+        onCompletion={finishStep}
+        onSubmit={setProjectName}
+        projectName={projectName}
+        key={1}
+      />,
+      <CloneRepo
+        onCompletion={finishStep}
+        projectName={projectName}
+        key={2}
+      />,
+      <InstallationMode
+        onCompletion={finishStep}
+        onSelect={onSelectSetupType}
+        key={3}
+      />,
+      <OptionalPackages
+        installation={setupType?.value}
+        onCompletion={finishStep}
+        onSubmit={onSelectSelectedFeatures}
+        key={4}
+      />,
+      <Install
+        installationConfig={{
+          installationType: setupType?.value,
+          selectedFeatures: selectedFeatures,
+        }}
+        onCompletion={finishStep}
+        projectName={projectName}
+        key={5}
+      />,
+      <FileCleanup
+        installationConfig={{
+          installationType: setupType?.value,
+          selectedFeatures: selectedFeatures,
+        }}
+        onCompletion={finishStep}
+        projectName={projectName}
+        key={6}
+      />,
+      <Text key={7}>Done!</Text>,
+    ],
+    [
+      finishStep,
+      onSelectSelectedFeatures,
+      setupType?.value,
+      selectedFeatures,
+      onSelectSetupType,
+      projectName,
+    ],
+  )
 
   return (
     <Box

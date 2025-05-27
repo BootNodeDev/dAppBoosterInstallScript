@@ -1,4 +1,11 @@
+import { join } from 'node:path'
+import process from 'node:process'
+import { featurePackages } from '../constants/config.js'
 import type { MultiSelectItem } from '../types/types.js'
+
+export function getProjectFolder(projectName: string) {
+  return join(process.cwd(), projectName)
+}
 
 /**
  * Utility functions for import process
@@ -29,10 +36,22 @@ export function canShowStep(currentStep: number, stepToShow: number) {
 }
 
 /**
- * Selected features won't be removed, unselected features will be.
+ * Returns true a feature is selected in the features list
  * @param feature
  * @param featuresList
  */
-const featureSelected = (feature: string, featuresList: Array<MultiSelectItem> | undefined) => {
+export function featureSelected(feature: string, featuresList: Array<MultiSelectItem> | undefined) {
   return !!featuresList?.find((item: MultiSelectItem) => item.value === feature)
+}
+
+/**
+ * Returns the packages to remove checking first if the feature is selected or not.
+ * Selected features are kept, unselected features are removed.
+ * @param feature
+ * @param featuresList
+ */
+export function getPackages(feature: string, featuresList: Array<MultiSelectItem> | undefined) {
+  const packages = featurePackages[feature]
+
+  return featureSelected(feature, featuresList) ? [] : packages?.length ? packages : []
 }

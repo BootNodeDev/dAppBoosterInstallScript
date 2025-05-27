@@ -1,29 +1,28 @@
-import { join } from 'node:path'
-import process from 'node:process'
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
 import React, { type FC, useMemo } from 'react'
 import type { InstallationType, MultiSelectItem } from '../../../types/types.js'
+import { getProjectFolder } from '../../../utils/utils.js'
 import Divider from '../../Divider.js'
 import CustomInstallation from './CustomInstallation.js'
 import FullInstallation from './FullInstallation.js'
 
 interface Props {
-  installation: {
+  installationConfig: {
     installationType: InstallationType | undefined
-    customOptions?: Array<MultiSelectItem>
+    selectedFeatures?: Array<MultiSelectItem>
   }
   projectName: string
   onCompletion: () => void
 }
 
-const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
-  const projectFolder = useMemo(() => join(process.cwd(), projectName), [projectName])
-  const { installationType, customOptions } = installation
+const Install: FC<Props> = ({ projectName, onCompletion, installationConfig }) => {
+  const { installationType, selectedFeatures } = installationConfig
+  const projectFolder = useMemo(() => getProjectFolder(projectName), [projectName])
 
   return (
     <>
-      <Divider title={`Executing ${installation.installationType ?? 'full'} installation`} />
+      <Divider title={`Executing ${installationType ?? 'full'} installation`} />
       <Box
         flexDirection={'column'}
         gap={0}
@@ -59,7 +58,7 @@ const Install: FC<Props> = ({ projectName, onCompletion, installation }) => {
           )}
           {installationType === 'custom' && (
             <CustomInstallation
-              customOptions={customOptions}
+              selectedFeatures={selectedFeatures}
               onCompletion={onCompletion}
               projectFolder={projectFolder}
             />
