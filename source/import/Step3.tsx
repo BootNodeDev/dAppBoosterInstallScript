@@ -3,7 +3,7 @@ import Divider from 'ink-divider'
 import SelectInput from 'ink-select-input'
 import React, { useState, type FC } from 'react'
 
-type Installation = 'full' | 'custom'
+export type Installation = 'full' | 'custom'
 
 export interface Item {
   label: string
@@ -15,6 +15,17 @@ interface Props {
   onSelect: (item: Item) => void
 }
 
+const installationTypeItems: Array<Item> = [
+  {
+    label: 'Full',
+    value: 'full',
+  },
+  {
+    label: 'Custom',
+    value: 'custom',
+  },
+]
+
 const Step3: FC<Props> = ({ onCompletion, onSelect }) => {
   const [isFocused, setIsFocused] = useState(true)
 
@@ -23,17 +34,6 @@ const Step3: FC<Props> = ({ onCompletion, onSelect }) => {
     onCompletion()
     setIsFocused(false)
   }
-
-  const items: Array<Item> = [
-    {
-      label: 'Full',
-      value: 'full',
-    },
-    {
-      label: 'Custom',
-      value: 'custom',
-    },
-  ]
 
   return (
     <>
@@ -56,7 +56,7 @@ const Step3: FC<Props> = ({ onCompletion, onSelect }) => {
           </Text>
         )}
         isFocused={isFocused}
-        items={items}
+        items={installationTypeItems}
         onSelect={handleSelect}
       />
     </>
