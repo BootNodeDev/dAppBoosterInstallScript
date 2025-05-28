@@ -31,7 +31,7 @@ pnpm i
 You can run the script by doing
 
 ```shell
-$ node cli.js
+node cli.js
 ```
 
 ## Releasing new versions to NPM
