@@ -92,7 +92,7 @@ const FileCleanup: FC<Props> = ({ onCompletion, installationConfig, projectName 
                     silent
                     command="cp"
                     args={['./.install-files/home/index.tsx', currentHomeFolder]}
-                    runningText={'Creating new home page file...'}
+                    runningText={'Creating new home page index file...'}
                     successText={'Done!'}
                     failureText={'Error...'}
                   />
@@ -125,13 +125,14 @@ const FileCleanup: FC<Props> = ({ onCompletion, installationConfig, projectName 
                         successText={'Done!'}
                         failureText={'Error...'}
                       />
+                      {/* Examples index removing and creating */}
                       <Spawn
                         shell
                         cwd={projectFolder}
                         silent
                         command="rm"
-                        args={[`${currentHomeFolder}/index.tsx`]}
-                        runningText={'Removing home page file...'}
+                        args={[`${currentHomeFolder}/Examples/index.tsx`]}
+                        runningText={'Removing examples index file...'}
                         successText={'Done!'}
                         failureText={'Error...'}
                       />
@@ -142,9 +143,9 @@ const FileCleanup: FC<Props> = ({ onCompletion, installationConfig, projectName 
                         command="cp"
                         args={[
                           './.install-files/home/Examples/index.tsx',
-                          `${currentHomeFolder}/index.tsx`,
+                          `${currentHomeFolder}/Examples/index.tsx`,
                         ]}
-                        runningText={'Creating new home page file...'}
+                        runningText={'Creating new examples index file...'}
                         successText={'Done!'}
                         failureText={'Error...'}
                       />
