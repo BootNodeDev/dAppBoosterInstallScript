@@ -15,7 +15,7 @@ interface Props {
  */
 const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => (
   <>
-    <Divider title={`Cloning "${projectName}"`} />
+    <Divider title={'Git tasks'} />
     <Commands
       projectName={projectName}
       onCompletion={onCompletion}

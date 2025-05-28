@@ -19,10 +19,13 @@ interface Props {
 const Install: FC<Props> = ({ projectName, onCompletion, installationConfig }) => {
   const { installationType, selectedFeatures } = installationConfig
   const projectFolder = useMemo(() => getProjectFolder(projectName), [projectName])
+  const title = installationType
+    ? installationType[0]?.toUpperCase() + installationType.slice(1)
+    : ''
 
   return (
     <>
-      <Divider title={`Executing ${installationType ?? 'full'} installation`} />
+      <Divider title={`${title ?? 'Full'} installation`} />
       <Box
         flexDirection={'column'}
         gap={0}
