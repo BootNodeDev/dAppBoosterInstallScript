@@ -1,3 +1,4 @@
+import figures from 'figures'
 import { Box, Text } from 'ink'
 import Link from 'ink-link'
 import React, { type FC } from 'react'
@@ -19,8 +20,10 @@ const SubgraphWarningMessage: FC = () => (
       padding={1}
     >
       <Text color={'yellow'}>
-        <Text bold>WARNING:</Text> You <Text bold>MUST</Text> finish the subgraph's configuration
-        manually
+        {figures.warning}
+        {figures.warning} <Text bold>WARNING:</Text> You <Text bold>MUST</Text> finish the
+        subgraph's configuration manually {figures.warning}
+        {figures.warning}
       </Text>
     </Box>
     <Text bold>Follow these steps:</Text>
@@ -35,11 +38,15 @@ const SubgraphWarningMessage: FC = () => (
         your console from the project's folder
       </Text>
     </Box>
+    <Text>
+      More configuration info in{' '}
+      <Link url={'https://docs.dappbooster.dev/introduction/getting-started'}>the docs</Link>.
+    </Text>
     <Text
       color={'yellow'}
       bold
     >
-      Only after you have followed the previous steps you may proceed.
+      {figures.info} Only after you have followed the previous steps you may proceed.
     </Text>
   </Box>
 )
