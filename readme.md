@@ -5,7 +5,7 @@ An easy way to install and customize [dAppBooster](https://dappbooster.dev/)
 ## Usage
 
 ```shell
-$ pnpm dlx dappbooster
+pnpm dlx dappbooster
 ```
 
 <img src="./demo.svg" width="600">
