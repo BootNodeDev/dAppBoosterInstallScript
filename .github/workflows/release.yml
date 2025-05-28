@@ -18,13 +18,21 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       - name: Install dependencies
         run: pnpm install
 
       - name: Build
         run: pnpm build
 
+      - name: Dry run publish (pre-release only)
+        if: ${{ github.event.release.prerelease == true }}
+        run: pnpm publish --dry-run
+
       - name: Publish to npm
-        run: npm publish
+        if: ${{ github.event.release.prerelease == false }}
+        run: pnpm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
