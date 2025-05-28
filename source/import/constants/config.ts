@@ -1,5 +1,4 @@
 export const repoUrl = 'https://github.com/BootNodeDev/dAppBooster.git'
-export const homeFolder = '/src/components/pageComponents/home'
 
 export const featurePackages: {
   [key: string]: string[]
