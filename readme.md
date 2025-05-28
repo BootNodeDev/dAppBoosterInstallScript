@@ -1,34 +1,37 @@
-# dAppBooster starter
+# dAppBooster installer
 
-Installs dAppBooster, using the last tag / release.
+An easy way to install and customize [dAppBooster](https://dappbooster.dev/)
 
 ## Usage
 
 ```shell
-$ pnpm dlx dappbooster <projectName>
+$ pnpm dlx dappbooster
 ```
+
+dAppBooster documentation: https://docs.dappbooster.dev/
 
 ## Development
 
-Move into the script's folder and then
+Clone the repo
 
 ```shell
-# Clone the repo
-git clone git@github.com:BootNodeDev/dAppBooster-starter.git
+git clone git@github.com:BootNodeDev/dAppBoosterInstallScript.git
+```
 
-# Install dependencies
+Move into the folder you just created and install the dependencies
+
+```shell
+cd dAppBoosterInstallScript
+
 pnpm i
-
-# Move into the script's folder
-cd dAppBooster-starter
 ```
 
-The common loop for testing the script looks something like
+You can run the script by doing
 
 ```shell
-# Test the script, creates a folder called test
-$ node index.js test
-
-# Remove the test directory (ignored in .gitignore)
-$ rm -rf test
+$ node cli.js
 ```
+
+## Releasing new versions to NPM
+
+New releases are automatically uploaded to NPM using GitHub actions.
