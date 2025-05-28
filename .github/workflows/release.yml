@@ -29,10 +29,10 @@ jobs:
 
       - name: Dry run publish (pre-release only)
         if: ${{ github.event.release.prerelease == true }}
-        run: pnpm publish --dry-run
+        run: pnpm publish --dry-run --no-git-checks
 
       - name: Publish to npm
         if: ${{ github.event.release.prerelease == false }}
-        run: pnpm publish
+        run: pnpm publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
