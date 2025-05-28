@@ -23,6 +23,9 @@ importers:
       ink-gradient:
         specifier: ^3.0.0
         version: 3.0.0(ink@5.2.1(@types/react@18.3.22)(react@18.3.1))
+      ink-link:
+        specifier: ^4.1.0
+        version: 4.1.0(ink@5.2.1(@types/react@18.3.22)(react@18.3.1))
       ink-select-input:
         specifier: ^6.2.0
         version: 6.2.0(ink@5.2.1(@types/react@18.3.22)(react@18.3.1))(react@18.3.1)
@@ -168,6 +171,10 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
+  ansi-escapes@5.0.0:
+    resolution: {integrity: sha512-5GFMVX8HqE/TB+FuBJGuO5XG0WrsA6ptUqoODaT/n9mmUaZFkqnBueB4leqGBCmrUHnCnC4PCZTCd0E7QQ83bA==}
+    engines: {node: '>=12'}
+
   ansi-escapes@7.0.0:
     resolution: {integrity: sha512-GdYO7a61mR0fOlAsvC9/rIHf7L96sBc6dEWzeOu+KAea5bZyQRPIpojrVoI4AXGJS/ycu/fBTdLrUkA4ODrvjw==}
     engines: {node: '>=18'}
@@ -306,6 +313,12 @@ packages:
   ink-gradient@3.0.0:
     resolution: {integrity: sha512-OVyPBovBxE1tFcBhSamb+P1puqDP6pG3xFe2W9NiLgwUZd9RbcjBeR7twLbliUT9navrUstEf1ZcPKKvx71BsQ==}
     engines: {node: '>=16'}
+    peerDependencies:
+      ink: '>=4'
+
+  ink-link@4.1.0:
+    resolution: {integrity: sha512-3nNyJXum0FJIKAXBK8qat2jEOM41nJ1J60NRivwgK9Xh92R5UMN/k4vbz0A9xFzhJVrlf4BQEmmxMgXkCE1Jeg==}
+    engines: {node: '>=18'}
     peerDependencies:
       ink: '>=4'
 
@@ -469,6 +482,14 @@ packages:
     resolution: {integrity: sha512-MpUEN2OodtUzxvKQl72cUF7RQ5EiHsGvSsVG0ia9c5RbWGL2CI4C7EpPS8UTBIplnlzZiNuV56w+FuNxy3ty2Q==}
     engines: {node: '>=10'}
 
+  supports-hyperlinks@2.3.0:
+    resolution: {integrity: sha512-RpsAZlpWcDwOPQA22aCH4J0t7L8JmAvsCxfOSEwm7cQs3LshN36QaTkwd70DnBOXDWGssw2eUoc8CaRWT0XunA==}
+    engines: {node: '>=8'}
+
+  terminal-link@3.0.0:
+    resolution: {integrity: sha512-flFL3m4wuixmf6IfhFJd1YPiLiMuxEc8uHRM1buzIeZPm22Au2pDqBJQgdo7n1WfPU1ONFGv7YDwpFBmHGF6lg==}
+    engines: {node: '>=12'}
+
   tinycolor2@1.6.0:
     resolution: {integrity: sha512-XPaBkWQJdsf3pLKJV9p4qN/S+fm2Oj8AIPo1BTUhg5oxkvm9+SVEGFdhyOz7tTdUTfvxMiAs4sp6/eZO2Ew+pw==}
 
@@ -492,6 +513,10 @@ packages:
         optional: true
       '@swc/wasm':
         optional: true
+
+  type-fest@1.4.0:
+    resolution: {integrity: sha512-yGSza74xk0UG8k+pLh5oeoYirvIiWo5t0/o3zHHAO2tRDiZcxWP7fywNlXhqb6/r6sWvwi+RsyQMWhVLe4BVuA==}
+    engines: {node: '>=10'}
 
   type-fest@4.41.0:
     resolution: {integrity: sha512-TeTSQ6H5YHvpqVwBRcnLDCBnDOHWYu7IvGbHT6N8AOymcr9PJGjc1GTtiWZTYg0NCgYwvnYWEkVChQAr9bjfwA==}
@@ -628,6 +653,10 @@ snapshots:
 
   acorn@8.14.1: {}
 
+  ansi-escapes@5.0.0:
+    dependencies:
+      type-fest: 1.4.0
+
   ansi-escapes@7.0.0:
     dependencies:
       environment: 1.1.0
@@ -746,6 +775,12 @@ snapshots:
       ink: 5.2.1(@types/react@18.3.22)(react@18.3.1)
       prop-types: 15.8.1
       strip-ansi: 7.1.0
+
+  ink-link@4.1.0(ink@5.2.1(@types/react@18.3.22)(react@18.3.1)):
+    dependencies:
+      ink: 5.2.1(@types/react@18.3.22)(react@18.3.1)
+      prop-types: 15.8.1
+      terminal-link: 3.0.0
 
   ink-select-input@6.2.0(ink@5.2.1(@types/react@18.3.22)(react@18.3.1))(react@18.3.1):
     dependencies:
@@ -919,6 +954,16 @@ snapshots:
     dependencies:
       has-flag: 4.0.0
 
+  supports-hyperlinks@2.3.0:
+    dependencies:
+      has-flag: 4.0.0
+      supports-color: 7.2.0
+
+  terminal-link@3.0.0:
+    dependencies:
+      ansi-escapes: 5.0.0
+      supports-hyperlinks: 2.3.0
+
   tinycolor2@1.6.0: {}
 
   tinygradient@1.1.5:
@@ -945,6 +990,8 @@ snapshots:
       typescript: 5.8.3
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
+
+  type-fest@1.4.0: {}
 
   type-fest@4.41.0: {}
 

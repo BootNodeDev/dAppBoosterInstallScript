@@ -39,7 +39,7 @@ const ProjectName: FC<Props> = ({ projectName, onSubmit, onCompletion }) => {
       answer={projectName}
       errorMessage={errorMessage}
       onSubmit={handleSubmit}
-      question={'Project name?'}
+      question={'Project name'}
       tip={'Letters (a–z, A–Z), numbers (0–9), and underscores (_) are allowed.'}
     />
   )

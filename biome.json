@@ -8,9 +8,6 @@
     "enabled": true,
     "useIgnoreFile": true
   },
-  "files": {
-    "ignore": ["source/**/*.js"]
-  },
   "formatter": {
     "attributePosition": "multiline",
     "indentStyle": "space",

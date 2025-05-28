@@ -6,6 +6,7 @@ import FileCleanup from './import/components/steps/FileCleanup.js'
 import Install from './import/components/steps/Install/Install.js'
 import InstallationMode from './import/components/steps/InstallationMode.js'
 import OptionalPackages from './import/components/steps/OptionalPackages.js'
+import PostInstall from './import/components/steps/PostInstall.js'
 import ProjectName from './import/components/steps/ProjectName.js'
 import type { InstallationSelectItem, MultiSelectItem } from './import/types/types.js'
 import { canShowStep } from './import/utils/utils.js'
@@ -65,7 +66,14 @@ const App = () => {
         projectName={projectName}
         key={6}
       />,
-      <Text key={7}>Done!</Text>,
+      <PostInstall
+        projectName={projectName}
+        installationConfig={{
+          installationType: setupType?.value,
+          selectedFeatures: selectedFeatures,
+        }}
+        key={7}
+      />,
     ],
     [
       finishStep,
@@ -81,6 +89,7 @@ const App = () => {
     <Box
       flexDirection={'column'}
       rowGap={1}
+      width={80}
     >
       <MainTitle />
       {steps.map((item, index) => canShowStep(currentStep, index + 1) && item)}

@@ -6,7 +6,6 @@ const Divider: FC<{ title: string }> = ({ title }) => (
     titlePadding={2}
     titleColor={'whiteBright'}
     title={title}
-    width={80}
   />
 )
 
