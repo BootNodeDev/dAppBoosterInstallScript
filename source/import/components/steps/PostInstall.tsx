@@ -19,7 +19,8 @@ const SubgraphWarningMessage: FC = () => (
       padding={1}
     >
       <Text color={'yellow'}>
-        <Text bold>WARNING:</Text> You <Text bold>MUST</Text> finish subgraph configuration manually
+        <Text bold>WARNING:</Text> You <Text bold>MUST</Text> finish the subgraph's configuration
+        manually
       </Text>
     </Box>
     <Text bold>Follow these steps:</Text>
