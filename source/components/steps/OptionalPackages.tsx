@@ -1,5 +1,5 @@
 import { Text } from 'ink'
-import { type FC, useState } from 'react'
+import { type FC, useEffect, useState } from 'react'
 import type { MultiSelectItem } from '../../types/types.js'
 import MultiSelect from '../Multiselect/index.js'
 
@@ -42,10 +42,13 @@ interface Props {
 const OptionalPackages: FC<Props> = ({ onCompletion, onSubmit, skip = false }) => {
   const [isFocused, setIsFocused] = useState(true)
 
-  // full installation, do nothing
-  if (skip) {
-    onCompletion()
-  }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Run this only once, no matter what
+  useEffect(() => {
+    // full installation, do nothing
+    if (skip) {
+      onCompletion()
+    }
+  }, [])
 
   const onHandleSubmit = (selectedItems: Array<MultiSelectItem>) => {
     onSubmit(selectedItems)

@@ -17,7 +17,7 @@ const App = () => {
   const [setupType, setSetupType] = useState<InstallationSelectItem | undefined>()
   const [selectedFeatures, setSelectedFeatures] = useState<Array<MultiSelectItem> | undefined>()
 
-  const finishStep = useCallback(() => setCurrentStep(currentStep + 1), [currentStep])
+  const finishStep = useCallback(() => setCurrentStep((prevStep) => prevStep + 1), [])
   const onSelectSetupType = useCallback((item: InstallationSelectItem) => setSetupType(item), [])
   const onSelectSelectedFeatures = useCallback(
     (selectedItems: Array<MultiSelectItem>) => setSelectedFeatures([...selectedItems]),
