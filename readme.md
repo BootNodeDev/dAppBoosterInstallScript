@@ -2,6 +2,11 @@
 
 An easy way to install and customize [dAppBooster](https://dappbooster.dev/)
 
+## Requirements
+
+- Node >= 20
+- pnpm
+
 ## Usage
 
 <img src="./demo.svg" width="600">
