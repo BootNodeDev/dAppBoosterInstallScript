@@ -1,7 +1,7 @@
 import figures from 'figures'
 import { Box, Text } from 'ink'
 import Link from 'ink-link'
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import type { InstallationType, MultiSelectItem } from '../../types/types.js'
 import { featureSelected } from '../../utils/utils.js'
 import Divider from '../Divider.js'
@@ -30,8 +30,8 @@ const SubgraphWarningMessage: FC = () => (
     <Box flexDirection={'column'}>
       <Text>
         1- Provide your own API key for <Text bold>PUBLIC_SUBGRAPHS_API_KEY</Text> in{' '}
-        <Text bold>.env.local</Text> You can get one at{' '}
-        <Link url="https://thegraph.com/studio/apikeys">https://thegraph.com/studio/apikeys</Link>
+        <Text bold>.env.local</Text> You can get one{' '}
+        <Link url="https://thegraph.com/studio/apikeys">here</Link>
       </Text>
       <Text>
         2- After the API key is correctly configured, run <Text bold>pnpm subgraph-codegen</Text> in
@@ -72,9 +72,12 @@ const PostInstallMessage: FC<{ projectName: string }> = ({ projectName }) => (
         - Check out <Text bold>.env.local</Text> for more configurations.
       </Text>
       <Text>
-        - Read the docs at{' '}
-        <Link url="https://docs.dappbooster.dev">https://docs.dappbooster.dev</Link> to know more
-        about <Text bold>dAppBooster</Text>
+        - Read <Link url="https://docs.dappbooster.dev">the docs</Link> to know more about{' '}
+        <Text bold>dAppBooster</Text>!
+      </Text>
+      <Text>
+        - Report issues with this installer{' '}
+        <Link url="https://github.com/BootNodeDev/dAppBoosterInstallScript/issues">here</Link>
       </Text>
     </Box>
   </Box>
