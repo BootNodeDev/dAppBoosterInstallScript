@@ -1,5 +1,5 @@
-import { Box, Text } from 'ink'
-import React, { useState, type ReactNode, useMemo, useCallback } from 'react'
+import { Box } from 'ink'
+import { type ReactNode, useCallback, useMemo, useState } from 'react'
 import MainTitle from './components/MainTitle.js'
 import CloneRepo from './components/steps/CloneRepo/CloneRepo.js'
 import FileCleanup from './components/steps/FileCleanup.js'
@@ -42,10 +42,12 @@ const App = () => {
         onSelect={onSelectSetupType}
         key={3}
       />,
+      // TODO: add a skip parameter to all (or most) steps
+      // to allow skipping when testing, etc.
       <OptionalPackages
-        installation={setupType?.value}
         onCompletion={finishStep}
         onSubmit={onSelectSelectedFeatures}
+        skip={setupType?.value === 'full'}
         key={4}
       />,
       <Install

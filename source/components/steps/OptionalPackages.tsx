@@ -1,13 +1,7 @@
 import { Text } from 'ink'
-import React, { useState, type FC, useEffect } from 'react'
-import type { InstallationType, MultiSelectItem } from '../../types/types.js'
+import { type FC, useState } from 'react'
+import type { MultiSelectItem } from '../../types/types.js'
 import MultiSelect from '../Multiselect/index.js'
-
-interface Props {
-  installation: InstallationType | undefined
-  onCompletion: () => void
-  onSubmit: (selectedItems: Array<MultiSelectItem>) => void
-}
 
 const customPackages: Array<MultiSelectItem> = [
   {
@@ -32,23 +26,26 @@ const customPackages: Array<MultiSelectItem> = [
   },
 ]
 
+interface Props {
+  onCompletion: () => void
+  onSubmit: (selectedItems: Array<MultiSelectItem>) => void
+  skip?: boolean
+}
+
 /**
  * Step for selecting optional packages. Skipped if installation type is 'full'.
  * @param onCompletion
  * @param onSubmit
  * @param installation
+ * @param skip
  */
-const OptionalPackages: FC<Props> = ({ onCompletion, onSubmit, installation }) => {
+const OptionalPackages: FC<Props> = ({ onCompletion, onSubmit, skip = false }) => {
   const [isFocused, setIsFocused] = useState(true)
-  const skip = installation === 'full'
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Run this only once
-  useEffect(() => {
-    // full installation, do nothing
-    if (skip) {
-      onCompletion()
-    }
-  }, [])
+  // full installation, do nothing
+  if (skip) {
+    onCompletion()
+  }
 
   const onHandleSubmit = (selectedItems: Array<MultiSelectItem>) => {
     onSubmit(selectedItems)
