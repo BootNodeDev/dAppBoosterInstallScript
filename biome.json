@@ -8,6 +8,14 @@
     "enabled": true,
     "useIgnoreFile": true
   },
+  "linter": {
+    "rules": {
+      "correctness": {
+        "noUnusedVariables": "warn",
+        "noUnusedImports": "warn"
+      }
+    }
+  },
   "formatter": {
     "attributePosition": "multiline",
     "indentStyle": "space",
