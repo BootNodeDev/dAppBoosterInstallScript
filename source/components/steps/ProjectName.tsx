@@ -1,4 +1,4 @@
-import React, { type FC, useMemo, useCallback } from 'react'
+import { type FC, useCallback, useMemo } from 'react'
 import { isValidName } from '../../utils/utils.js'
 import Ask from '../Ask.js'
 

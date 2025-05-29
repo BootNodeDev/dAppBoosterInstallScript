@@ -1,6 +1,5 @@
 import figures from 'figures'
 import { Box, Text } from 'ink'
-import React from 'react'
 
 type CheckBoxProps = {
   isSelected: boolean

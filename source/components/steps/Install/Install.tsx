@@ -1,6 +1,6 @@
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
-import React, { type FC, useMemo } from 'react'
+import { type FC, useMemo } from 'react'
 import type { InstallationType, MultiSelectItem } from '../../../types/types.js'
 import { getProjectFolder } from '../../../utils/utils.js'
 import Divider from '../../Divider.js'

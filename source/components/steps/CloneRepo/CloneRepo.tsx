@@ -1,4 +1,4 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import Divider from '../../Divider.js'
 import Commands from './Commands.js'
 

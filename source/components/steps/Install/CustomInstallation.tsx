@@ -1,6 +1,6 @@
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import type { MultiSelectItem } from '../../../types/types.js'
 import { getPackages } from '../../../utils/utils.js'
 import InstallAllPackages from './InstallAllPackages.js'

@@ -1,5 +1,4 @@
 import { Text } from 'ink'
-import React from 'react'
 
 type ItemProps = {
   isHighlighted: boolean

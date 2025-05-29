@@ -1,6 +1,6 @@
 import { Box, Text } from 'ink'
 import TextInput from 'ink-text-input'
-import React, { type FC, useMemo, useState } from 'react'
+import { type FC, useMemo, useState } from 'react'
 import { isAnswerConfirmed } from '../utils/utils.js'
 
 interface Props {

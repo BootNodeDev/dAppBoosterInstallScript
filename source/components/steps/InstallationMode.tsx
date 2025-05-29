@@ -1,7 +1,7 @@
 import figures from 'figures'
 import { Text } from 'ink'
 import SelectInput from 'ink-select-input'
-import React, { useState, type FC } from 'react'
+import { type FC, useState } from 'react'
 import type { InstallationSelectItem } from '../../types/types.js'
 import Divider from '../Divider.js'
 

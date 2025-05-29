@@ -1,6 +1,6 @@
 import { Text } from 'ink'
 import { Spawn } from 'ink-spawn'
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 
 interface Props {
   onCompletion?: () => void

@@ -1,6 +1,6 @@
 import { Box } from 'ink'
 import { Script } from 'ink-spawn'
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import InstallAllPackages from './InstallAllPackages.js'
 
 interface Props {

@@ -1,5 +1,5 @@
 import { Box, useInput } from 'ink'
-import React, { useCallback, useState } from 'react'
+import { createElement, useCallback, useState } from 'react'
 import CheckBox from './components/Checkbox.js'
 import Indicator from './components/Indicator.js'
 import ItemComponent from './components/Item.js'
@@ -113,9 +113,9 @@ const MultiSelect = <T,>({
 
         return (
           <Box key={key}>
-            {React.createElement(indicatorComponent, { isHighlighted })}
-            {React.createElement(checkboxComponent, { isSelected })}
-            {React.createElement(itemComponent, {
+            {createElement(indicatorComponent, { isHighlighted })}
+            {createElement(checkboxComponent, { isSelected })}
+            {createElement(itemComponent, {
               ...item,
               isHighlighted,
             })}

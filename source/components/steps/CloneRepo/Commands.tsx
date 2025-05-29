@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import * as process from 'node:process'
 import { Box, Text } from 'ink'
 import { Script, Spawn } from 'ink-spawn'
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import { repoUrl } from '../../../constants/config.js'
 
 interface Props {
