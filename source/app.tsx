@@ -8,7 +8,7 @@ import InstallationMode from './components/steps/InstallationMode.js'
 import OptionalPackages from './components/steps/OptionalPackages.js'
 import PostInstall from './components/steps/PostInstall.js'
 import ProjectName from './components/steps/ProjectName.js'
-import type { InstallationSelectItem, MultiSelectItem } from './types/types.js'
+import type { InstallationSelectItem, InstallationType, MultiSelectItem } from './types/types.js'
 import { canShowStep } from './utils/utils.js'
 
 const App = () => {
@@ -23,6 +23,8 @@ const App = () => {
     (selectedItems: Array<MultiSelectItem>) => setSelectedFeatures([...selectedItems]),
     [],
   )
+
+  const skipFeatures = setupType?.value === 'full'
 
   const steps: Array<ReactNode> = useMemo(
     () => [
@@ -42,12 +44,10 @@ const App = () => {
         onSelect={onSelectSetupType}
         key={3}
       />,
-      // TODO: add a skip parameter to all (or most) steps
-      // to allow skipping when testing, etc.
       <OptionalPackages
         onCompletion={finishStep}
         onSubmit={onSelectSelectedFeatures}
-        skip={setupType?.value === 'full'}
+        skip={skipFeatures}
         key={4}
       />,
       <Install
@@ -71,7 +71,7 @@ const App = () => {
       <PostInstall
         projectName={projectName}
         installationConfig={{
-          installationType: setupType?.value,
+          installationType: setupType?.value as InstallationType | undefined,
           selectedFeatures: selectedFeatures,
         }}
         key={7}
@@ -84,6 +84,7 @@ const App = () => {
       selectedFeatures,
       onSelectSetupType,
       projectName,
+      skipFeatures,
     ],
   )
 

@@ -1,11 +1,11 @@
-import { Box, Text } from 'ink'
-import { Script, Spawn } from 'ink-spawn'
-import { type FC, useMemo } from 'react'
+import { Text } from 'ink'
+import { type FC, useEffect, useMemo, useState } from 'react'
+import type { FeatureName } from '../../../constants/config.js'
+import { createEnvFile } from '../../../operations/createEnvFile.js'
+import { installPackages } from '../../../operations/installPackages.js'
 import type { InstallationType, MultiSelectItem } from '../../../types/types.js'
 import { getProjectFolder } from '../../../utils/utils.js'
 import Divider from '../../Divider.js'
-import CustomInstallation from './CustomInstallation.js'
-import FullInstallation from './FullInstallation.js'
 
 interface Props {
   installationConfig: {
@@ -19,55 +19,38 @@ interface Props {
 const Install: FC<Props> = ({ projectName, onCompletion, installationConfig }) => {
   const { installationType, selectedFeatures } = installationConfig
   const projectFolder = useMemo(() => getProjectFolder(projectName), [projectName])
+  const [status, setStatus] = useState<'running' | 'done' | 'error'>('running')
+  const [errorMessage, setErrorMessage] = useState('')
+
   const title = installationType
     ? installationType[0]?.toUpperCase() + installationType.slice(1)
     : ''
 
+  useEffect(() => {
+    const features = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
+
+    const run = async () => {
+      await createEnvFile(projectFolder)
+      await installPackages(projectFolder, installationType ?? 'full', features)
+    }
+
+    run()
+      .then(() => {
+        setStatus('done')
+        onCompletion()
+      })
+      .catch((error: Error) => {
+        setStatus('error')
+        setErrorMessage(error.message)
+      })
+  }, [projectFolder, installationType, selectedFeatures, onCompletion])
+
   return (
     <>
       <Divider title={`${title ?? 'Full'} installation`} />
-      <Box
-        flexDirection={'column'}
-        gap={0}
-      >
-        <Script>
-          <Box columnGap={1}>
-            <Text color={'whiteBright'}>
-              Creating{' '}
-              <Text
-                italic
-                color={'white'}
-              >
-                .env.local
-              </Text>{' '}
-              file
-            </Text>
-          </Box>
-          <Spawn
-            shell
-            cwd={projectFolder}
-            silent
-            command={'cp'}
-            args={['.env.example', '.env.local']}
-            runningText={'Working...'}
-            successText={'Done!'}
-            failureText={'Error...'}
-          />
-          {installationType === 'full' && (
-            <FullInstallation
-              onCompletion={onCompletion}
-              projectFolder={projectFolder}
-            />
-          )}
-          {installationType === 'custom' && (
-            <CustomInstallation
-              selectedFeatures={selectedFeatures}
-              onCompletion={onCompletion}
-              projectFolder={projectFolder}
-            />
-          )}
-        </Script>
-      </Box>
+      {status === 'running' && <Text color={'whiteBright'}>Installing packages... Working...</Text>}
+      {status === 'done' && <Text color={'green'}>Installation complete. Done!</Text>}
+      {status === 'error' && <Text color={'red'}>Installation failed: {errorMessage}</Text>}
     </>
   )
 }
