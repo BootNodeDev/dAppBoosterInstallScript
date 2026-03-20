@@ -34,7 +34,10 @@ function parseFeatures(featuresFlag: string | undefined): FeatureName[] {
     return []
   }
 
-  return featuresFlag.split(',').map((f) => f.trim()) as FeatureName[]
+  return featuresFlag
+    .split(',')
+    .map((f) => f.trim())
+    .filter((f) => f !== '') as FeatureName[]
 }
 
 function validate(flags: {
@@ -72,6 +75,11 @@ function validate(flags: {
   }
 
   const features = parseFeatures(flags.features)
+
+  if (features.length === 0) {
+    fail('--mode custom requires --features. Use --info to see available features.')
+  }
+
   const invalidFeatures = features.filter((f) => !featureNames.includes(f))
 
   if (invalidFeatures.length > 0) {
