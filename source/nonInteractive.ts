@@ -34,10 +34,19 @@ function parseFeatures(featuresFlag: string | undefined): FeatureName[] {
     return []
   }
 
+  const seen = new Set<string>()
+
   return featuresFlag
     .split(',')
     .map((f) => f.trim())
-    .filter((f) => f !== '') as FeatureName[]
+    .filter((f) => {
+      if (f === '' || seen.has(f)) {
+        return false
+      }
+
+      seen.add(f)
+      return true
+    }) as FeatureName[]
 }
 
 function validate(flags: {

@@ -261,6 +261,13 @@ describe('nonInteractive — custom mode execution', () => {
     const output = getLastJsonOutput()
     expect(output.features).toEqual(['demo'])
   })
+
+  it('deduplicates feature names', async () => {
+    await runNonInteractive({ name: 'my_app', mode: 'custom', features: 'demo,demo,subgraph,demo' })
+
+    const output = getLastJsonOutput()
+    expect(output.features).toEqual(['demo', 'subgraph'])
+  })
 })
 
 describe('nonInteractive — error handling during execution', () => {
