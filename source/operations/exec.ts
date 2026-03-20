@@ -1,37 +1,38 @@
-import { exec as nodeExec, execFile as nodeExecFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import { type SpawnOptions, spawn } from 'node:child_process'
 
-const execAsync = promisify(nodeExec)
-const execFileAsync = promisify(nodeExecFile)
-
-export async function exec(command: string, options: { cwd?: string } = {}): Promise<string> {
-  try {
-    const { stdout } = await execAsync(command, {
-      cwd: options.cwd,
+function run(command: string, args: string[], options: SpawnOptions): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      ...options,
+      stdio: ['ignore', 'ignore', 'pipe'],
     })
 
-    return stdout.trim()
-  } catch (error: unknown) {
-    const execError = error as { stderr?: string; message?: string }
-    const message = execError.stderr?.trim() || execError.message || 'Unknown error'
-    throw new Error(message)
-  }
+    let stderr = ''
+    child.stderr?.on('data', (data: Buffer) => {
+      stderr += data.toString()
+    })
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve()
+      } else {
+        const message = stderr.trim() || `Command failed with exit code ${code}`
+        reject(new Error(message))
+      }
+    })
+
+    child.on('error', reject)
+  })
+}
+
+export async function exec(command: string, options: { cwd?: string } = {}): Promise<void> {
+  await run('/bin/sh', ['-c', command], { cwd: options.cwd })
 }
 
 export async function execFile(
   file: string,
   args: string[],
   options: { cwd?: string } = {},
-): Promise<string> {
-  try {
-    const { stdout } = await execFileAsync(file, args, {
-      cwd: options.cwd,
-    })
-
-    return stdout.trim()
-  } catch (error: unknown) {
-    const execError = error as { stderr?: string; message?: string }
-    const message = execError.stderr?.trim() || execError.message || 'Unknown error'
-    throw new Error(message)
-  }
+): Promise<void> {
+  await run(file, args, { cwd: options.cwd })
 }
