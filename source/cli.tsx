@@ -7,7 +7,7 @@ import { runNonInteractive } from './nonInteractive.js'
 const cli = meow(
   `
   Usage
-    $ dappbooster-starter [options]
+    $ dappbooster [options]
 
   Options
     --name <string>          Project name (alphanumeric, underscores)
@@ -34,16 +34,16 @@ const cli = meow(
 
   Examples
     Interactive:
-      $ dappbooster-starter
+      $ dappbooster
 
     Full install (non-interactive):
-      $ dappbooster-starter --ni --name my_dapp --mode full
+      $ dappbooster --ni --name my_dapp --mode full
 
     Custom install with specific features:
-      $ dappbooster-starter --ni --name my_dapp --mode custom --features demo,subgraph
+      $ dappbooster --ni --name my_dapp --mode custom --features demo,subgraph
 
     Get feature metadata:
-      $ dappbooster-starter --info
+      $ dappbooster --info
 `,
   {
     importMeta: import.meta,
