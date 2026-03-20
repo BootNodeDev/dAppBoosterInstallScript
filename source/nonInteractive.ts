@@ -64,7 +64,7 @@ function validate(flags: {
       fail(`Project directory '${flags.name}' already exists`)
     }
 
-    return { name: flags.name, mode: flags.mode, features: [] }
+    return { name: flags.name, mode: flags.mode, features: featureNames }
   }
 
   if (!flags.features) {
