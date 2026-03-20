@@ -1,41 +1,89 @@
-# AGENTS.md
+# Agent Configuration
 
-This file provides guidance to AI coding agents working with code in this repository.
+> `CLAUDE.md` points to this file so Claude Code picks it up automatically. Other agents (Cursor, Windsurf, etc.) read `AGENTS.md` natively.
+
+---
 
 ## What This Is
 
-A CLI installer tool for dAppBooster projects, built with React + Ink (terminal UI framework). It walks users through an interactive setup flow: project naming, repo cloning, installation mode selection, optional packages, and post-install steps.
+A CLI installer tool for dAppBooster projects. It supports two modes:
 
-## Commands
+- **Interactive** (default): React + Ink TUI that walks users through project naming, repo cloning, installation mode selection, optional packages, and post-install steps.
+- **Non-interactive**: Flag-driven mode (`--ni` or auto-detected when not a TTY) for AI agents and CI. Outputs JSON to stdout. Run `--info` for feature discovery, then `--name` + `--mode` [+ `--features`] to install.
 
-- `pnpm build` — compile TypeScript (`tsc`)
-- `pnpm dev` — watch mode compilation
-- `pnpm test` — run tests (`vitest run`)
-- `pnpm lint` — run Biome linter (`biome check`)
-- `pnpm lint:fix` — auto-fix lint issues (`biome check --write`)
+## Stack & Conventions
+
+| Category | Technology | Notes |
+|----------|-----------|-------|
+| Language | TypeScript (strict mode) | Extends `@sindresorhus/tsconfig` |
+| Framework | React + Ink | Terminal UI framework |
+| Arg parsing | meow | CLI flag parsing for non-interactive mode |
+| Package manager | pnpm | Never npm or yarn |
+| Linting/formatting | Biome | Run `pnpm lint` before committing |
+| Testing | Vitest + @vitest/coverage-v8 | |
+| Node | v20+ | See `.nvmrc` |
+| Naming | camelCase vars/functions, PascalCase components/types | |
+
+## Code Style
+
+- **Semicolons:** no
+- **Quotes:** single
+- **Print width:** 100
+- **Trailing commas:** none (Biome default)
+- **Indent:** spaces, width 2
+- **Imports:** explicit `.js` extensions (ESM, `"type": "module"`)
+
+## Working Rules
+
+- Use **pnpm** only (never npm or yarn)
+- Treat `dist/` as build output — never edit directly
+- User input (`projectName`) must never be interpolated into shell command strings — use `execFile` (args array) instead
+- `source/constants/config.ts` is the single source of truth for feature metadata — all consumers read from it
+- Components are presentation-only — business logic lives in `source/operations/`
 
 ## Architecture
 
-Entry: `source/cli.tsx` → renders the Ink React app.
+Entry: `source/cli.tsx` — parses args with `meow`, routes between interactive and non-interactive paths.
 
-`source/app.tsx` is the main component — a step-based state machine (`currentStep` integer) that renders each installer step in sequence. Steps advance via a `finishStep` callback.
+- **Interactive path**: `source/app.tsx` — step-based state machine that renders each installer step in sequence via React + Ink
+- **Non-interactive path**: `source/nonInteractive.ts` — validates flags, runs operations sequentially, outputs JSON
 
-### Key directories
+Key directories:
 
-- `source/components/steps/` — each installer step as a React component (ProjectName, CloneRepo, InstallationMode, OptionalPackages, Install, FileCleanup, PostInstall)
+- `source/operations/` — business logic as plain async functions, shared by both paths
+- `source/components/steps/` — TUI step components, presentation-only
 - `source/components/` — reusable UI components (Ask, Divider, MainTitle, Multiselect)
-- `source/constants/config.ts` — feature package mappings and repo URL
-- `source/types/types.ts` — shared TypeScript types
-- `source/utils/utils.ts` — helper functions (validation, step visibility)
+- `source/__tests__/` — vitest test suite
 
-## Code Conventions
+## Testing
 
-- **ESM**: `"type": "module"` — imports use explicit `.js` extensions
-- **Formatting**: Biome — single quotes, no semicolons, 2-space indent, 100-char line width
-- **Components**: Functional components with TypeScript (`FC<Props>`)
-- **State**: Local `useState` only, props/callbacks for parent-child communication
-- **Skip pattern**: Steps accept a `skip` prop to conditionally bypass themselves
-- **Node**: Requires v20+ (see `.nvmrc`)
+- **Framework:** Vitest + V8 coverage
+- **Run tests:** `pnpm test` / `pnpm test:coverage`
+- **Structure:** `source/__tests__/` mirrors `source/` layout. Operations tests live in `source/__tests__/operations/`
+- **What to test:** Non-interactive agentic flow (validation, JSON output), operations (correct shell commands), config, utils
+- **What not to test:** React/Ink components, `exec.ts` internals (mocked in all consumers)
+- **Mocking pattern:** Operations tests mock `exec`/`execFile` from `source/operations/exec.js`. Non-interactive tests mock the entire operations layer
+- **Coverage:** Focus on the agentic interface. Test files and `source/components/` are excluded from coverage
+
+## Guardrails
+
+- Do not commit secrets, API keys, or credentials
+- Do not modify CI/CD pipelines without team review
+- Do not skip tests or linting to make a build pass
+- When in doubt, ask — don't assume
+
+## Change Strategy
+
+- Prefer small, focused diffs over broad refactors
+- Preserve existing UX unless the task explicitly changes it
+- Avoid introducing new patterns when a project pattern already exists
+- Update docs only when behavior or workflow changes
+
+## Validation Checklist
+
+- `pnpm build`
+- `pnpm lint`
+- `pnpm test`
 
 ## Release
 
