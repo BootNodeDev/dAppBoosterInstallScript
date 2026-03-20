@@ -43,6 +43,8 @@ A CLI installer tool for dAppBooster projects. It supports two modes:
 
 ## Architecture
 
+See [architecture.md](./architecture.md) for the full architecture guide, including data flow, how to add features, and security patterns.
+
 Entry: `source/cli.tsx` — parses args with `meow`, routes between interactive and non-interactive paths.
 
 - **Interactive path**: `source/app.tsx` — step-based state machine that renders each installer step in sequence via React + Ink
