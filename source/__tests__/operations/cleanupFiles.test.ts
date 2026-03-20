@@ -34,8 +34,10 @@ function getExecCommands(): string[] {
 
 function getWrittenPackageJson(): Record<string, unknown> {
   const lastCall = vi.mocked(writeFileSync).mock.calls.at(-1)
-  const content = lastCall?.[1] as string
-  return JSON.parse(content)
+  if (!lastCall) {
+    throw new Error('writeFileSync was never called — no package.json to read')
+  }
+  return JSON.parse(lastCall[1] as string)
 }
 
 describe('cleanupFiles', () => {

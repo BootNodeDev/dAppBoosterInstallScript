@@ -82,9 +82,9 @@ Plain async functions with no UI dependencies. Each operation receives explicit 
 
 | Function | What it does |
 |---|---|
-| `cloneRepo(projectName)` | Shallow clone, checkout latest tag, rm .git, git init |
+| `cloneRepo(projectName)` | Shallow clone, checkout latest tag, rm .git, git init. Uses `execFile` (no shell) for all commands except `git checkout $(...)` which needs shell substitution. |
 | `createEnvFile(projectFolder)` | Copy .env.example to .env.local |
-| `installPackages(projectFolder, mode, features)` | Full: `pnpm i`. Custom: `pnpm remove` deselected packages + postinstall |
+| `installPackages(projectFolder, mode, features)` | Full: `pnpm i`. Custom: `pnpm remove` deselected packages + postinstall. Uses `execFile` exclusively (no shell). |
 | `cleanupFiles(projectFolder, mode, features)` | Remove files/folders for deselected features, patch package.json scripts, remove .install-files |
 
 ### Shell Execution (`source/operations/exec.ts`)

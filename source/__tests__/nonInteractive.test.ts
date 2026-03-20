@@ -29,7 +29,10 @@ const { projectDirectoryExists } = await import('../utils/utils.js')
 
 function getLastJsonOutput(): Record<string, unknown> {
   const lastCall = mockLog.mock.calls.at(-1)
-  return JSON.parse(lastCall?.[0] as string)
+  if (!lastCall) {
+    throw new Error('console.log was never called — no JSON output to read')
+  }
+  return JSON.parse(lastCall[0] as string)
 }
 
 describe('nonInteractive — validation', () => {
