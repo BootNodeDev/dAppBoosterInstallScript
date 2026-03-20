@@ -77,7 +77,7 @@ function validate(flags: {
   const features = parseFeatures(flags.features)
 
   if (features.length === 0) {
-    fail('--mode custom requires --features. Use --info to see available features.')
+    fail('--features value is empty. Use --info to see available features.')
   }
 
   const invalidFeatures = features.filter((f) => !featureNames.includes(f))

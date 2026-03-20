@@ -94,7 +94,7 @@ describe('nonInteractive — validation', () => {
       runNonInteractive({ name: 'my_app', mode: 'custom', features: ',' }),
     ).rejects.toThrow()
     const output = getLastJsonOutput()
-    expect(output.error).toMatch(/--mode custom requires --features/)
+    expect(output.error).toMatch(/--features value is empty/)
   })
 
   it('rejects unknown feature names', async () => {
