@@ -6,7 +6,7 @@ vi.mock('../../operations/exec.js', () => ({
   execFile: vi.fn().mockResolvedValue(''),
 }))
 
-const { exec, execFile } = await import('../../operations/exec.js')
+const { execFile } = await import('../../operations/exec.js')
 const { installPackages } = await import('../../operations/installPackages.js')
 
 describe('installPackages', () => {
@@ -15,23 +15,23 @@ describe('installPackages', () => {
   })
 
   describe('full mode', () => {
-    it('runs pnpm i', async () => {
+    it('runs pnpm i via execFile', async () => {
       await installPackages('/project/my_app', 'full')
 
-      expect(exec).toHaveBeenCalledWith('pnpm i', { cwd: '/project/my_app' })
+      expect(execFile).toHaveBeenCalledWith('pnpm', ['i'], { cwd: '/project/my_app' })
     })
 
     it('runs only one command', async () => {
       await installPackages('/project/my_app', 'full')
 
-      expect(exec).toHaveBeenCalledTimes(1)
+      expect(execFile).toHaveBeenCalledTimes(1)
     })
 
     it('ignores features argument', async () => {
       await installPackages('/project/my_app', 'full', ['demo', 'subgraph'])
 
-      expect(exec).toHaveBeenCalledTimes(1)
-      expect(exec).toHaveBeenCalledWith('pnpm i', { cwd: '/project/my_app' })
+      expect(execFile).toHaveBeenCalledTimes(1)
+      expect(execFile).toHaveBeenCalledWith('pnpm', ['i'], { cwd: '/project/my_app' })
     })
   })
 
@@ -40,8 +40,8 @@ describe('installPackages', () => {
       const allFeatures = Object.keys(featureDefinitions) as Array<keyof typeof featureDefinitions>
       await installPackages('/project/my_app', 'custom', allFeatures)
 
-      expect(exec).toHaveBeenCalledTimes(1)
-      expect(exec).toHaveBeenCalledWith('pnpm i', { cwd: '/project/my_app' })
+      expect(execFile).toHaveBeenCalledTimes(1)
+      expect(execFile).toHaveBeenCalledWith('pnpm', ['i'], { cwd: '/project/my_app' })
     })
   })
 
@@ -69,10 +69,7 @@ describe('installPackages', () => {
         if (args[0] === 'remove') {
           callOrder.push('remove')
         }
-        return ''
-      })
-      vi.mocked(exec).mockImplementation(async (cmd) => {
-        if (typeof cmd === 'string' && cmd.includes('postinstall')) {
+        if (args[0] === 'run' && args[1] === 'postinstall') {
           callOrder.push('postinstall')
         }
         return ''
@@ -119,5 +116,21 @@ describe('installPackages', () => {
         expect(removeArgs).toContain(pkg)
       }
     })
+
+    it('runs postinstall via execFile', async () => {
+      await installPackages('/project/my_app', 'custom', ['demo'])
+
+      expect(execFile).toHaveBeenCalledWith('pnpm', ['run', 'postinstall'], {
+        cwd: '/project/my_app',
+      })
+    })
+  })
+
+  it('never uses exec (shell) for any command', async () => {
+    const { exec } = await import('../../operations/exec.js')
+
+    await installPackages('/project/my_app', 'custom', ['demo'])
+
+    expect(exec).not.toHaveBeenCalled()
   })
 })
