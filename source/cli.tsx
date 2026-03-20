@@ -85,6 +85,10 @@ if (isNonInteractive) {
     name: cli.flags.name,
     mode: cli.flags.mode,
     features: cli.flags.features,
+  }).catch((error) => {
+    const message = error instanceof Error ? error.message : String(error)
+    console.log(JSON.stringify({ success: false, error: message }))
+    process.exit(1)
   })
 } else {
   const run = async () => {
