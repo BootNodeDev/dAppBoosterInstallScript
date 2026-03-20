@@ -39,9 +39,9 @@ const Install: FC<Props> = ({ projectName, onCompletion, installationConfig }) =
         setStatus('done')
         onCompletion()
       })
-      .catch((error: Error) => {
+      .catch((error: unknown) => {
         setStatus('error')
-        setErrorMessage(error.message)
+        setErrorMessage(error instanceof Error ? error.message : String(error))
       })
   }, [projectFolder, installationType, selectedFeatures, onCompletion])
 

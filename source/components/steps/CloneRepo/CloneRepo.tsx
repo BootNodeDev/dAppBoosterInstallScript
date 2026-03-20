@@ -18,9 +18,9 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
         setStatus('done')
         onCompletion()
       })
-      .catch((error: Error) => {
+      .catch((error: unknown) => {
         setStatus('error')
-        setErrorMessage(error.message)
+        setErrorMessage(error instanceof Error ? error.message : String(error))
       })
   }, [projectName, onCompletion])
 
