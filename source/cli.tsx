@@ -87,7 +87,7 @@ if (isNonInteractive) {
     features: cli.flags.features,
   }).catch((error) => {
     const message = error instanceof Error ? error.message : String(error)
-    console.log(JSON.stringify({ success: false, error: message }))
+    console.log(JSON.stringify({ success: false, error: message }, null, 2))
     process.exit(1)
   })
 } else {
@@ -99,5 +99,5 @@ if (isNonInteractive) {
     render(<App />)
   }
 
-  run()
+  run().catch(console.error)
 }

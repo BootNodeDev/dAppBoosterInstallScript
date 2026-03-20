@@ -8,7 +8,7 @@ import InstallationMode from './components/steps/InstallationMode.js'
 import OptionalPackages from './components/steps/OptionalPackages.js'
 import PostInstall from './components/steps/PostInstall.js'
 import ProjectName from './components/steps/ProjectName.js'
-import type { InstallationSelectItem, InstallationType, MultiSelectItem } from './types/types.js'
+import type { InstallationSelectItem, MultiSelectItem } from './types/types.js'
 import { canShowStep } from './utils/utils.js'
 
 const App = () => {
@@ -71,7 +71,7 @@ const App = () => {
       <PostInstall
         projectName={projectName}
         installationConfig={{
-          installationType: setupType?.value as InstallationType | undefined,
+          installationType: setupType?.value,
           selectedFeatures: selectedFeatures,
         }}
         key={7}
