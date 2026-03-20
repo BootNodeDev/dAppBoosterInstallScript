@@ -1,7 +1,7 @@
 import type { FeatureName } from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
 import { getPackagesToRemove } from '../utils/utils.js'
-import { exec } from './exec.js'
+import { exec, execFile } from './exec.js'
 
 export async function installPackages(
   projectFolder: string,
@@ -20,6 +20,6 @@ export async function installPackages(
     return
   }
 
-  await exec(`pnpm remove ${packagesToRemove.join(' ')}`, { cwd: projectFolder })
+  await execFile('pnpm', ['remove', ...packagesToRemove], { cwd: projectFolder })
   await exec('pnpm run postinstall', { cwd: projectFolder })
 }

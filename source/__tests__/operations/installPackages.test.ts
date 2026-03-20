@@ -6,7 +6,7 @@ vi.mock('../../operations/exec.js', () => ({
   execFile: vi.fn().mockResolvedValue(''),
 }))
 
-const { exec } = await import('../../operations/exec.js')
+const { exec, execFile } = await import('../../operations/exec.js')
 const { installPackages } = await import('../../operations/installPackages.js')
 
 describe('installPackages', () => {
@@ -50,25 +50,28 @@ describe('installPackages', () => {
       await installPackages('/project/my_app', 'custom', ['demo'])
 
       const removeCall = vi
-        .mocked(exec)
-        .mock.calls.find((call) => typeof call[0] === 'string' && call[0].startsWith('pnpm remove'))
+        .mocked(execFile)
+        .mock.calls.find((call) => call[0] === 'pnpm' && call[1][0] === 'remove')
       expect(removeCall).toBeDefined()
 
-      const removeCmd = removeCall?.[0] as string
+      const removeArgs = removeCall?.[1] as string[]
       for (const pkg of featureDefinitions.subgraph.packages) {
-        expect(removeCmd).toContain(pkg)
+        expect(removeArgs).toContain(pkg)
       }
       for (const pkg of featureDefinitions.typedoc.packages) {
-        expect(removeCmd).toContain(pkg)
+        expect(removeArgs).toContain(pkg)
       }
     })
 
     it('runs postinstall after pnpm remove', async () => {
       const callOrder: string[] = []
-      vi.mocked(exec).mockImplementation(async (cmd) => {
-        if (typeof cmd === 'string' && cmd.startsWith('pnpm remove')) {
+      vi.mocked(execFile).mockImplementation(async (_file, args) => {
+        if (args[0] === 'remove') {
           callOrder.push('remove')
         }
+        return ''
+      })
+      vi.mocked(exec).mockImplementation(async (cmd) => {
         if (typeof cmd === 'string' && cmd.includes('postinstall')) {
           callOrder.push('postinstall')
         }
@@ -84,13 +87,36 @@ describe('installPackages', () => {
       await installPackages('/project/my_app', 'custom', ['demo', 'subgraph'])
 
       const removeCall = vi
-        .mocked(exec)
-        .mock.calls.find((call) => typeof call[0] === 'string' && call[0].startsWith('pnpm remove'))
+        .mocked(execFile)
+        .mock.calls.find((call) => call[0] === 'pnpm' && call[1][0] === 'remove')
       expect(removeCall).toBeDefined()
 
-      const removeCmd = removeCall?.[0] as string
+      const removeArgs = removeCall?.[1] as string[]
       for (const pkg of featureDefinitions.subgraph.packages) {
-        expect(removeCmd).not.toContain(pkg)
+        expect(removeArgs).not.toContain(pkg)
+      }
+    })
+
+    it('uses execFile for pnpm remove to avoid shell interpolation', async () => {
+      await installPackages('/project/my_app', 'custom', ['demo'])
+
+      expect(execFile).toHaveBeenCalledWith('pnpm', expect.arrayContaining(['remove']), {
+        cwd: '/project/my_app',
+      })
+    })
+
+    it('passes each package as a separate arg to execFile', async () => {
+      await installPackages('/project/my_app', 'custom', ['demo'])
+
+      const removeCall = vi
+        .mocked(execFile)
+        .mock.calls.find((call) => call[0] === 'pnpm' && call[1][0] === 'remove')
+      expect(removeCall).toBeDefined()
+
+      const removeArgs = removeCall?.[1] as string[]
+      expect(removeArgs[0]).toBe('remove')
+      for (const pkg of featureDefinitions.subgraph.packages) {
+        expect(removeArgs).toContain(pkg)
       }
     })
   })
