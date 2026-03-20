@@ -24,4 +24,10 @@ describe('createEnvFile', () => {
 
     expect(exec).toHaveBeenCalledWith(expect.any(String), { cwd: '/other/path' })
   })
+
+  it('propagates errors from exec', async () => {
+    vi.mocked(exec).mockRejectedValueOnce(new Error('.env.example not found'))
+
+    await expect(createEnvFile('/project/my_app')).rejects.toThrow('.env.example not found')
+  })
 })
