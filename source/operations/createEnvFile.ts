@@ -1,5 +1,6 @@
-import { exec } from './exec.js'
+import { copyFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
 export async function createEnvFile(projectFolder: string): Promise<void> {
-  await exec('cp .env.example .env.local', { cwd: projectFolder })
+  await copyFile(join(projectFolder, '.env.example'), join(projectFolder, '.env.local'))
 }

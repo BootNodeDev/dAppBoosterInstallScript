@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../../operations/exec.js', () => ({
-  exec: vi.fn().mockResolvedValue(''),
-  execFile: vi.fn().mockResolvedValue(''),
+vi.mock('node:fs/promises', () => ({
+  copyFile: vi.fn().mockResolvedValue(undefined),
 }))
 
-const { exec } = await import('../../operations/exec.js')
+const { copyFile } = await import('node:fs/promises')
 const { createEnvFile } = await import('../../operations/createEnvFile.js')
 
 describe('createEnvFile', () => {
@@ -13,20 +12,23 @@ describe('createEnvFile', () => {
     vi.clearAllMocks()
   })
 
-  it('copies .env.example to .env.local', async () => {
+  it('copies .env.example to .env.local in the project folder', async () => {
     await createEnvFile('/project/my_app')
 
-    expect(exec).toHaveBeenCalledWith('cp .env.example .env.local', { cwd: '/project/my_app' })
+    expect(copyFile).toHaveBeenCalledWith(
+      '/project/my_app/.env.example',
+      '/project/my_app/.env.local',
+    )
   })
 
-  it('uses the provided project folder as cwd', async () => {
+  it('uses the provided project folder for both paths', async () => {
     await createEnvFile('/other/path')
 
-    expect(exec).toHaveBeenCalledWith(expect.any(String), { cwd: '/other/path' })
+    expect(copyFile).toHaveBeenCalledWith('/other/path/.env.example', '/other/path/.env.local')
   })
 
-  it('propagates errors from exec', async () => {
-    vi.mocked(exec).mockRejectedValueOnce(new Error('.env.example not found'))
+  it('propagates errors from copyFile', async () => {
+    vi.mocked(copyFile).mockRejectedValueOnce(new Error('.env.example not found'))
 
     await expect(createEnvFile('/project/my_app')).rejects.toThrow('.env.example not found')
   })
