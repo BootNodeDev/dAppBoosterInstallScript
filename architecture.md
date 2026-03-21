@@ -61,7 +61,7 @@ source/
 
 ### Feature Definitions (`source/constants/config.ts`)
 
-Single source of truth for all feature metadata. Every consumer reads from here:
+Single source of truth for feature metadata. All programmatic consumers (`--info`, validation, TUI multiselect, operations) read from here. CLI `--help` text maintains its own copy.
 
 ```ts
 featureDefinitions: Record<FeatureName, {

@@ -38,7 +38,7 @@ A CLI installer tool for dAppBooster projects. It supports two modes:
 - Use **pnpm** only (never npm or yarn)
 - Treat `dist/` as build output — never edit directly
 - User input (`projectName`) must never be interpolated into shell command strings — use `execFile` (args array) instead
-- `source/constants/config.ts` is the single source of truth for feature metadata — all consumers read from it
+- `source/constants/config.ts` is the single source of truth for feature metadata — all programmatic consumers read from it (CLI `--help` text maintains its own copy)
 - Components are presentation-only — business logic lives in `source/operations/`
 
 ## Architecture
