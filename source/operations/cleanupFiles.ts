@@ -47,7 +47,7 @@ async function cleanupSubgraph(projectFolder: string, features: FeatureName[]): 
     await execFile('rm', ['-rf', `${homeFolder}/Examples/demos/subgraphs`], {
       cwd: projectFolder,
     })
-    await execFile('rm', [`${homeFolder}/Examples/index.tsx`], { cwd: projectFolder })
+    await execFile('rm', ['-f', `${homeFolder}/Examples/index.tsx`], { cwd: projectFolder })
     await execFile(
       'cp',
       ['.install-files/home/Examples/index.tsx', `${homeFolder}/Examples/index.tsx`],
@@ -57,18 +57,18 @@ async function cleanupSubgraph(projectFolder: string, features: FeatureName[]): 
 }
 
 async function cleanupTypedoc(projectFolder: string): Promise<void> {
-  await execFile('rm', ['typedoc.json'], { cwd: projectFolder })
+  await execFile('rm', ['-f', 'typedoc.json'], { cwd: projectFolder })
 }
 
 async function cleanupVocs(projectFolder: string): Promise<void> {
-  await execFile('rm', ['vocs.config.ts'], { cwd: projectFolder })
+  await execFile('rm', ['-f', 'vocs.config.ts'], { cwd: projectFolder })
   await execFile('rm', ['-rf', 'docs'], { cwd: projectFolder })
 }
 
 async function cleanupHusky(projectFolder: string): Promise<void> {
   await execFile('rm', ['-rf', '.husky'], { cwd: projectFolder })
-  await execFile('rm', ['.lintstagedrc.mjs'], { cwd: projectFolder })
-  await execFile('rm', ['commitlint.config.js'], { cwd: projectFolder })
+  await execFile('rm', ['-f', '.lintstagedrc.mjs'], { cwd: projectFolder })
+  await execFile('rm', ['-f', 'commitlint.config.js'], { cwd: projectFolder })
 }
 
 export async function cleanupFiles(

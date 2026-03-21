@@ -127,7 +127,7 @@ describe('cleanupFiles', () => {
       const commands = getExecFileCommands()
       const homeFolder = 'src/components/pageComponents/home'
       expect(commands).toContain(`rm -rf ${homeFolder}/Examples/demos/subgraphs`)
-      expect(commands).toContain(`rm ${homeFolder}/Examples/index.tsx`)
+      expect(commands).toContain(`rm -f ${homeFolder}/Examples/index.tsx`)
       expect(commands).toContain(
         `cp .install-files/home/Examples/index.tsx ${homeFolder}/Examples/index.tsx`,
       )
@@ -155,7 +155,7 @@ describe('cleanupFiles', () => {
       await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'vocs', 'husky'])
 
       const commands = getExecFileCommands()
-      expect(commands).toContain('rm typedoc.json')
+      expect(commands).toContain('rm -f typedoc.json')
     })
 
     it('removes typedoc:build from package.json scripts', async () => {
@@ -172,7 +172,7 @@ describe('cleanupFiles', () => {
       await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'husky'])
 
       const commands = getExecFileCommands()
-      expect(commands).toContain('rm vocs.config.ts')
+      expect(commands).toContain('rm -f vocs.config.ts')
       expect(commands).toContain('rm -rf docs')
     })
 
@@ -193,8 +193,8 @@ describe('cleanupFiles', () => {
 
       const commands = getExecFileCommands()
       expect(commands).toContain('rm -rf .husky')
-      expect(commands).toContain('rm .lintstagedrc.mjs')
-      expect(commands).toContain('rm commitlint.config.js')
+      expect(commands).toContain('rm -f .lintstagedrc.mjs')
+      expect(commands).toContain('rm -f commitlint.config.js')
     })
 
     it('removes prepare from package.json scripts', async () => {
@@ -213,8 +213,8 @@ describe('cleanupFiles', () => {
       const commands = getExecFileCommands()
       expect(commands).toContain('rm -rf src/components/pageComponents/home')
       expect(commands).toContain('rm -rf src/subgraphs')
-      expect(commands).toContain('rm typedoc.json')
-      expect(commands).toContain('rm vocs.config.ts')
+      expect(commands).toContain('rm -f typedoc.json')
+      expect(commands).toContain('rm -f vocs.config.ts')
       expect(commands).toContain('rm -rf .husky')
       expect(commands).toContain('rm -rf .install-files')
     })
@@ -241,6 +241,16 @@ describe('cleanupFiles', () => {
 
     const commands = getExecFileCommands()
     expect(commands.at(-1)).toBe('rm -rf .install-files')
+  })
+
+  it('uses -f flag on all single-file rm calls for idempotent cleanup', async () => {
+    await cleanupFiles('/project/my_app', 'custom', [])
+
+    const commands = getExecFileCommands()
+    const rmCommands = commands.filter((cmd) => cmd.startsWith('rm '))
+    for (const cmd of rmCommands) {
+      expect(cmd).toMatch(/^rm -[rf]/)
+    }
   })
 
   describe('onProgress callback', () => {
