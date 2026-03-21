@@ -50,6 +50,7 @@ source/
     info.test.ts
     utils.test.ts
     operations/
+      exec.test.ts
       cloneRepo.test.ts
       createEnvFile.test.ts
       installPackages.test.ts
