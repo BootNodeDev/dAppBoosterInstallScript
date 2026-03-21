@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import type { FeatureName } from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
 import { isFeatureSelected } from '../utils/utils.js'
-import { exec } from './exec.js'
+import { execFile } from './exec.js'
 
 function patchPackageJson(projectFolder: string, features: FeatureName[]): void {
   const packageJsonPath = resolve(projectFolder, 'package.json')
@@ -31,40 +31,44 @@ function patchPackageJson(projectFolder: string, features: FeatureName[]): void 
 }
 
 async function cleanupDemo(projectFolder: string): Promise<void> {
-  await exec('rm -rf src/components/pageComponents/home', { cwd: projectFolder })
-  await exec('mkdir -p src/components/pageComponents/home', { cwd: projectFolder })
-  await exec('cp .install-files/home/index.tsx src/components/pageComponents/home/', {
+  await execFile('rm', ['-rf', 'src/components/pageComponents/home'], { cwd: projectFolder })
+  await execFile('mkdir', ['-p', 'src/components/pageComponents/home'], { cwd: projectFolder })
+  await execFile('cp', ['.install-files/home/index.tsx', 'src/components/pageComponents/home/'], {
     cwd: projectFolder,
   })
 }
 
 async function cleanupSubgraph(projectFolder: string, features: FeatureName[]): Promise<void> {
-  await exec('rm -rf src/subgraphs', { cwd: projectFolder })
+  await execFile('rm', ['-rf', 'src/subgraphs'], { cwd: projectFolder })
 
   if (isFeatureSelected('demo', features)) {
     const homeFolder = 'src/components/pageComponents/home'
 
-    await exec(`rm -rf ${homeFolder}/Examples/demos/subgraphs`, { cwd: projectFolder })
-    await exec(`rm ${homeFolder}/Examples/index.tsx`, { cwd: projectFolder })
-    await exec(`cp .install-files/home/Examples/index.tsx ${homeFolder}/Examples/index.tsx`, {
+    await execFile('rm', ['-rf', `${homeFolder}/Examples/demos/subgraphs`], {
       cwd: projectFolder,
     })
+    await execFile('rm', [`${homeFolder}/Examples/index.tsx`], { cwd: projectFolder })
+    await execFile(
+      'cp',
+      ['.install-files/home/Examples/index.tsx', `${homeFolder}/Examples/index.tsx`],
+      { cwd: projectFolder },
+    )
   }
 }
 
 async function cleanupTypedoc(projectFolder: string): Promise<void> {
-  await exec('rm typedoc.json', { cwd: projectFolder })
+  await execFile('rm', ['typedoc.json'], { cwd: projectFolder })
 }
 
 async function cleanupVocs(projectFolder: string): Promise<void> {
-  await exec('rm vocs.config.ts', { cwd: projectFolder })
-  await exec('rm -rf docs', { cwd: projectFolder })
+  await execFile('rm', ['vocs.config.ts'], { cwd: projectFolder })
+  await execFile('rm', ['-rf', 'docs'], { cwd: projectFolder })
 }
 
 async function cleanupHusky(projectFolder: string): Promise<void> {
-  await exec('rm -rf .husky', { cwd: projectFolder })
-  await exec('rm .lintstagedrc.mjs', { cwd: projectFolder })
-  await exec('rm commitlint.config.js', { cwd: projectFolder })
+  await execFile('rm', ['-rf', '.husky'], { cwd: projectFolder })
+  await execFile('rm', ['.lintstagedrc.mjs'], { cwd: projectFolder })
+  await execFile('rm', ['commitlint.config.js'], { cwd: projectFolder })
 }
 
 export async function cleanupFiles(
@@ -96,5 +100,5 @@ export async function cleanupFiles(
     patchPackageJson(projectFolder, features)
   }
 
-  await exec('rm -rf .install-files', { cwd: projectFolder })
+  await execFile('rm', ['-rf', '.install-files'], { cwd: projectFolder })
 }
