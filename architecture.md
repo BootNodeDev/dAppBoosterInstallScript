@@ -75,7 +75,7 @@ featureDefinitions: Record<FeatureName, {
 
 `featureNames` is derived as `Object.keys(featureDefinitions)`.
 
-When adding a new feature, add it here. All other code (validation, cleanup, info output, TUI selection) picks it up automatically — except `cleanupFiles.ts` which needs explicit cleanup rules.
+When adding a new feature, add it here. Programmatic consumers (validation, info output, TUI selection) pick it up automatically — except `cleanupFiles.ts` (which needs explicit cleanup rules) and the CLI `--help` text in `cli.tsx` (which maintains its own copy).
 
 ### Operations Layer (`source/operations/`)
 
@@ -83,10 +83,10 @@ Plain async functions with no UI dependencies. Each operation receives explicit 
 
 | Function | What it does |
 |---|---|
-| `cloneRepo(projectName)` | Shallow clone, checkout latest tag, rm .git, git init. Uses `execFile` (no shell) for all commands except `git checkout $(...)` which needs shell substitution. |
+| `cloneRepo(projectName, onProgress?)` | Shallow clone, fetch tags, checkout latest tag, rm .git, git init. Uses `execFile` (no shell) for all commands except `git checkout $(...)` which needs shell substitution. |
 | `createEnvFile(projectFolder)` | Copy .env.example to .env.local |
-| `installPackages(projectFolder, mode, features)` | Full: `pnpm i`. Custom: `pnpm remove` deselected packages + postinstall. Uses `execFile` exclusively (no shell). |
-| `cleanupFiles(projectFolder, mode, features)` | Remove files/folders for deselected features, patch package.json scripts, remove .install-files. Uses `execFile` exclusively (no shell). |
+| `installPackages(projectFolder, mode, features, onProgress?)` | Full: `pnpm i`. Custom with packages to remove: `pnpm remove` + postinstall. Custom with all features: `pnpm i`. Uses `execFile` exclusively (no shell). |
+| `cleanupFiles(projectFolder, mode, features, onProgress?)` | Remove files/folders for deselected features, patch package.json scripts, remove .install-files. Uses `execFile` exclusively (no shell). |
 
 ### Shell Execution (`source/operations/exec.ts`)
 
@@ -122,10 +122,11 @@ default  →  dynamic import ink + App → TUI
 2. `--mode` required
 3. `--name` matches `/^[a-zA-Z0-9_]+$/`
 4. `--mode` is `full` or `custom`
-5. Full mode: skip to step 8 (features ignored, all installed)
+5. Full mode: skip to step 9 (features ignored, all installed)
 6. `--features` required for custom mode
-7. All feature names are valid keys in `featureDefinitions`
-8. Project directory does not already exist
+7. Parsed features list is non-empty (rejects trailing commas, whitespace-only entries)
+8. All feature names are valid keys in `featureDefinitions`
+9. Project directory does not already exist
 
 **Non-interactive execution order:**
 `cloneRepo` → `createEnvFile` → `installPackages` → `cleanupFiles` → success JSON
@@ -188,4 +189,4 @@ Steps 1 and 4 are always required. Steps 2-3 only apply if the feature has files
 - User input (`projectName`) is validated against `/^[a-zA-Z0-9_]+$/` before any use
 - Operations use `execFile` (no shell) for commands that include user input
 - `exec` (shell) is reserved for commands needing shell substitution, and never receives user input in the command string
-- Non-interactive output suppresses child process stdout/stderr to guarantee clean JSON on stdout
+- Child process stdout is ignored and stderr is piped (captured for error diagnostics only), guaranteeing clean JSON on the parent's stdout

@@ -26,10 +26,10 @@ A CLI installer tool for dAppBooster projects. It supports two modes:
 
 ## Code Style
 
-- **Semicolons:** no
+- **Semicolons:** as needed (Biome `asNeeded` — omitted unless required by ASI)
 - **Quotes:** single
 - **Print width:** 100
-- **Trailing commas:** none (Biome default)
+- **Trailing commas:** all (Biome default)
 - **Indent:** spaces, width 2
 - **Imports:** explicit `.js` extensions (ESM, `"type": "module"`)
 
@@ -64,7 +64,7 @@ Key directories:
 - **Structure:** `source/__tests__/` mirrors `source/` layout. Operations tests live in `source/__tests__/operations/`
 - **What to test:** Non-interactive agentic flow (validation, JSON output), operations (correct shell commands), config, utils
 - **What not to test:** React/Ink components
-- **Mocking pattern:** Operations tests mock `exec`/`execFile` from `source/operations/exec.js`. Non-interactive tests mock the entire operations layer
+- **Mocking pattern:** Operations tests mock `exec`/`execFile` from `source/operations/exec.js`. `exec.test.ts` mocks `child_process.spawn` directly to test the helpers themselves. Non-interactive tests mock the entire operations layer
 - **Coverage:** Focus on the agentic interface. Test files and `source/components/` are excluded from coverage
 
 ## Guardrails
