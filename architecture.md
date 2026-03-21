@@ -130,7 +130,7 @@ default  →  dynamic import ink + App → TUI
 **Non-interactive execution order:**
 `cloneRepo` → `createEnvFile` → `installPackages` → `cleanupFiles` → success JSON
 
-Any error produces `{ "success": false, "error": "..." }` and exit code 1.
+Any error produces `{ "success": false, "error": "..." }` and exit code 1. Errors set `process.exitCode = 1` and throw rather than calling `process.exit()` directly, ensuring stdout flushes before the process terminates when piped.
 
 **Success output:**
 ```json

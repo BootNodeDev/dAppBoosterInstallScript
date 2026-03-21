@@ -16,9 +16,6 @@ vi.mock('../utils/utils.js', async (importOriginal) => {
   }
 })
 
-const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
-  throw new Error('process.exit called')
-})
 const mockLog = vi.spyOn(console, 'log').mockImplementation(() => {})
 
 const { runNonInteractive } = await import('../nonInteractive.js')
@@ -38,9 +35,7 @@ function getLastJsonOutput(): Record<string, unknown> {
 describe('nonInteractive — validation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockExit.mockImplementation(() => {
-      throw new Error('process.exit called')
-    })
+    process.exitCode = undefined
   })
 
   it('rejects missing --name', async () => {
@@ -48,6 +43,7 @@ describe('nonInteractive — validation', () => {
     const output = getLastJsonOutput()
     expect(output.success).toBe(false)
     expect(output.error).toBe('Missing required flag: --name')
+    expect(process.exitCode).toBe(1)
   })
 
   it('rejects missing --mode', async () => {
@@ -130,9 +126,7 @@ describe('nonInteractive — validation', () => {
 describe('nonInteractive — full mode execution', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockExit.mockImplementation(() => {
-      throw new Error('process.exit called')
-    })
+    process.exitCode = undefined
   })
 
   it('runs operations in correct order', async () => {
@@ -204,9 +198,7 @@ describe('nonInteractive — full mode execution', () => {
 describe('nonInteractive — custom mode execution', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockExit.mockImplementation(() => {
-      throw new Error('process.exit called')
-    })
+    process.exitCode = undefined
   })
 
   it('passes selected features to operations', async () => {
@@ -273,9 +265,7 @@ describe('nonInteractive — custom mode execution', () => {
 describe('nonInteractive — error handling during execution', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockExit.mockImplementation(() => {
-      throw new Error('process.exit called')
-    })
+    process.exitCode = undefined
   })
 
   it('outputs error JSON when cloneRepo fails', async () => {
@@ -322,9 +312,7 @@ describe('nonInteractive — error handling during execution', () => {
 describe('nonInteractive — JSON output format', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockExit.mockImplementation(() => {
-      throw new Error('process.exit called')
-    })
+    process.exitCode = undefined
   })
 
   it('success output is valid parseable JSON', async () => {

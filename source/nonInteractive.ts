@@ -26,7 +26,8 @@ type ErrorResult = {
 function fail(error: string): never {
   const result: ErrorResult = { success: false, error }
   console.log(JSON.stringify(result, null, 2))
-  process.exit(1)
+  process.exitCode = 1
+  throw new Error(error)
 }
 
 function parseFeatures(featuresFlag: string | undefined): FeatureName[] {

@@ -86,9 +86,12 @@ if (isNonInteractive) {
     mode: cli.flags.mode,
     features: cli.flags.features,
   }).catch((error) => {
+    if (process.exitCode === 1) {
+      return
+    }
     const message = error instanceof Error ? error.message : String(error)
     console.log(JSON.stringify({ success: false, error: message }, null, 2))
-    process.exit(1)
+    process.exitCode = 1
   })
 } else {
   const run = async () => {
