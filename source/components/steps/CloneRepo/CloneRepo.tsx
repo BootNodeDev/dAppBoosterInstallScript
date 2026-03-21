@@ -1,5 +1,5 @@
 import { Text } from 'ink'
-import { type FC, useEffect, useState } from 'react'
+import { type FC, useCallback, useEffect, useState } from 'react'
 import { cloneRepo } from '../../../operations/index.js'
 import Divider from '../../Divider.js'
 
@@ -9,11 +9,16 @@ interface Props {
 }
 
 const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
+  const [steps, setSteps] = useState<string[]>([])
   const [status, setStatus] = useState<'running' | 'done' | 'error'>('running')
   const [errorMessage, setErrorMessage] = useState('')
 
+  const handleProgress = useCallback((step: string) => {
+    setSteps((prev) => [...prev, step])
+  }, [])
+
   useEffect(() => {
-    cloneRepo(projectName)
+    cloneRepo(projectName, handleProgress)
       .then(() => {
         setStatus('done')
         onCompletion()
@@ -22,22 +27,29 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
         setStatus('error')
         setErrorMessage(error instanceof Error ? error.message : String(error))
       })
-  }, [projectName, onCompletion])
+  }, [projectName, onCompletion, handleProgress])
+
+  const completedSteps = status === 'done' ? steps : steps.slice(0, -1)
+  const currentStep = status === 'running' ? steps.at(-1) : undefined
 
   return (
     <>
       <Divider title={'Git tasks'} />
-      {status === 'running' && (
-        <Text color={'whiteBright'}>
-          Cloning dAppBooster in <Text italic>{projectName}</Text>... Working...
+      {completedSteps.map((step) => (
+        <Text key={step}>
+          <Text color={'green'}>{'\u2714'}</Text> {step}
+        </Text>
+      ))}
+      {currentStep && (
+        <Text>
+          <Text dimColor>{'\u25CB'}</Text> {currentStep} <Text dimColor>Working...</Text>
         </Text>
       )}
-      {status === 'done' && (
-        <Text color={'green'}>
-          Cloned dAppBooster in <Text italic>{projectName}</Text>. Done!
+      {status === 'error' && (
+        <Text>
+          <Text color={'red'}>{'\u2717'}</Text> Failed to clone: {errorMessage}
         </Text>
       )}
-      {status === 'error' && <Text color={'red'}>Failed to clone: {errorMessage}</Text>}
     </>
   )
 }

@@ -90,4 +90,23 @@ describe('cloneRepo', () => {
       expect(call[0]).not.toContain('my_app')
     }
   })
+
+  describe('onProgress callback', () => {
+    it('reports all 5 steps in order', async () => {
+      const steps: string[] = []
+      await cloneRepo('my_app', (step) => steps.push(step))
+
+      expect(steps).toEqual([
+        'Cloning dAppBooster in my_app',
+        'Fetching tags',
+        'Checking out latest tag',
+        'Removing .git folder',
+        'Initializing Git repository',
+      ])
+    })
+
+    it('works without a callback', async () => {
+      await expect(cloneRepo('my_app')).resolves.toBeUndefined()
+    })
+  })
 })

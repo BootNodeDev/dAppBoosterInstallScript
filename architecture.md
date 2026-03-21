@@ -78,7 +78,7 @@ When adding a new feature, add it here. All other code (validation, cleanup, inf
 
 ### Operations Layer (`source/operations/`)
 
-Plain async functions with no UI dependencies. Each operation receives explicit arguments (project folder, mode, features) and performs file system or shell work.
+Plain async functions with no UI dependencies. Each operation receives explicit arguments (project folder, mode, features) and performs file system or shell work. Multi-step operations accept an optional `onProgress` callback that the TUI uses to render per-step progress; the non-interactive path omits it.
 
 | Function | What it does |
 |---|---|

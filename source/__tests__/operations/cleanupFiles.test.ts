@@ -242,4 +242,43 @@ describe('cleanupFiles', () => {
     const commands = getExecFileCommands()
     expect(commands.at(-1)).toBe('rm -rf .install-files')
   })
+
+  describe('onProgress callback', () => {
+    it('reports only Install script for full mode', async () => {
+      const steps: string[] = []
+      await cleanupFiles('/project/my_app', 'full', [], (step) => steps.push(step))
+
+      expect(steps).toEqual(['Install script'])
+    })
+
+    it('reports all feature cleanups when no features selected', async () => {
+      const steps: string[] = []
+      await cleanupFiles('/project/my_app', 'custom', [], (step) => steps.push(step))
+
+      expect(steps).toEqual([
+        'Component demos',
+        'Subgraph',
+        'Typedoc',
+        'Vocs',
+        'Husky',
+        'Install script',
+      ])
+    })
+
+    it('skips steps for selected features', async () => {
+      const steps: string[] = []
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph'], (step) =>
+        steps.push(step),
+      )
+
+      expect(steps).not.toContain('Component demos')
+      expect(steps).not.toContain('Subgraph')
+      expect(steps).toContain('Typedoc')
+      expect(steps).toContain('Install script')
+    })
+
+    it('works without a callback', async () => {
+      await expect(cleanupFiles('/project/my_app', 'full')).resolves.toBeUndefined()
+    })
+  })
 })

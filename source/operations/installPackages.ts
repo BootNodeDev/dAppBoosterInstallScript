@@ -7,8 +7,10 @@ export async function installPackages(
   projectFolder: string,
   mode: InstallationType,
   features: FeatureName[] = [],
+  onProgress?: (step: string) => void,
 ): Promise<void> {
   if (mode === 'full') {
+    onProgress?.('Installing packages')
     await execFile('pnpm', ['i'], { cwd: projectFolder })
     return
   }
@@ -16,10 +18,14 @@ export async function installPackages(
   const packagesToRemove = getPackagesToRemove(features)
 
   if (packagesToRemove.length === 0) {
+    onProgress?.('Installing packages')
     await execFile('pnpm', ['i'], { cwd: projectFolder })
     return
   }
 
+  onProgress?.('Installing packages')
   await execFile('pnpm', ['remove', ...packagesToRemove], { cwd: projectFolder })
+
+  onProgress?.('Executing post-install scripts')
   await execFile('pnpm', ['run', 'postinstall'], { cwd: projectFolder })
 }

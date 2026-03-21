@@ -75,30 +75,37 @@ export async function cleanupFiles(
   projectFolder: string,
   mode: InstallationType,
   features: FeatureName[] = [],
+  onProgress?: (step: string) => void,
 ): Promise<void> {
   if (mode === 'custom') {
     if (!isFeatureSelected('demo', features)) {
+      onProgress?.('Component demos')
       await cleanupDemo(projectFolder)
     }
 
     if (!isFeatureSelected('subgraph', features)) {
+      onProgress?.('Subgraph')
       await cleanupSubgraph(projectFolder, features)
     }
 
     if (!isFeatureSelected('typedoc', features)) {
+      onProgress?.('Typedoc')
       await cleanupTypedoc(projectFolder)
     }
 
     if (!isFeatureSelected('vocs', features)) {
+      onProgress?.('Vocs')
       await cleanupVocs(projectFolder)
     }
 
     if (!isFeatureSelected('husky', features)) {
+      onProgress?.('Husky')
       await cleanupHusky(projectFolder)
     }
 
     patchPackageJson(projectFolder, features)
   }
 
+  onProgress?.('Install script')
   await execFile('rm', ['-rf', '.install-files'], { cwd: projectFolder })
 }

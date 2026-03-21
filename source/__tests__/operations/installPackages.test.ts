@@ -133,4 +133,32 @@ describe('installPackages', () => {
 
     expect(exec).not.toHaveBeenCalled()
   })
+
+  describe('onProgress callback', () => {
+    it('reports one step for full mode', async () => {
+      const steps: string[] = []
+      await installPackages('/project/my_app', 'full', [], (step) => steps.push(step))
+
+      expect(steps).toEqual(['Installing packages'])
+    })
+
+    it('reports two steps for custom mode with packages to remove', async () => {
+      const steps: string[] = []
+      await installPackages('/project/my_app', 'custom', ['demo'], (step) => steps.push(step))
+
+      expect(steps).toEqual(['Installing packages', 'Executing post-install scripts'])
+    })
+
+    it('reports one step for custom mode with all features selected', async () => {
+      const allFeatures = Object.keys(featureDefinitions) as Array<keyof typeof featureDefinitions>
+      const steps: string[] = []
+      await installPackages('/project/my_app', 'custom', allFeatures, (step) => steps.push(step))
+
+      expect(steps).toEqual(['Installing packages'])
+    })
+
+    it('works without a callback', async () => {
+      await expect(installPackages('/project/my_app', 'full')).resolves.toBeUndefined()
+    })
+  })
 })

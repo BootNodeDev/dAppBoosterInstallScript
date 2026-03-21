@@ -1,5 +1,5 @@
 import { Text } from 'ink'
-import { type FC, useEffect, useMemo, useState } from 'react'
+import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import type { FeatureName } from '../../../constants/config.js'
 import { createEnvFile } from '../../../operations/createEnvFile.js'
 import { installPackages } from '../../../operations/installPackages.js'
@@ -19,6 +19,7 @@ interface Props {
 const Install: FC<Props> = ({ projectName, onCompletion, installationConfig }) => {
   const { installationType, selectedFeatures } = installationConfig
   const projectFolder = useMemo(() => getProjectFolder(projectName), [projectName])
+  const [steps, setSteps] = useState<string[]>([])
   const [status, setStatus] = useState<'running' | 'done' | 'error'>('running')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -26,12 +27,17 @@ const Install: FC<Props> = ({ projectName, onCompletion, installationConfig }) =
     ? installationType[0]?.toUpperCase() + installationType.slice(1)
     : ''
 
+  const handleProgress = useCallback((step: string) => {
+    setSteps((prev) => [...prev, step])
+  }, [])
+
   useEffect(() => {
     const features = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
 
     const run = async () => {
+      handleProgress('Creating .env.local file')
       await createEnvFile(projectFolder)
-      await installPackages(projectFolder, installationType ?? 'full', features)
+      await installPackages(projectFolder, installationType ?? 'full', features, handleProgress)
     }
 
     run()
@@ -43,14 +49,29 @@ const Install: FC<Props> = ({ projectName, onCompletion, installationConfig }) =
         setStatus('error')
         setErrorMessage(error instanceof Error ? error.message : String(error))
       })
-  }, [projectFolder, installationType, selectedFeatures, onCompletion])
+  }, [projectFolder, installationType, selectedFeatures, onCompletion, handleProgress])
+
+  const completedSteps = status === 'done' ? steps : steps.slice(0, -1)
+  const currentStep = status === 'running' ? steps.at(-1) : undefined
 
   return (
     <>
       <Divider title={`${title ?? 'Full'} installation`} />
-      {status === 'running' && <Text color={'whiteBright'}>Installing packages... Working...</Text>}
-      {status === 'done' && <Text color={'green'}>Installation complete. Done!</Text>}
-      {status === 'error' && <Text color={'red'}>Installation failed: {errorMessage}</Text>}
+      {completedSteps.map((step) => (
+        <Text key={step}>
+          <Text color={'green'}>{'\u2714'}</Text> {step}
+        </Text>
+      ))}
+      {currentStep && (
+        <Text>
+          <Text dimColor>{'\u25CB'}</Text> {currentStep} <Text dimColor>Working...</Text>
+        </Text>
+      )}
+      {status === 'error' && (
+        <Text>
+          <Text color={'red'}>{'\u2717'}</Text> Installation failed: {errorMessage}
+        </Text>
+      )}
     </>
   )
 }
