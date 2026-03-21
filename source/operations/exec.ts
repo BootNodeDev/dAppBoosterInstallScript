@@ -12,11 +12,15 @@ function run(command: string, args: string[], options: SpawnOptions): Promise<vo
       stderr += data.toString()
     })
 
-    child.on('close', (code) => {
+    child.on('close', (code, signal) => {
       if (code === 0) {
         resolve()
       } else {
-        const message = stderr.trim() || `Command failed with exit code ${code}`
+        const fallback =
+          signal !== null
+            ? `Process killed by signal ${signal}`
+            : `Command failed with exit code ${code}`
+        const message = stderr.trim() || fallback
         reject(new Error(message))
       }
     })

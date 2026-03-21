@@ -63,7 +63,7 @@ Key directories:
 - **Run tests:** `pnpm test` / `pnpm test:coverage`
 - **Structure:** `source/__tests__/` mirrors `source/` layout. Operations tests live in `source/__tests__/operations/`
 - **What to test:** Non-interactive agentic flow (validation, JSON output), operations (correct shell commands), config, utils
-- **What not to test:** React/Ink components, `exec.ts` internals (mocked in all consumers)
+- **What not to test:** React/Ink components
 - **Mocking pattern:** Operations tests mock `exec`/`execFile` from `source/operations/exec.js`. Non-interactive tests mock the entire operations layer
 - **Coverage:** Focus on the agentic interface. Test files and `source/components/` are excluded from coverage
 
