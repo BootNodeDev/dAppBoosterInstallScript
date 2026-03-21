@@ -64,7 +64,7 @@ Single source of truth for all feature metadata. Every consumer reads from here:
 
 ```ts
 featureDefinitions: Record<FeatureName, {
-  description: string   // --info output, --help text
+  description: string   // --info output
   label: string         // TUI multiselect display
   packages: string[]    // pnpm packages to remove when deselected
   default: boolean      // --info output
