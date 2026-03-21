@@ -45,3 +45,19 @@ export function getPostInstallMessages(
 export function projectDirectoryExists(projectName: string): boolean {
   return existsSync(getProjectFolder(projectName))
 }
+
+type StepStatus = 'running' | 'done' | 'error'
+
+type StepDisplay = {
+  completedSteps: string[]
+  currentStep: string | undefined
+  failedStep: string | undefined
+}
+
+export function deriveStepDisplay(steps: string[], status: StepStatus): StepDisplay {
+  return {
+    completedSteps: status === 'done' ? steps : steps.slice(0, -1),
+    currentStep: status === 'running' ? steps.at(-1) : undefined,
+    failedStep: status === 'error' ? steps.at(-1) : undefined,
+  }
+}

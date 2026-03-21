@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { featureDefinitions } from '../constants/config.js'
 import {
+  deriveStepDisplay,
   getPackagesToRemove,
   getPostInstallMessages,
   isFeatureSelected,
@@ -112,5 +113,55 @@ describe('getPostInstallMessages', () => {
     const result = getPostInstallMessages('custom', [])
 
     expect(result).toEqual([])
+  })
+})
+
+describe('deriveStepDisplay', () => {
+  it('shows all steps as completed when done', () => {
+    const result = deriveStepDisplay(['Step 1', 'Step 2', 'Step 3'], 'done')
+
+    expect(result.completedSteps).toEqual(['Step 1', 'Step 2', 'Step 3'])
+    expect(result.currentStep).toBeUndefined()
+    expect(result.failedStep).toBeUndefined()
+  })
+
+  it('shows last step as current when running', () => {
+    const result = deriveStepDisplay(['Step 1', 'Step 2', 'Step 3'], 'running')
+
+    expect(result.completedSteps).toEqual(['Step 1', 'Step 2'])
+    expect(result.currentStep).toBe('Step 3')
+    expect(result.failedStep).toBeUndefined()
+  })
+
+  it('shows last step as failed when error', () => {
+    const result = deriveStepDisplay(['Step 1', 'Step 2', 'Step 3'], 'error')
+
+    expect(result.completedSteps).toEqual(['Step 1', 'Step 2'])
+    expect(result.currentStep).toBeUndefined()
+    expect(result.failedStep).toBe('Step 3')
+  })
+
+  it('handles empty steps on error', () => {
+    const result = deriveStepDisplay([], 'error')
+
+    expect(result.completedSteps).toEqual([])
+    expect(result.currentStep).toBeUndefined()
+    expect(result.failedStep).toBeUndefined()
+  })
+
+  it('handles single step running', () => {
+    const result = deriveStepDisplay(['Step 1'], 'running')
+
+    expect(result.completedSteps).toEqual([])
+    expect(result.currentStep).toBe('Step 1')
+    expect(result.failedStep).toBeUndefined()
+  })
+
+  it('handles single step error', () => {
+    const result = deriveStepDisplay(['Step 1'], 'error')
+
+    expect(result.completedSteps).toEqual([])
+    expect(result.currentStep).toBeUndefined()
+    expect(result.failedStep).toBe('Step 1')
   })
 })

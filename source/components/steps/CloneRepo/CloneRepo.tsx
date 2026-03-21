@@ -1,6 +1,7 @@
 import { Text } from 'ink'
 import { type FC, useCallback, useEffect, useState } from 'react'
 import { cloneRepo } from '../../../operations/index.js'
+import { deriveStepDisplay } from '../../../utils/utils.js'
 import Divider from '../../Divider.js'
 
 interface Props {
@@ -29,8 +30,7 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
       })
   }, [projectName, onCompletion, handleProgress])
 
-  const completedSteps = status === 'done' ? steps : steps.slice(0, -1)
-  const currentStep = status === 'running' ? steps.at(-1) : undefined
+  const { completedSteps, currentStep, failedStep } = deriveStepDisplay(steps, status)
 
   return (
     <>
@@ -45,11 +45,12 @@ const CloneRepo: FC<Props> = ({ projectName, onCompletion }) => {
           <Text dimColor>{'\u25CB'}</Text> {currentStep} <Text dimColor>Working...</Text>
         </Text>
       )}
-      {status === 'error' && (
+      {failedStep && (
         <Text>
-          <Text color={'red'}>{'\u2717'}</Text> Failed to clone: {errorMessage}
+          <Text color={'red'}>{'\u2717'}</Text> {failedStep} <Text color={'red'}>Error</Text>
         </Text>
       )}
+      {status === 'error' && <Text color={'red'}>Failed to clone: {errorMessage}</Text>}
     </>
   )
 }

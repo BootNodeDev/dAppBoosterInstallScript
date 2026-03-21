@@ -3,7 +3,7 @@ import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import type { FeatureName } from '../../constants/config.js'
 import { cleanupFiles } from '../../operations/index.js'
 import type { InstallationType, MultiSelectItem } from '../../types/types.js'
-import { getProjectFolder } from '../../utils/utils.js'
+import { deriveStepDisplay, getProjectFolder } from '../../utils/utils.js'
 import Divider from '../Divider.js'
 
 interface Props {
@@ -40,8 +40,7 @@ const FileCleanup: FC<Props> = ({ onCompletion, installationConfig, projectName 
       })
   }, [projectFolder, installationType, selectedFeatures, onCompletion, handleProgress])
 
-  const completedSteps = status === 'done' ? steps : steps.slice(0, -1)
-  const currentStep = status === 'running' ? steps.at(-1) : undefined
+  const { completedSteps, currentStep, failedStep } = deriveStepDisplay(steps, status)
 
   return (
     <>
@@ -56,11 +55,12 @@ const FileCleanup: FC<Props> = ({ onCompletion, installationConfig, projectName 
           <Text dimColor>{'\u25CB'}</Text> {currentStep} <Text dimColor>Working...</Text>
         </Text>
       )}
-      {status === 'error' && (
+      {failedStep && (
         <Text>
-          <Text color={'red'}>{'\u2717'}</Text> Cleanup failed: {errorMessage}
+          <Text color={'red'}>{'\u2717'}</Text> {failedStep} <Text color={'red'}>Error</Text>
         </Text>
       )}
+      {status === 'error' && <Text color={'red'}>Cleanup failed: {errorMessage}</Text>}
     </>
   )
 }
