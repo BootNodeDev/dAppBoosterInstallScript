@@ -75,12 +75,7 @@ const cli = meow(
 
 if (cli.flags.info) {
   console.log(getInfoOutput())
-  process.exit(0)
-}
-
-const isNonInteractive = cli.flags.nonInteractive || cli.flags.ni || !process.stdout.isTTY
-
-if (isNonInteractive) {
+} else if (cli.flags.nonInteractive || cli.flags.ni || !process.stdout.isTTY) {
   runNonInteractive({
     name: cli.flags.name,
     mode: cli.flags.mode,
