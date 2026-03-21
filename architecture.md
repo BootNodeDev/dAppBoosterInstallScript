@@ -83,10 +83,10 @@ Plain async functions with no UI dependencies. Each operation receives explicit 
 
 | Function | What it does |
 |---|---|
-| `cloneRepo(projectName, onProgress?)` | Shallow clone, fetch tags, checkout latest tag, rm .git, git init. Uses `execFile` (no shell) for all commands except `git checkout $(...)` which needs shell substitution. |
-| `createEnvFile(projectFolder)` | Copy .env.example to .env.local |
+| `cloneRepo(projectName, onProgress?)` | Shallow clone, fetch tags, checkout latest tag, rm .git, git init. Uses `execFile` (no shell) for git commands except `git checkout $(...)` which needs shell substitution. Uses `fs.rm` for .git removal. |
+| `createEnvFile(projectFolder)` | Copy .env.example to .env.local via `fs.copyFile` |
 | `installPackages(projectFolder, mode, features, onProgress?)` | Full: `pnpm i`. Custom with packages to remove: `pnpm remove` + postinstall. Custom with all features: `pnpm i`. Uses `execFile` exclusively (no shell). |
-| `cleanupFiles(projectFolder, mode, features, onProgress?)` | Remove files/folders for deselected features, patch package.json scripts, remove .install-files. Uses `execFile` exclusively (no shell). |
+| `cleanupFiles(projectFolder, mode, features, onProgress?)` | Remove files/folders for deselected features, patch package.json scripts, remove .install-files. Uses `node:fs/promises` (`rm`, `mkdir`, `copyFile`) for async operations; `patchPackageJson` uses sync `node:fs`. |
 
 ### Shell Execution (`source/operations/exec.ts`)
 

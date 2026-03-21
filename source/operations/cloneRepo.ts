@@ -1,3 +1,5 @@
+import { rm } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { repoUrl } from '../constants/config.js'
 import { getProjectFolder } from '../utils/utils.js'
 import { exec, execFile } from './exec.js'
@@ -21,7 +23,7 @@ export async function cloneRepo(
   })
 
   onProgress?.('Removing .git folder')
-  await execFile('rm', ['-rf', '.git'], { cwd: projectFolder })
+  await rm(resolve(projectFolder, '.git'), { recursive: true, force: true })
 
   onProgress?.('Initializing Git repository')
   await execFile('git', ['init'], { cwd: projectFolder })

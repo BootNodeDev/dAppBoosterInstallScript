@@ -1,9 +1,11 @@
+import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FeatureName } from '../../constants/config.js'
 
-vi.mock('../../operations/exec.js', () => ({
-  exec: vi.fn().mockResolvedValue(undefined),
-  execFile: vi.fn().mockResolvedValue(undefined),
+vi.mock('node:fs/promises', () => ({
+  rm: vi.fn().mockResolvedValue(undefined),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  copyFile: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('node:fs', () => ({
@@ -24,14 +26,23 @@ vi.mock('node:fs', () => ({
   writeFileSync: vi.fn(),
 }))
 
-const { execFile } = await import('../../operations/exec.js')
+const { rm, mkdir, copyFile } = await import('node:fs/promises')
 const { readFileSync, writeFileSync } = await import('node:fs')
 const { cleanupFiles } = await import('../../operations/cleanupFiles.js')
 
-function getExecFileCommands(): string[] {
-  return vi
-    .mocked(execFile)
-    .mock.calls.map((call) => `${call[0]} ${(call[1] as string[]).join(' ')}`)
+function getRmPaths(): string[] {
+  return vi.mocked(rm).mock.calls.map((call) => call[0] as string)
+}
+
+function getMkdirPaths(): string[] {
+  return vi.mocked(mkdir).mock.calls.map((call) => call[0] as string)
+}
+
+function getCopyFileCalls(): Array<{ src: string; dst: string }> {
+  return vi.mocked(copyFile).mock.calls.map((call) => ({
+    src: call[0] as string,
+    dst: call[1] as string,
+  }))
 }
 
 function getWrittenPackageJson(): Record<string, unknown> {
@@ -65,9 +76,8 @@ describe('cleanupFiles', () => {
     it('only removes .install-files', async () => {
       await cleanupFiles('/project/my_app', 'full')
 
-      const commands = getExecFileCommands()
-      expect(commands).toHaveLength(1)
-      expect(commands[0]).toBe('rm -rf .install-files')
+      expect(rm).toHaveBeenCalledTimes(1)
+      expect(getRmPaths()[0]).toBe(resolve('/project/my_app', '.install-files'))
     })
 
     it('does not patch package.json', async () => {
@@ -82,8 +92,8 @@ describe('cleanupFiles', () => {
       const allFeatures: FeatureName[] = ['demo', 'subgraph', 'typedoc', 'vocs', 'husky']
       await cleanupFiles('/project/my_app', 'custom', allFeatures)
 
-      const commands = getExecFileCommands()
-      expect(commands).toEqual(['rm -rf .install-files'])
+      expect(rm).toHaveBeenCalledTimes(1)
+      expect(getRmPaths()[0]).toBe(resolve('/project/my_app', '.install-files'))
       expect(writeFileSync).toHaveBeenCalled()
     })
 
@@ -104,12 +114,15 @@ describe('cleanupFiles', () => {
     it('removes home folder, recreates it, copies replacement', async () => {
       await cleanupFiles('/project/my_app', 'custom', ['subgraph', 'typedoc', 'vocs', 'husky'])
 
-      const commands = getExecFileCommands()
-      expect(commands).toContain('rm -rf src/components/pageComponents/home')
-      expect(commands).toContain('mkdir -p src/components/pageComponents/home')
-      expect(commands).toContain(
-        'cp .install-files/home/index.tsx src/components/pageComponents/home/',
-      )
+      const homeFolder = resolve('/project/my_app', 'src/components/pageComponents/home')
+      expect(getRmPaths()).toContain(homeFolder)
+      expect(getMkdirPaths()).toContain(homeFolder)
+
+      const copies = getCopyFileCalls()
+      expect(copies).toContainEqual({
+        src: resolve('/project/my_app', '.install-files/home/index.tsx'),
+        dst: resolve(homeFolder, 'index.tsx'),
+      })
     })
   })
 
@@ -117,28 +130,31 @@ describe('cleanupFiles', () => {
     it('removes src/subgraphs', async () => {
       await cleanupFiles('/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
 
-      const commands = getExecFileCommands()
-      expect(commands).toContain('rm -rf src/subgraphs')
+      expect(getRmPaths()).toContain(resolve('/project/my_app', 'src/subgraphs'))
     })
 
     it('cleans up subgraph demos when demo IS selected', async () => {
       await cleanupFiles('/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
 
-      const commands = getExecFileCommands()
-      const homeFolder = 'src/components/pageComponents/home'
-      expect(commands).toContain(`rm -rf ${homeFolder}/Examples/demos/subgraphs`)
-      expect(commands).toContain(`rm -f ${homeFolder}/Examples/index.tsx`)
-      expect(commands).toContain(
-        `cp .install-files/home/Examples/index.tsx ${homeFolder}/Examples/index.tsx`,
-      )
+      const homeFolder = resolve('/project/my_app', 'src/components/pageComponents/home')
+      expect(getRmPaths()).toContain(resolve(homeFolder, 'Examples/demos/subgraphs'))
+      expect(getRmPaths()).toContain(resolve(homeFolder, 'Examples/index.tsx'))
+
+      const copies = getCopyFileCalls()
+      expect(copies).toContainEqual({
+        src: resolve('/project/my_app', '.install-files/home/Examples/index.tsx'),
+        dst: resolve(homeFolder, 'Examples/index.tsx'),
+      })
     })
 
     it('does NOT clean up subgraph demos when demo is also deselected', async () => {
       await cleanupFiles('/project/my_app', 'custom', ['typedoc', 'vocs', 'husky'])
 
-      const commands = getExecFileCommands()
-      const demoCleanupCommands = commands.filter((cmd) => cmd.includes('Examples/demos/subgraphs'))
-      expect(demoCleanupCommands).toHaveLength(0)
+      const subgraphDemosPath = resolve(
+        '/project/my_app',
+        'src/components/pageComponents/home/Examples/demos/subgraphs',
+      )
+      expect(getRmPaths()).not.toContain(subgraphDemosPath)
     })
 
     it('removes subgraph-codegen from package.json scripts', async () => {
@@ -154,8 +170,7 @@ describe('cleanupFiles', () => {
     it('removes typedoc.json', async () => {
       await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'vocs', 'husky'])
 
-      const commands = getExecFileCommands()
-      expect(commands).toContain('rm -f typedoc.json')
+      expect(getRmPaths()).toContain(resolve('/project/my_app', 'typedoc.json'))
     })
 
     it('removes typedoc:build from package.json scripts', async () => {
@@ -171,9 +186,8 @@ describe('cleanupFiles', () => {
     it('removes vocs.config.ts and docs folder', async () => {
       await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'husky'])
 
-      const commands = getExecFileCommands()
-      expect(commands).toContain('rm -f vocs.config.ts')
-      expect(commands).toContain('rm -rf docs')
+      expect(getRmPaths()).toContain(resolve('/project/my_app', 'vocs.config.ts'))
+      expect(getRmPaths()).toContain(resolve('/project/my_app', 'docs'))
     })
 
     it('removes docs scripts from package.json', async () => {
@@ -191,10 +205,9 @@ describe('cleanupFiles', () => {
     it('removes husky folder and config files', async () => {
       await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'vocs'])
 
-      const commands = getExecFileCommands()
-      expect(commands).toContain('rm -rf .husky')
-      expect(commands).toContain('rm -f .lintstagedrc.mjs')
-      expect(commands).toContain('rm -f commitlint.config.js')
+      expect(getRmPaths()).toContain(resolve('/project/my_app', '.husky'))
+      expect(getRmPaths()).toContain(resolve('/project/my_app', '.lintstagedrc.mjs'))
+      expect(getRmPaths()).toContain(resolve('/project/my_app', 'commitlint.config.js'))
     })
 
     it('removes prepare from package.json scripts', async () => {
@@ -210,13 +223,13 @@ describe('cleanupFiles', () => {
     it('runs all cleanup operations', async () => {
       await cleanupFiles('/project/my_app', 'custom', [])
 
-      const commands = getExecFileCommands()
-      expect(commands).toContain('rm -rf src/components/pageComponents/home')
-      expect(commands).toContain('rm -rf src/subgraphs')
-      expect(commands).toContain('rm -f typedoc.json')
-      expect(commands).toContain('rm -f vocs.config.ts')
-      expect(commands).toContain('rm -rf .husky')
-      expect(commands).toContain('rm -rf .install-files')
+      const paths = getRmPaths()
+      expect(paths).toContain(resolve('/project/my_app', 'src/components/pageComponents/home'))
+      expect(paths).toContain(resolve('/project/my_app', 'src/subgraphs'))
+      expect(paths).toContain(resolve('/project/my_app', 'typedoc.json'))
+      expect(paths).toContain(resolve('/project/my_app', 'vocs.config.ts'))
+      expect(paths).toContain(resolve('/project/my_app', '.husky'))
+      expect(paths).toContain(resolve('/project/my_app', '.install-files'))
     })
 
     it('removes all optional scripts from package.json', async () => {
@@ -230,26 +243,24 @@ describe('cleanupFiles', () => {
       expect(scripts['docs:dev']).toBeUndefined()
       expect(scripts['docs:preview']).toBeUndefined()
       expect(scripts.prepare).toBeUndefined()
-      // Preserved scripts
       expect(scripts.dev).toBe('next dev')
       expect(scripts.build).toBe('next build')
     })
   })
 
-  it('always removes .install-files as the last step', async () => {
+  it('always removes .install-files as the last rm call', async () => {
     await cleanupFiles('/project/my_app', 'custom', ['demo'])
 
-    const commands = getExecFileCommands()
-    expect(commands.at(-1)).toBe('rm -rf .install-files')
+    const paths = getRmPaths()
+    expect(paths.at(-1)).toBe(resolve('/project/my_app', '.install-files'))
   })
 
-  it('uses -f flag on all single-file rm calls for idempotent cleanup', async () => {
+  it('uses force option on all rm calls', async () => {
     await cleanupFiles('/project/my_app', 'custom', [])
 
-    const commands = getExecFileCommands()
-    const rmCommands = commands.filter((cmd) => cmd.startsWith('rm '))
-    for (const cmd of rmCommands) {
-      expect(cmd).toMatch(/^rm -[rf]/)
+    for (const call of vi.mocked(rm).mock.calls) {
+      const options = call[1] as { force?: boolean }
+      expect(options.force).toBe(true)
     }
   })
 

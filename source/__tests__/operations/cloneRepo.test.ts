@@ -6,7 +6,12 @@ vi.mock('../../operations/exec.js', () => ({
   execFile: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('node:fs/promises', () => ({
+  rm: vi.fn().mockResolvedValue(undefined),
+}))
+
 const { exec, execFile } = await import('../../operations/exec.js')
+const { rm } = await import('node:fs/promises')
 const { cloneRepo } = await import('../../operations/cloneRepo.js')
 
 describe('cloneRepo', () => {
@@ -14,12 +19,13 @@ describe('cloneRepo', () => {
     vi.clearAllMocks()
   })
 
-  it('calls 5 commands in sequence', async () => {
+  it('calls 5 operations in sequence', async () => {
     await cloneRepo('my_app')
 
     const execFileCalls = vi.mocked(execFile).mock.calls
     const execCalls = vi.mocked(exec).mock.calls
-    expect(execFileCalls.length + execCalls.length).toBe(5)
+    const rmCalls = vi.mocked(rm).mock.calls
+    expect(execFileCalls.length + execCalls.length + rmCalls.length).toBe(5)
   })
 
   it('clones with execFile passing projectName as arg', async () => {
@@ -51,11 +57,12 @@ describe('cloneRepo', () => {
     })
   })
 
-  it('removes .git with execFile', async () => {
+  it('removes .git with fs.rm', async () => {
     await cloneRepo('my_app')
 
-    expect(execFile).toHaveBeenCalledWith('rm', ['-rf', '.git'], {
-      cwd: expect.stringContaining('my_app'),
+    expect(rm).toHaveBeenCalledWith(expect.stringContaining('my_app/.git'), {
+      recursive: true,
+      force: true,
     })
   })
 
@@ -67,7 +74,7 @@ describe('cloneRepo', () => {
     })
   })
 
-  it('executes commands in correct order', async () => {
+  it('executes operations in correct order', async () => {
     const callOrder: string[] = []
     vi.mocked(execFile).mockImplementation(async (file, args) => {
       callOrder.push(`${file} ${args[0]}`)
@@ -75,10 +82,13 @@ describe('cloneRepo', () => {
     vi.mocked(exec).mockImplementation(async (_cmd) => {
       callOrder.push('git checkout')
     })
+    vi.mocked(rm).mockImplementation(async () => {
+      callOrder.push('fs.rm .git')
+    })
 
     await cloneRepo('my_app')
 
-    expect(callOrder).toEqual(['git clone', 'git fetch', 'git checkout', 'rm -rf', 'git init'])
+    expect(callOrder).toEqual(['git clone', 'git fetch', 'git checkout', 'fs.rm .git', 'git init'])
   })
 
   it('does not interpolate projectName into shell strings', async () => {
