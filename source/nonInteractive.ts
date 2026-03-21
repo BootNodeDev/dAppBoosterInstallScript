@@ -131,7 +131,7 @@ export async function runNonInteractive(flags: {
     }
 
     console.log(JSON.stringify(result, null, 2))
-  } catch (error) {
+  } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
     fail(message)
   }

@@ -80,7 +80,7 @@ if (cli.flags.info) {
     name: cli.flags.name,
     mode: cli.flags.mode,
     features: cli.flags.features,
-  }).catch((error) => {
+  }).catch((error: unknown) => {
     if (process.exitCode === 1) {
       return
     }
