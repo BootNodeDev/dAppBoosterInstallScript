@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FeatureName } from '../../constants/config.js'
 
 vi.mock('../../operations/exec.js', () => ({
-  exec: vi.fn().mockResolvedValue(''),
-  execFile: vi.fn().mockResolvedValue(''),
+  exec: vi.fn().mockResolvedValue(undefined),
+  execFile: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('node:fs', () => ({

@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { featureDefinitions } from '../../constants/config.js'
 
 vi.mock('../../operations/exec.js', () => ({
-  exec: vi.fn().mockResolvedValue(''),
-  execFile: vi.fn().mockResolvedValue(''),
+  exec: vi.fn().mockResolvedValue(undefined),
+  execFile: vi.fn().mockResolvedValue(undefined),
 }))
 
 const { execFile } = await import('../../operations/exec.js')
@@ -72,7 +72,6 @@ describe('installPackages', () => {
         if (args[0] === 'run' && args[1] === 'postinstall') {
           callOrder.push('postinstall')
         }
-        return ''
       })
 
       await installPackages('/project/my_app', 'custom', ['demo'])

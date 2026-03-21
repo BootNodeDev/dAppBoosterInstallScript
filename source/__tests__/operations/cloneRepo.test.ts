@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { repoUrl } from '../../constants/config.js'
 
 vi.mock('../../operations/exec.js', () => ({
-  exec: vi.fn().mockResolvedValue(''),
-  execFile: vi.fn().mockResolvedValue(''),
+  exec: vi.fn().mockResolvedValue(undefined),
+  execFile: vi.fn().mockResolvedValue(undefined),
 }))
 
 const { exec, execFile } = await import('../../operations/exec.js')
@@ -71,11 +71,9 @@ describe('cloneRepo', () => {
     const callOrder: string[] = []
     vi.mocked(execFile).mockImplementation(async (file, args) => {
       callOrder.push(`${file} ${args[0]}`)
-      return ''
     })
     vi.mocked(exec).mockImplementation(async (_cmd) => {
       callOrder.push('git checkout')
-      return ''
     })
 
     await cloneRepo('my_app')

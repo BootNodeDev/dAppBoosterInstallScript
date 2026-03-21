@@ -114,9 +114,19 @@ describe('nonInteractive — validation', () => {
     expect(output.error).toMatch(/Unknown features: banana/)
   })
 
-  it('rejects when project directory already exists', async () => {
+  it('rejects when project directory already exists (full mode)', async () => {
     vi.mocked(projectDirectoryExists).mockReturnValueOnce(true)
     await expect(runNonInteractive({ name: 'my_app', mode: 'full' })).rejects.toThrow()
+    const output = getLastJsonOutput()
+    expect(output.success).toBe(false)
+    expect(output.error).toMatch(/already exists/)
+  })
+
+  it('rejects when project directory already exists (custom mode)', async () => {
+    vi.mocked(projectDirectoryExists).mockReturnValueOnce(true)
+    await expect(
+      runNonInteractive({ name: 'my_app', mode: 'custom', features: 'demo' }),
+    ).rejects.toThrow()
     const output = getLastJsonOutput()
     expect(output.success).toBe(false)
     expect(output.error).toMatch(/already exists/)
