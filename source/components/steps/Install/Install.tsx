@@ -25,7 +25,7 @@ const Install: FC<Props> = ({ projectName, onCompletion, installationConfig }) =
 
   const title = installationType
     ? installationType[0]?.toUpperCase() + installationType.slice(1)
-    : ''
+    : 'Full'
 
   const handleProgress = useCallback((step: string) => {
     setSteps((prev) => [...prev, step])
@@ -55,7 +55,7 @@ const Install: FC<Props> = ({ projectName, onCompletion, installationConfig }) =
 
   return (
     <>
-      <Divider title={`${title ?? 'Full'} installation`} />
+      <Divider title={`${title} installation`} />
       {completedSteps.map((step) => (
         <Text key={step}>
           <Text color={'green'}>{'\u2714'}</Text> {step}
