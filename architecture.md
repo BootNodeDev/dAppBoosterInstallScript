@@ -69,7 +69,7 @@ featureDefinitions: Record<FeatureName, {
   label: string         // TUI multiselect display
   packages: string[]    // pnpm packages to remove when deselected
   default: boolean      // --info output
-  postInstall?: string[] // post-install instructions for agents and TUI
+  postInstall?: string[] // post-install instructions for non-interactive JSON output
 }>
 ```
 
@@ -168,11 +168,15 @@ Components are presentation-only — they call operations via `useEffect` and re
 
 2. **`source/operations/cleanupFiles.ts`** — add a cleanup function and call it from `cleanupFiles()` when the feature is deselected. If the feature has scripts in package.json, add removal to `patchPackageJson`.
 
-3. **Tests** — add test cases in `source/__tests__/operations/cleanupFiles.test.ts` for the new cleanup rules. The nonInteractive, info, installPackages, and utils tests pick up new features automatically since they read from `featureDefinitions`.
+3. **`source/components/steps/PostInstall.tsx`** — if the feature has post-install instructions, add TUI rendering here. The component hardcodes its own display (richer than the `postInstall` strings in config), so new features with post-install steps need manual JSX.
 
-4. **Verify** — `pnpm build && pnpm lint && pnpm test`
+4. **`source/cli.tsx`** — update the `--help` text to include the new feature name and description.
 
-Steps 1 and 4 are always required. Steps 2-3 only apply if the feature has files/folders to clean up.
+5. **Tests** — add test cases in `source/__tests__/operations/cleanupFiles.test.ts` for the new cleanup rules. The nonInteractive, info, installPackages, and utils tests pick up new features automatically since they read from `featureDefinitions`.
+
+6. **Verify** — `pnpm build && pnpm lint && pnpm test`
+
+Steps 1 and 6 are always required. Steps 2-5 depend on whether the feature has cleanup rules, post-install instructions, or descriptions for `--help`.
 
 ## How to Add a New Operation
 
