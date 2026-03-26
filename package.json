@@ -2,6 +2,10 @@
   "name": "dappbooster",
   "version": "3.1.3",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BootNodeDev/dAppBoosterInstallScript"
+  },
   "bin": "dist/cli.js",
   "type": "module",
   "engines": {
