@@ -1,6 +1,6 @@
 {
   "name": "dappbooster",
-  "version": "3.1.4",
+  "version": "3.1.5",
   "description": "Agent-friendly dAppBooster installer that scaffolds Web3 dApps via TUI or non-interactive CLI/CI.",
   "keywords": [
     "dappbooster",
@@ -39,7 +39,9 @@
     "lint": "pnpm biome check",
     "lint:fix": "pnpm biome check --write"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "figures": "^6.1.0",
     "ink": "^5.2.1",
@@ -63,6 +65,8 @@
     "vitest": "^4.1.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@biomejs/biome"]
+    "onlyBuiltDependencies": [
+      "@biomejs/biome"
+    ]
   }
 }
