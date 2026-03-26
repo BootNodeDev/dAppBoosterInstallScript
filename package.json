@@ -1,6 +1,6 @@
 {
   "name": "dappbooster",
-  "version": "3.0.2",
+  "version": "3.1.0",
   "license": "MIT",
   "bin": "dist/cli.js",
   "type": "module",
@@ -15,7 +15,9 @@
     "lint": "pnpm biome check",
     "lint:fix": "pnpm biome check --write"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "figures": "^6.1.0",
     "ink": "^5.2.1",
@@ -39,6 +41,8 @@
     "vitest": "^4.1.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@biomejs/biome"]
+    "onlyBuiltDependencies": [
+      "@biomejs/biome"
+    ]
   }
 }
