@@ -6,5 +6,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false
   },
-  "include": ["source"]
+  "include": ["source"],
+  "exclude": ["source/__tests__"]
 }

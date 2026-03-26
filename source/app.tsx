@@ -24,6 +24,8 @@ const App = () => {
     [],
   )
 
+  const skipFeatures = setupType?.value === 'full'
+
   const steps: Array<ReactNode> = useMemo(
     () => [
       <ProjectName
@@ -42,12 +44,10 @@ const App = () => {
         onSelect={onSelectSetupType}
         key={3}
       />,
-      // TODO: add a skip parameter to all (or most) steps
-      // to allow skipping when testing, etc.
       <OptionalPackages
         onCompletion={finishStep}
         onSubmit={onSelectSelectedFeatures}
-        skip={setupType?.value === 'full'}
+        skip={skipFeatures}
         key={4}
       />,
       <Install
@@ -84,6 +84,7 @@ const App = () => {
       selectedFeatures,
       onSelectSetupType,
       projectName,
+      skipFeatures,
     ],
   )
 

@@ -2,8 +2,9 @@ import figures from 'figures'
 import { Box, Text } from 'ink'
 import Link from 'ink-link'
 import type { FC } from 'react'
+import type { FeatureName } from '../../constants/config.js'
 import type { InstallationType, MultiSelectItem } from '../../types/types.js'
-import { featureSelected } from '../../utils/utils.js'
+import { isFeatureSelected } from '../../utils/utils.js'
 import Divider from '../Divider.js'
 
 const SubgraphWarningMessage: FC = () => (
@@ -91,14 +92,10 @@ interface Props {
   projectName: string
 }
 
-/**
- * Component to ask for the project name.
- * @param selectedFeatures
- * @param projectName
- */
 const PostInstall: FC<Props> = ({ installationConfig, projectName }) => {
   const { selectedFeatures, installationType } = installationConfig
-  const subgraphSupport = featureSelected('subgraph', selectedFeatures)
+  const features = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
+  const subgraphSupport = isFeatureSelected('subgraph', features)
 
   return (
     <>
