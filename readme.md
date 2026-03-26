@@ -17,6 +17,106 @@ pnpm dlx dappbooster
 
 dAppBooster documentation: https://docs.dappbooster.dev/
 
+## Non-interactive / CI mode
+
+The installer supports a non-interactive mode for CI pipelines and AI agents. It activates automatically when stdout is not a TTY, or explicitly with the `--ni` flag.
+
+### Discover available features
+
+```shell
+pnpm dlx dappbooster --info
+```
+
+```json
+{
+  "features": {
+    "demo": {
+      "description": "Component demos and example pages",
+      "default": true
+    },
+    "subgraph": {
+      "description": "TheGraph subgraph integration",
+      "default": true,
+      "postInstall": [
+        "Provide your own API key for PUBLIC_SUBGRAPHS_API_KEY in .env.local",
+        "Run pnpm subgraph-codegen from the project folder"
+      ]
+    },
+    "typedoc": {
+      "description": "TypeDoc API documentation generation",
+      "default": true
+    },
+    "vocs": {
+      "description": "Vocs documentation site",
+      "default": true
+    },
+    "husky": {
+      "description": "Git hooks with Husky, lint-staged, and commitlint",
+      "default": true
+    }
+  },
+  "modes": {
+    "full": "Install all features",
+    "custom": "Choose features individually"
+  }
+}
+```
+
+### Full install
+
+```shell
+pnpm dlx dappbooster --ni --name my_dapp --mode full
+```
+
+```json
+{
+  "success": true,
+  "projectName": "my_dapp",
+  "mode": "full",
+  "features": ["demo", "subgraph", "typedoc", "vocs", "husky"],
+  "path": "/absolute/path/to/my_dapp",
+  "postInstall": [
+    "Provide your own API key for PUBLIC_SUBGRAPHS_API_KEY in .env.local",
+    "Run pnpm subgraph-codegen from the project folder"
+  ]
+}
+```
+
+### Custom install with selected features
+
+```shell
+pnpm dlx dappbooster --ni --name my_dapp --mode custom --features demo,subgraph
+```
+
+```json
+{
+  "success": true,
+  "projectName": "my_dapp",
+  "mode": "custom",
+  "features": ["demo", "subgraph"],
+  "path": "/absolute/path/to/my_dapp",
+  "postInstall": [
+    "Provide your own API key for PUBLIC_SUBGRAPHS_API_KEY in .env.local",
+    "Run pnpm subgraph-codegen from the project folder"
+  ]
+}
+```
+
+### Error handling
+
+Errors return structured JSON with a non-zero exit code:
+
+```shell
+pnpm dlx dappbooster --ni --mode full
+```
+
+```json
+{
+  "success": false,
+  "error": "Missing required flag: --name"
+}
+```
+
 ## Development
 
 Clone the repo
