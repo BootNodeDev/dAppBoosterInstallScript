@@ -1,6 +1,6 @@
 # dAppBooster installer
 
-An easy way to install and customize [dAppBooster](https://dappbooster.dev/)
+Agent-friendly installer for [dAppBooster](https://dappbooster.dev/) that scaffolds Web3 dApps via TUI or non-interactive CLI/CI with JSON output.
 
 ## Requirements
 
@@ -17,7 +17,16 @@ pnpm dlx dappbooster
 
 dAppBooster documentation: https://docs.dappbooster.dev/
 
-## Non-interactive / CI mode
+## Agent / CI quickstart
+
+Use `--info` to discover features, then run a non-interactive install that returns JSON.
+
+```shell
+pnpm dlx dappbooster --info
+pnpm dlx dappbooster --ni --name my_dapp --mode full
+```
+
+## Agent / non-interactive / CI mode
 
 The installer supports a non-interactive mode for CI pipelines and AI agents. It activates automatically when stdout is not a TTY, or explicitly with the `--ni` flag.
 
