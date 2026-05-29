@@ -17,15 +17,10 @@ interface Props {
   preselectedStack?: Stack
 }
 
-const STACK_SELECTION_STEP = 1
-const PROJECT_NAME_STEP = 2
-
 const App: FC<Props> = ({ preselectedStack }) => {
   const [stack, setStack] = useState<Stack | undefined>(preselectedStack)
   const [projectName, setProjectName] = useState<string>('')
-  const [currentStep, setCurrentStep] = useState(
-    preselectedStack ? PROJECT_NAME_STEP : STACK_SELECTION_STEP,
-  )
+  const [currentStep, setCurrentStep] = useState(1)
   const [setupType, setSetupType] = useState<InstallationSelectItem | undefined>()
   const [selectedFeatures, setSelectedFeatures] = useState<Array<MultiSelectItem> | undefined>()
 
@@ -39,89 +34,107 @@ const App: FC<Props> = ({ preselectedStack }) => {
 
   const skipFeatures = setupType?.value === 'full'
 
-  const steps: Array<ReactNode> = useMemo(
-    () => [
-      <StackSelection
-        onCompletion={finishStep}
-        onSelect={onSelectStack}
-        key={1}
-      />,
+  const steps: Array<ReactNode> = useMemo(() => {
+    const orderedSteps: Array<ReactNode> = [
       <ProjectName
         onCompletion={finishStep}
         onSubmit={setProjectName}
-        projectName={projectName}
-        key={2}
+        key={'project-name'}
       />,
-      stack ? (
-        <CloneRepo
-          stack={stack}
+    ]
+
+    if (!preselectedStack) {
+      orderedSteps.push(
+        <StackSelection
           onCompletion={finishStep}
-          projectName={projectName}
-          key={3}
-        />
-      ) : null,
+          onSelect={onSelectStack}
+          key={'stack-selection'}
+        />,
+      )
+    }
+
+    if (stack === undefined) {
+      return orderedSteps
+    }
+
+    orderedSteps.push(
+      <CloneRepo
+        stack={stack}
+        onCompletion={finishStep}
+        projectName={projectName}
+        key={'clone-repo'}
+      />,
+    )
+
+    orderedSteps.push(
       <InstallationMode
         onCompletion={finishStep}
         onSelect={onSelectSetupType}
-        key={4}
+        key={'installation-mode'}
       />,
-      stack ? (
-        <OptionalPackages
-          stack={stack}
-          onCompletion={finishStep}
-          onSubmit={onSelectSelectedFeatures}
-          skip={skipFeatures}
-          key={5}
-        />
-      ) : null,
-      stack ? (
-        <Install
-          stack={stack}
-          installationConfig={{
-            installationType: setupType?.value,
-            selectedFeatures: selectedFeatures,
-          }}
-          onCompletion={finishStep}
-          projectName={projectName}
-          key={6}
-        />
-      ) : null,
-      stack ? (
-        <FileCleanup
-          stack={stack}
-          installationConfig={{
-            installationType: setupType?.value,
-            selectedFeatures: selectedFeatures,
-          }}
-          onCompletion={finishStep}
-          projectName={projectName}
-          key={7}
-        />
-      ) : null,
-      stack ? (
-        <PostInstall
-          stack={stack}
-          projectName={projectName}
-          installationConfig={{
-            installationType: setupType?.value,
-            selectedFeatures: selectedFeatures,
-          }}
-          key={8}
-        />
-      ) : null,
-    ],
-    [
-      finishStep,
-      onSelectStack,
-      onSelectSelectedFeatures,
-      setupType?.value,
-      selectedFeatures,
-      onSelectSetupType,
-      projectName,
-      skipFeatures,
-      stack,
-    ],
-  )
+    )
+
+    orderedSteps.push(
+      <OptionalPackages
+        stack={stack}
+        onCompletion={finishStep}
+        onSubmit={onSelectSelectedFeatures}
+        skip={skipFeatures}
+        key={'optional-packages'}
+      />,
+    )
+
+    orderedSteps.push(
+      <Install
+        stack={stack}
+        installationConfig={{
+          installationType: setupType?.value,
+          selectedFeatures: selectedFeatures,
+        }}
+        onCompletion={finishStep}
+        projectName={projectName}
+        key={'install'}
+      />,
+    )
+
+    orderedSteps.push(
+      <FileCleanup
+        stack={stack}
+        installationConfig={{
+          installationType: setupType?.value,
+          selectedFeatures: selectedFeatures,
+        }}
+        onCompletion={finishStep}
+        projectName={projectName}
+        key={'file-cleanup'}
+      />,
+    )
+
+    orderedSteps.push(
+      <PostInstall
+        stack={stack}
+        projectName={projectName}
+        installationConfig={{
+          installationType: setupType?.value,
+          selectedFeatures: selectedFeatures,
+        }}
+        key={'post-install'}
+      />,
+    )
+
+    return orderedSteps
+  }, [
+    finishStep,
+    onSelectStack,
+    onSelectSelectedFeatures,
+    setupType?.value,
+    selectedFeatures,
+    onSelectSetupType,
+    projectName,
+    skipFeatures,
+    stack,
+    preselectedStack,
+  ])
 
   return (
     <Box
