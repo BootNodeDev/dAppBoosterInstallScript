@@ -1,5 +1,5 @@
 import { type FC, useCallback, useMemo } from 'react'
-import { isValidName } from '../../utils/utils.js'
+import { isValidName, projectDirectoryExists } from '../../utils/utils.js'
 import Ask from '../Ask.js'
 
 interface Props {
@@ -8,16 +8,17 @@ interface Props {
   projectName: string
 }
 
-/**
- * Component to ask for the project name.
- * @param projectName
- * @param onSubmit
- * @param onCompletion
- */
 const ProjectName: FC<Props> = ({ projectName, onSubmit, onCompletion }) => {
   const validateName = useCallback((name: string): string => {
-    if (name.length > 0 && !isValidName(name)) return 'Not a valid name!'
-
+    if (name.length === 0) {
+      return ''
+    }
+    if (!isValidName(name)) {
+      return 'Not a valid name!'
+    }
+    if (projectDirectoryExists(name)) {
+      return `A directory named "${name}" already exists. Choose another name.`
+    }
     return ''
   }, [])
 
@@ -27,11 +28,11 @@ const ProjectName: FC<Props> = ({ projectName, onSubmit, onCompletion }) => {
     (name: string) => {
       onSubmit(name)
 
-      if (isValidName(name)) {
+      if (name.length > 0 && validateName(name) === '') {
         onCompletion()
       }
     },
-    [onSubmit, onCompletion],
+    [onSubmit, onCompletion, validateName],
   )
 
   return (

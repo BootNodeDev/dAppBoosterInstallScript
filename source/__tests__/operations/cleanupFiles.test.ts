@@ -53,35 +53,68 @@ function getWrittenPackageJson(): Record<string, unknown> {
   return JSON.parse(lastCall[1] as string)
 }
 
-describe('cleanupFiles', () => {
+function mockEvmPackageJson() {
+  vi.mocked(readFileSync).mockReturnValue(
+    JSON.stringify({
+      scripts: {
+        dev: 'next dev',
+        build: 'next build',
+        'subgraph-codegen': 'graphql-codegen',
+        'typedoc:build': 'typedoc',
+        'docs:build': 'vocs build',
+        'docs:dev': 'vocs dev',
+        'docs:preview': 'vocs preview',
+        prepare: 'husky install',
+      },
+    }),
+  )
+}
+
+// Mirrors the real root package.json on BootNodeDev/cn-dappbooster@main.
+function mockCantonPackageJson() {
+  vi.mocked(readFileSync).mockReturnValue(
+    JSON.stringify({
+      scripts: {
+        'canton:up': 'npm --prefix canton-barebones run up',
+        'canton:down': 'npm --prefix canton-barebones run down',
+        'canton:health': 'npm --prefix canton-barebones run health',
+        'canton:token': 'npm --prefix canton-barebones run token',
+        'build-dar': 'bash scripts/build-dar.sh',
+        'deploy-dar': 'bash canton-barebones/scripts/deploy-dar.sh',
+        'wallet:dev': 'npm --prefix carpincho-wallet run dev',
+        'wallet-service:dev': 'npm --prefix canton-barebones/wallet-service run dev',
+        'wallet-service:health': 'curl -fsS http://localhost:3010/health',
+        'carpincho:build:extension': 'npm --prefix carpincho-wallet run build:extension',
+        'app:dev':
+          'npm --prefix counter/frontend run dev -- --host localhost --port 3012 --strictPort',
+        lint: 'biome check',
+        'lint:fix': 'biome check --write',
+        format: 'biome format --write',
+        e2e: 'npm --prefix e2e test',
+        'e2e:headed': 'npm --prefix e2e run test:headed',
+        'e2e:ui': 'npm --prefix e2e run test:ui',
+        prepare: 'husky',
+      },
+    }),
+  )
+}
+
+describe('cleanupFiles — evm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(readFileSync).mockReturnValue(
-      JSON.stringify({
-        scripts: {
-          dev: 'next dev',
-          build: 'next build',
-          'subgraph-codegen': 'graphql-codegen',
-          'typedoc:build': 'typedoc',
-          'docs:build': 'vocs build',
-          'docs:dev': 'vocs dev',
-          'docs:preview': 'vocs preview',
-          prepare: 'husky install',
-        },
-      }),
-    )
+    mockEvmPackageJson()
   })
 
   describe('full mode', () => {
     it('only removes .install-files', async () => {
-      await cleanupFiles('/project/my_app', 'full')
+      await cleanupFiles('evm', '/project/my_app', 'full')
 
       expect(rm).toHaveBeenCalledTimes(1)
       expect(getRmPaths()[0]).toBe(resolve('/project/my_app', '.install-files'))
     })
 
     it('does not patch package.json', async () => {
-      await cleanupFiles('/project/my_app', 'full')
+      await cleanupFiles('evm', '/project/my_app', 'full')
 
       expect(writeFileSync).not.toHaveBeenCalled()
     })
@@ -90,7 +123,7 @@ describe('cleanupFiles', () => {
   describe('custom mode — all features selected', () => {
     it('only removes .install-files and patches package.json', async () => {
       const allFeatures: FeatureName[] = ['demo', 'subgraph', 'typedoc', 'vocs', 'husky']
-      await cleanupFiles('/project/my_app', 'custom', allFeatures)
+      await cleanupFiles('evm', '/project/my_app', 'custom', allFeatures)
 
       expect(rm).toHaveBeenCalledTimes(1)
       expect(getRmPaths()[0]).toBe(resolve('/project/my_app', '.install-files'))
@@ -99,7 +132,7 @@ describe('cleanupFiles', () => {
 
     it('preserves all scripts when all features selected', async () => {
       const allFeatures: FeatureName[] = ['demo', 'subgraph', 'typedoc', 'vocs', 'husky']
-      await cleanupFiles('/project/my_app', 'custom', allFeatures)
+      await cleanupFiles('evm', '/project/my_app', 'custom', allFeatures)
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -112,7 +145,12 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — demo deselected', () => {
     it('removes home folder, recreates it, copies replacement', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['subgraph', 'typedoc', 'vocs', 'husky'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', [
+        'subgraph',
+        'typedoc',
+        'vocs',
+        'husky',
+      ])
 
       const homeFolder = resolve('/project/my_app', 'src/components/pageComponents/home')
       expect(getRmPaths()).toContain(homeFolder)
@@ -128,13 +166,13 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — subgraph deselected', () => {
     it('removes src/subgraphs', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
 
       expect(getRmPaths()).toContain(resolve('/project/my_app', 'src/subgraphs'))
     })
 
     it('cleans up subgraph demos when demo IS selected', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
 
       const homeFolder = resolve('/project/my_app', 'src/components/pageComponents/home')
       expect(getRmPaths()).toContain(resolve(homeFolder, 'Examples/demos/subgraphs'))
@@ -148,7 +186,7 @@ describe('cleanupFiles', () => {
     })
 
     it('does NOT clean up subgraph demos when demo is also deselected', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['typedoc', 'vocs', 'husky'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', ['typedoc', 'vocs', 'husky'])
 
       const subgraphDemosPath = resolve(
         '/project/my_app',
@@ -158,7 +196,7 @@ describe('cleanupFiles', () => {
     })
 
     it('removes subgraph-codegen from package.json scripts', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -168,13 +206,13 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — typedoc deselected', () => {
     it('removes typedoc.json', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'vocs', 'husky'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'subgraph', 'vocs', 'husky'])
 
       expect(getRmPaths()).toContain(resolve('/project/my_app', 'typedoc.json'))
     })
 
     it('removes typedoc:build from package.json scripts', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'vocs', 'husky'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'subgraph', 'vocs', 'husky'])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -184,14 +222,24 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — vocs deselected', () => {
     it('removes vocs.config.ts and docs folder', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'husky'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', [
+        'demo',
+        'subgraph',
+        'typedoc',
+        'husky',
+      ])
 
       expect(getRmPaths()).toContain(resolve('/project/my_app', 'vocs.config.ts'))
       expect(getRmPaths()).toContain(resolve('/project/my_app', 'docs'))
     })
 
     it('removes docs scripts from package.json', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'husky'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', [
+        'demo',
+        'subgraph',
+        'typedoc',
+        'husky',
+      ])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -203,7 +251,12 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — husky deselected', () => {
     it('removes husky folder and config files', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'vocs'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', [
+        'demo',
+        'subgraph',
+        'typedoc',
+        'vocs',
+      ])
 
       expect(getRmPaths()).toContain(resolve('/project/my_app', '.husky'))
       expect(getRmPaths()).toContain(resolve('/project/my_app', '.lintstagedrc.mjs'))
@@ -211,7 +264,12 @@ describe('cleanupFiles', () => {
     })
 
     it('removes prepare from package.json scripts', async () => {
-      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'vocs'])
+      await cleanupFiles('evm', '/project/my_app', 'custom', [
+        'demo',
+        'subgraph',
+        'typedoc',
+        'vocs',
+      ])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -221,7 +279,7 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — no features selected', () => {
     it('runs all cleanup operations', async () => {
-      await cleanupFiles('/project/my_app', 'custom', [])
+      await cleanupFiles('evm', '/project/my_app', 'custom', [])
 
       const paths = getRmPaths()
       expect(paths).toContain(resolve('/project/my_app', 'src/components/pageComponents/home'))
@@ -233,7 +291,7 @@ describe('cleanupFiles', () => {
     })
 
     it('removes all optional scripts from package.json', async () => {
-      await cleanupFiles('/project/my_app', 'custom', [])
+      await cleanupFiles('evm', '/project/my_app', 'custom', [])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -249,14 +307,14 @@ describe('cleanupFiles', () => {
   })
 
   it('always removes .install-files as the last rm call', async () => {
-    await cleanupFiles('/project/my_app', 'custom', ['demo'])
+    await cleanupFiles('evm', '/project/my_app', 'custom', ['demo'])
 
     const paths = getRmPaths()
     expect(paths.at(-1)).toBe(resolve('/project/my_app', '.install-files'))
   })
 
   it('uses force option on all rm calls', async () => {
-    await cleanupFiles('/project/my_app', 'custom', [])
+    await cleanupFiles('evm', '/project/my_app', 'custom', [])
 
     for (const call of vi.mocked(rm).mock.calls) {
       const options = call[1] as { force?: boolean }
@@ -267,14 +325,14 @@ describe('cleanupFiles', () => {
   describe('onProgress callback', () => {
     it('reports only Install script for full mode', async () => {
       const steps: string[] = []
-      await cleanupFiles('/project/my_app', 'full', [], (step) => steps.push(step))
+      await cleanupFiles('evm', '/project/my_app', 'full', [], (step) => steps.push(step))
 
       expect(steps).toEqual(['Install script'])
     })
 
     it('reports all feature cleanups when no features selected', async () => {
       const steps: string[] = []
-      await cleanupFiles('/project/my_app', 'custom', [], (step) => steps.push(step))
+      await cleanupFiles('evm', '/project/my_app', 'custom', [], (step) => steps.push(step))
 
       expect(steps).toEqual([
         'Component demos',
@@ -288,7 +346,7 @@ describe('cleanupFiles', () => {
 
     it('skips steps for selected features', async () => {
       const steps: string[] = []
-      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph'], (step) =>
+      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'subgraph'], (step) =>
         steps.push(step),
       )
 
@@ -299,7 +357,167 @@ describe('cleanupFiles', () => {
     })
 
     it('works without a callback', async () => {
-      await expect(cleanupFiles('/project/my_app', 'full')).resolves.toBeUndefined()
+      await expect(cleanupFiles('evm', '/project/my_app', 'full')).resolves.toBeUndefined()
+    })
+  })
+})
+
+describe('cleanupFiles — canton', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockCantonPackageJson()
+  })
+
+  describe('full mode', () => {
+    it('removes no directories but strips carpincho scripts (carpincho-wallet is always removed)', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'full')
+
+      expect(rm).not.toHaveBeenCalled()
+      expect(writeFileSync).toHaveBeenCalled()
+
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts['wallet:dev']).toBeUndefined()
+      expect(scripts['carpincho:build:extension']).toBeUndefined()
+    })
+
+    it('keeps every non-carpincho script in full mode', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'full')
+
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts['canton:up']).toBe('npm --prefix canton-barebones run up')
+      expect(scripts['build-dar']).toBe('bash scripts/build-dar.sh')
+      expect(scripts['deploy-dar']).toBe('bash canton-barebones/scripts/deploy-dar.sh')
+      expect(scripts['wallet-service:dev']).toBe(
+        'npm --prefix canton-barebones/wallet-service run dev',
+      )
+      expect(scripts['app:dev']).toBeDefined()
+      expect(scripts.e2e).toBe('npm --prefix e2e test')
+    })
+  })
+
+  describe('carpincho scripts are stripped in every scenario', () => {
+    const scenarios: Array<[string, 'full' | 'custom', FeatureName[]]> = [
+      ['full', 'full', []],
+      ['custom counter+e2e', 'custom', ['counter', 'e2e']],
+      ['custom counter only', 'custom', ['counter']],
+      ['custom nothing', 'custom', []],
+    ]
+
+    for (const [label, mode, features] of scenarios) {
+      it(`strips wallet:dev and carpincho:build:extension (${label})`, async () => {
+        await cleanupFiles('canton', '/project/my_app', mode, features)
+
+        const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+        expect(scripts['wallet:dev']).toBeUndefined()
+        expect(scripts['carpincho:build:extension']).toBeUndefined()
+      })
+    }
+  })
+
+  describe('custom mode — counter deselected', () => {
+    it('removes counter/ (and not the base canton-barebones/dars)', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['e2e'])
+
+      const paths = getRmPaths()
+      expect(paths).toContain(resolve('/project/my_app', 'counter'))
+      expect(paths).not.toContain(resolve('/project/my_app', 'dars'))
+    })
+
+    it('strips only counter-owned scripts (app:dev)', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['e2e'])
+
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts['app:dev']).toBeUndefined()
+    })
+
+    it('keeps base-infra scripts: canton:*, build-dar, deploy-dar, wallet-service:*', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['e2e'])
+
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts['canton:up']).toBe('npm --prefix canton-barebones run up')
+      expect(scripts['canton:down']).toBe('npm --prefix canton-barebones run down')
+      expect(scripts['build-dar']).toBe('bash scripts/build-dar.sh')
+      expect(scripts['deploy-dar']).toBe('bash canton-barebones/scripts/deploy-dar.sh')
+      expect(scripts['wallet-service:dev']).toBe(
+        'npm --prefix canton-barebones/wallet-service run dev',
+      )
+      expect(scripts['wallet-service:health']).toBeDefined()
+      expect(scripts.e2e).toBe('npm --prefix e2e test')
+    })
+  })
+
+  describe('custom mode — e2e deselected', () => {
+    it('removes e2e/ directory', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter'])
+
+      expect(getRmPaths()).toContain(resolve('/project/my_app', 'e2e'))
+    })
+
+    it('strips all e2e scripts (e2e, e2e:headed, e2e:ui)', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter'])
+
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts.e2e).toBeUndefined()
+      expect(scripts['e2e:headed']).toBeUndefined()
+      expect(scripts['e2e:ui']).toBeUndefined()
+    })
+
+    it('keeps counter scripts (app:dev)', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter'])
+
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts['app:dev']).toBeDefined()
+    })
+  })
+
+  describe('custom mode — nothing selected', () => {
+    it('removes both counter/ and e2e/ (never canton-barebones)', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', [])
+
+      const paths = getRmPaths()
+      expect(paths).toContain(resolve('/project/my_app', 'counter'))
+      expect(paths).toContain(resolve('/project/my_app', 'e2e'))
+      expect(paths).not.toContain(resolve('/project/my_app', 'canton-barebones'))
+    })
+
+    it('strips app:dev and all e2e scripts but keeps base infra', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', [])
+
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts['app:dev']).toBeUndefined()
+      expect(scripts.e2e).toBeUndefined()
+      expect(scripts['e2e:ui']).toBeUndefined()
+      expect(scripts['canton:up']).toBeDefined()
+      expect(scripts['build-dar']).toBeDefined()
+      expect(scripts['wallet-service:dev']).toBeDefined()
+      expect(scripts.lint).toBe('biome check')
+      expect(scripts.prepare).toBe('husky')
+    })
+  })
+
+  describe('onProgress callback', () => {
+    it('reports per-feature steps', async () => {
+      const steps: string[] = []
+      await cleanupFiles('canton', '/project/my_app', 'custom', [], (step) => steps.push(step))
+
+      expect(steps).toEqual(['Counter demo', 'E2E tests'])
+    })
+
+    it('skips steps for selected features', async () => {
+      const steps: string[] = []
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter'], (step) =>
+        steps.push(step),
+      )
+
+      expect(steps).not.toContain('Counter demo')
+      expect(steps).toContain('E2E tests')
+    })
+
+    it('reports nothing for full mode', async () => {
+      const steps: string[] = []
+      await cleanupFiles('canton', '/project/my_app', 'full', [], (step) => steps.push(step))
+
+      expect(steps).toEqual([])
     })
   })
 })

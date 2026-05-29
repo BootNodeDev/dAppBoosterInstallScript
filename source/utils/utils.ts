@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
-import { type FeatureName, featureDefinitions } from '../constants/config.js'
+import { type FeatureName, type Stack, getStackConfig } from '../constants/config.js'
 
 export function getProjectFolder(projectName: string) {
   return join(process.cwd(), projectName)
@@ -25,21 +25,25 @@ export function isFeatureSelected(feature: FeatureName, selectedFeatures: Featur
   return selectedFeatures.includes(feature)
 }
 
-export function getPackagesToRemove(selectedFeatures: FeatureName[]): string[] {
-  return Object.entries(featureDefinitions)
-    .filter(([name]) => !selectedFeatures.includes(name as FeatureName))
+export function getPackagesToRemove(stack: Stack, selectedFeatures: FeatureName[]): string[] {
+  const features = getStackConfig(stack).features
+  return Object.entries(features)
+    .filter(([name]) => !selectedFeatures.includes(name))
     .flatMap(([, def]) => def.packages)
 }
 
 export function getPostInstallMessages(
+  stack: Stack,
   mode: 'full' | 'custom',
   selectedFeatures: FeatureName[],
 ): string[] {
+  const features = getStackConfig(stack).features
+
   if (mode === 'full') {
-    return Object.values(featureDefinitions).flatMap((def) => def.postInstall ?? [])
+    return Object.values(features).flatMap((def) => def.postInstall ?? [])
   }
 
-  return selectedFeatures.flatMap((name) => featureDefinitions[name]?.postInstall ?? [])
+  return selectedFeatures.flatMap((name) => features[name]?.postInstall ?? [])
 }
 
 export function projectDirectoryExists(projectName: string): boolean {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { featureDefinitions } from '../../constants/config.js'
+import { stackDefinitions } from '../../constants/config.js'
 
 vi.mock('../../operations/exec.js', () => ({
   exec: vi.fn().mockResolvedValue(undefined),
@@ -9,45 +9,47 @@ vi.mock('../../operations/exec.js', () => ({
 const { execFile } = await import('../../operations/exec.js')
 const { installPackages } = await import('../../operations/installPackages.js')
 
-describe('installPackages', () => {
+const evmFeatures = stackDefinitions.evm.features
+
+describe('installPackages — evm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   describe('full mode', () => {
-    it('runs pnpm i via execFile', async () => {
-      await installPackages('/project/my_app', 'full')
+    it('runs pnpm install via execFile', async () => {
+      await installPackages('evm', '/project/my_app', 'full')
 
-      expect(execFile).toHaveBeenCalledWith('pnpm', ['i'], { cwd: '/project/my_app' })
+      expect(execFile).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/project/my_app' })
     })
 
     it('runs only one command', async () => {
-      await installPackages('/project/my_app', 'full')
+      await installPackages('evm', '/project/my_app', 'full')
 
       expect(execFile).toHaveBeenCalledTimes(1)
     })
 
     it('ignores features argument', async () => {
-      await installPackages('/project/my_app', 'full', ['demo', 'subgraph'])
+      await installPackages('evm', '/project/my_app', 'full', ['demo', 'subgraph'])
 
       expect(execFile).toHaveBeenCalledTimes(1)
-      expect(execFile).toHaveBeenCalledWith('pnpm', ['i'], { cwd: '/project/my_app' })
+      expect(execFile).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/project/my_app' })
     })
   })
 
   describe('custom mode — all features selected', () => {
-    it('runs pnpm i when no packages to remove', async () => {
-      const allFeatures = Object.keys(featureDefinitions) as Array<keyof typeof featureDefinitions>
-      await installPackages('/project/my_app', 'custom', allFeatures)
+    it('runs pnpm install when no packages to remove', async () => {
+      const allFeatures = Object.keys(evmFeatures)
+      await installPackages('evm', '/project/my_app', 'custom', allFeatures)
 
       expect(execFile).toHaveBeenCalledTimes(1)
-      expect(execFile).toHaveBeenCalledWith('pnpm', ['i'], { cwd: '/project/my_app' })
+      expect(execFile).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/project/my_app' })
     })
   })
 
   describe('custom mode — some features deselected', () => {
     it('runs pnpm remove with deselected feature packages', async () => {
-      await installPackages('/project/my_app', 'custom', ['demo'])
+      await installPackages('evm', '/project/my_app', 'custom', ['demo'])
 
       const removeCall = vi
         .mocked(execFile)
@@ -55,10 +57,10 @@ describe('installPackages', () => {
       expect(removeCall).toBeDefined()
 
       const removeArgs = removeCall?.[1] as string[]
-      for (const pkg of featureDefinitions.subgraph.packages) {
+      for (const pkg of evmFeatures.subgraph.packages) {
         expect(removeArgs).toContain(pkg)
       }
-      for (const pkg of featureDefinitions.typedoc.packages) {
+      for (const pkg of evmFeatures.typedoc.packages) {
         expect(removeArgs).toContain(pkg)
       }
     })
@@ -74,13 +76,13 @@ describe('installPackages', () => {
         }
       })
 
-      await installPackages('/project/my_app', 'custom', ['demo'])
+      await installPackages('evm', '/project/my_app', 'custom', ['demo'])
 
       expect(callOrder).toEqual(['remove', 'postinstall'])
     })
 
     it('does not include selected feature packages in remove command', async () => {
-      await installPackages('/project/my_app', 'custom', ['demo', 'subgraph'])
+      await installPackages('evm', '/project/my_app', 'custom', ['demo', 'subgraph'])
 
       const removeCall = vi
         .mocked(execFile)
@@ -88,13 +90,13 @@ describe('installPackages', () => {
       expect(removeCall).toBeDefined()
 
       const removeArgs = removeCall?.[1] as string[]
-      for (const pkg of featureDefinitions.subgraph.packages) {
+      for (const pkg of evmFeatures.subgraph.packages) {
         expect(removeArgs).not.toContain(pkg)
       }
     })
 
     it('uses execFile for pnpm remove to avoid shell interpolation', async () => {
-      await installPackages('/project/my_app', 'custom', ['demo'])
+      await installPackages('evm', '/project/my_app', 'custom', ['demo'])
 
       expect(execFile).toHaveBeenCalledWith('pnpm', expect.arrayContaining(['remove']), {
         cwd: '/project/my_app',
@@ -102,7 +104,7 @@ describe('installPackages', () => {
     })
 
     it('passes each package as a separate arg to execFile', async () => {
-      await installPackages('/project/my_app', 'custom', ['demo'])
+      await installPackages('evm', '/project/my_app', 'custom', ['demo'])
 
       const removeCall = vi
         .mocked(execFile)
@@ -111,13 +113,13 @@ describe('installPackages', () => {
 
       const removeArgs = removeCall?.[1] as string[]
       expect(removeArgs[0]).toBe('remove')
-      for (const pkg of featureDefinitions.subgraph.packages) {
+      for (const pkg of evmFeatures.subgraph.packages) {
         expect(removeArgs).toContain(pkg)
       }
     })
 
     it('runs postinstall via execFile', async () => {
-      await installPackages('/project/my_app', 'custom', ['demo'])
+      await installPackages('evm', '/project/my_app', 'custom', ['demo'])
 
       expect(execFile).toHaveBeenCalledWith('pnpm', ['run', 'postinstall'], {
         cwd: '/project/my_app',
@@ -128,7 +130,7 @@ describe('installPackages', () => {
   it('never uses exec (shell) for any command', async () => {
     const { exec } = await import('../../operations/exec.js')
 
-    await installPackages('/project/my_app', 'custom', ['demo'])
+    await installPackages('evm', '/project/my_app', 'custom', ['demo'])
 
     expect(exec).not.toHaveBeenCalled()
   })
@@ -136,28 +138,51 @@ describe('installPackages', () => {
   describe('onProgress callback', () => {
     it('reports one step for full mode', async () => {
       const steps: string[] = []
-      await installPackages('/project/my_app', 'full', [], (step) => steps.push(step))
+      await installPackages('evm', '/project/my_app', 'full', [], (step) => steps.push(step))
 
       expect(steps).toEqual(['Installing packages'])
     })
 
     it('reports two steps for custom mode with packages to remove', async () => {
       const steps: string[] = []
-      await installPackages('/project/my_app', 'custom', ['demo'], (step) => steps.push(step))
+      await installPackages('evm', '/project/my_app', 'custom', ['demo'], (step) =>
+        steps.push(step),
+      )
 
       expect(steps).toEqual(['Installing packages', 'Executing post-install scripts'])
     })
 
     it('reports one step for custom mode with all features selected', async () => {
-      const allFeatures = Object.keys(featureDefinitions) as Array<keyof typeof featureDefinitions>
+      const allFeatures = Object.keys(evmFeatures)
       const steps: string[] = []
-      await installPackages('/project/my_app', 'custom', allFeatures, (step) => steps.push(step))
+      await installPackages('evm', '/project/my_app', 'custom', allFeatures, (step) =>
+        steps.push(step),
+      )
 
       expect(steps).toEqual(['Installing packages'])
     })
 
     it('works without a callback', async () => {
-      await expect(installPackages('/project/my_app', 'full')).resolves.toBeUndefined()
+      await expect(installPackages('evm', '/project/my_app', 'full')).resolves.toBeUndefined()
     })
+  })
+})
+
+describe('installPackages — canton', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('uses npm install for canton full mode', async () => {
+    await installPackages('canton', '/project/my_app', 'full')
+
+    expect(execFile).toHaveBeenCalledWith('npm', ['install'], { cwd: '/project/my_app' })
+  })
+
+  it('uses npm install for canton custom mode (no packages to remove)', async () => {
+    await installPackages('canton', '/project/my_app', 'custom', ['counter', 'e2e'])
+
+    expect(execFile).toHaveBeenCalledTimes(1)
+    expect(execFile).toHaveBeenCalledWith('npm', ['install'], { cwd: '/project/my_app' })
   })
 })

@@ -1,30 +1,65 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { copyFile, mkdir, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import type { FeatureName } from '../constants/config.js'
+import { type FeatureName, type Stack, getStackConfig } from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
 import { isFeatureSelected } from '../utils/utils.js'
 
-function patchPackageJson(projectFolder: string, features: FeatureName[]): void {
+function patchPackageJsonEvm(projectFolder: string, features: FeatureName[]): void {
   const packageJsonPath = resolve(projectFolder, 'package.json')
   const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+  const scripts = packageJson.scripts as Record<string, string | undefined> | undefined
+
+  if (!scripts) {
+    writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+    return
+  }
 
   if (!isFeatureSelected('subgraph', features)) {
-    packageJson.scripts['subgraph-codegen'] = undefined
+    scripts['subgraph-codegen'] = undefined
   }
 
   if (!isFeatureSelected('typedoc', features)) {
-    packageJson.scripts['typedoc:build'] = undefined
+    scripts['typedoc:build'] = undefined
   }
 
   if (!isFeatureSelected('vocs', features)) {
-    packageJson.scripts['docs:build'] = undefined
-    packageJson.scripts['docs:dev'] = undefined
-    packageJson.scripts['docs:preview'] = undefined
+    scripts['docs:build'] = undefined
+    scripts['docs:dev'] = undefined
+    scripts['docs:preview'] = undefined
   }
 
   if (!isFeatureSelected('husky', features)) {
-    packageJson.scripts.prepare = undefined
+    // biome-ignore lint/complexity/useLiteralKeys: index-signature type requires bracket access
+    scripts['prepare'] = undefined
+  }
+
+  writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+}
+
+// Strip scripts by what they run (e.g. `npm --prefix counter/frontend ...`)
+// rather than by name, so cleanup tracks directory removal even as scripts change.
+function scriptTargetsRemovedDir(command: string, removedDirs: string[]): boolean {
+  const tokens = command.split(/\s+/)
+  return removedDirs.some((dir) =>
+    tokens.some((token) => token === dir || token.startsWith(`${dir}/`)),
+  )
+}
+
+function patchPackageJsonCanton(projectFolder: string, removedDirs: string[]): void {
+  const packageJsonPath = resolve(projectFolder, 'package.json')
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+  const scripts = packageJson.scripts as Record<string, string | undefined> | undefined
+
+  if (!scripts) {
+    writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+    return
+  }
+
+  for (const [name, command] of Object.entries(scripts)) {
+    if (command !== undefined && scriptTargetsRemovedDir(command, removedDirs)) {
+      scripts[name] = undefined
+    }
   }
 
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
@@ -70,10 +105,18 @@ async function cleanupHusky(projectFolder: string): Promise<void> {
   await rm(resolve(projectFolder, 'commitlint.config.js'), { force: true })
 }
 
-export async function cleanupFiles(
+async function cleanupCounter(projectFolder: string): Promise<void> {
+  await rm(resolve(projectFolder, 'counter'), { recursive: true, force: true })
+}
+
+async function cleanupE2e(projectFolder: string): Promise<void> {
+  await rm(resolve(projectFolder, 'e2e'), { recursive: true, force: true })
+}
+
+async function cleanupEvmFiles(
   projectFolder: string,
   mode: InstallationType,
-  features: FeatureName[] = [],
+  features: FeatureName[],
   onProgress?: (step: string) => void,
 ): Promise<void> {
   if (mode === 'custom') {
@@ -102,9 +145,53 @@ export async function cleanupFiles(
       await cleanupHusky(projectFolder)
     }
 
-    patchPackageJson(projectFolder, features)
+    patchPackageJsonEvm(projectFolder, features)
   }
 
   onProgress?.('Install script')
   await rm(resolve(projectFolder, '.install-files'), { recursive: true, force: true })
+}
+
+async function cleanupCantonFiles(
+  projectFolder: string,
+  mode: InstallationType,
+  features: FeatureName[],
+  alwaysRemovedDirs: string[],
+  onProgress?: (step: string) => void,
+): Promise<void> {
+  // Clone-time removals (e.g. carpincho-wallet) apply in every mode; deselected
+  // feature directories add to the set only in custom mode.
+  const removedDirs = [...alwaysRemovedDirs]
+
+  if (mode === 'custom') {
+    if (!isFeatureSelected('counter', features)) {
+      onProgress?.('Counter demo')
+      await cleanupCounter(projectFolder)
+      removedDirs.push('counter')
+    }
+
+    if (!isFeatureSelected('e2e', features)) {
+      onProgress?.('E2E tests')
+      await cleanupE2e(projectFolder)
+      removedDirs.push('e2e')
+    }
+  }
+
+  patchPackageJsonCanton(projectFolder, removedDirs)
+}
+
+export async function cleanupFiles(
+  stack: Stack,
+  projectFolder: string,
+  mode: InstallationType,
+  features: FeatureName[] = [],
+  onProgress?: (step: string) => void,
+): Promise<void> {
+  if (stack === 'canton') {
+    const { removeAfterClone } = getStackConfig(stack)
+    await cleanupCantonFiles(projectFolder, mode, features, removeAfterClone, onProgress)
+    return
+  }
+
+  await cleanupEvmFiles(projectFolder, mode, features, onProgress)
 }

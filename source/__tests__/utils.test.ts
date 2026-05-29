@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { featureDefinitions } from '../constants/config.js'
+import { stackDefinitions } from '../constants/config.js'
 import {
   deriveStepDisplay,
   getPackagesToRemove,
@@ -7,6 +7,9 @@ import {
   isFeatureSelected,
   isValidName,
 } from '../utils/utils.js'
+
+const evmFeatures = stackDefinitions.evm.features
+const cantonFeatures = stackDefinitions.canton.features
 
 describe('isValidName', () => {
   it('accepts alphanumeric names', () => {
@@ -58,61 +61,78 @@ describe('isFeatureSelected', () => {
   })
 })
 
-describe('getPackagesToRemove', () => {
+describe('getPackagesToRemove — evm', () => {
   it('returns empty when all features selected', () => {
-    const allFeatures = Object.keys(featureDefinitions) as Array<keyof typeof featureDefinitions>
-    expect(getPackagesToRemove(allFeatures)).toEqual([])
+    const allFeatures = Object.keys(evmFeatures)
+    expect(getPackagesToRemove('evm', allFeatures)).toEqual([])
   })
 
   it('returns all packages when no features selected', () => {
-    const result = getPackagesToRemove([])
+    const result = getPackagesToRemove('evm', [])
 
-    const allPackages = Object.values(featureDefinitions).flatMap((def) => def.packages)
+    const allPackages = Object.values(evmFeatures).flatMap((def) => def.packages)
     expect(result).toEqual(allPackages)
   })
 
   it('returns packages only for deselected features', () => {
-    const result = getPackagesToRemove(['demo', 'subgraph'])
+    const result = getPackagesToRemove('evm', ['demo', 'subgraph'])
 
-    for (const pkg of featureDefinitions.subgraph.packages) {
+    for (const pkg of evmFeatures.subgraph.packages) {
       expect(result).not.toContain(pkg)
     }
-    for (const pkg of featureDefinitions.typedoc.packages) {
+    for (const pkg of evmFeatures.typedoc.packages) {
       expect(result).toContain(pkg)
     }
   })
 
   it('handles demo (which has no packages) correctly', () => {
-    const withDemo = getPackagesToRemove(['demo'])
-    const withoutDemo = getPackagesToRemove([])
+    const withDemo = getPackagesToRemove('evm', ['demo'])
+    const withoutDemo = getPackagesToRemove('evm', [])
     expect(withDemo).toEqual(withoutDemo)
   })
 })
 
-describe('getPostInstallMessages', () => {
-  it('returns all messages for full mode', () => {
-    const result = getPostInstallMessages('full', [])
+describe('getPackagesToRemove — canton', () => {
+  it('returns empty when all canton features selected', () => {
+    const allFeatures = Object.keys(cantonFeatures)
+    expect(getPackagesToRemove('canton', allFeatures)).toEqual([])
+  })
 
-    const allMessages = Object.values(featureDefinitions).flatMap((def) => def.postInstall ?? [])
+  it('returns empty even with none selected (canton features carry no packages)', () => {
+    expect(getPackagesToRemove('canton', [])).toEqual([])
+  })
+})
+
+describe('getPostInstallMessages', () => {
+  it('returns all evm messages for full mode', () => {
+    const result = getPostInstallMessages('evm', 'full', [])
+
+    const allMessages = Object.values(evmFeatures).flatMap((def) => def.postInstall ?? [])
     expect(result).toEqual(allMessages)
   })
 
   it('returns only selected feature messages for custom mode', () => {
-    const result = getPostInstallMessages('custom', ['subgraph'])
+    const result = getPostInstallMessages('evm', 'custom', ['subgraph'])
 
-    expect(result).toEqual(featureDefinitions.subgraph.postInstall)
+    expect(result).toEqual(evmFeatures.subgraph.postInstall)
   })
 
   it('returns empty for custom mode with no postInstall features', () => {
-    const result = getPostInstallMessages('custom', ['demo'])
+    const result = getPostInstallMessages('evm', 'custom', ['demo'])
 
     expect(result).toEqual([])
   })
 
   it('returns empty for custom mode with no features', () => {
-    const result = getPostInstallMessages('custom', [])
+    const result = getPostInstallMessages('evm', 'custom', [])
 
     expect(result).toEqual([])
+  })
+
+  it('returns canton counter messages for canton custom mode', () => {
+    const result = getPostInstallMessages('canton', 'custom', ['counter'])
+
+    expect(result).toEqual(cantonFeatures.counter.postInstall)
   })
 })
 

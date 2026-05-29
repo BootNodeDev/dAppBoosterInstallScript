@@ -1,5 +1,12 @@
 import process from 'node:process'
-import { type FeatureName, featureNames } from './constants/config.js'
+import {
+  type FeatureName,
+  type Stack,
+  getFeatureNames,
+  isFeatureNameValid,
+  isStackName,
+  stackNames,
+} from './constants/config.js'
 import { cleanupFiles, cloneRepo, createEnvFile, installPackages } from './operations/index.js'
 import type { InstallationType } from './types/types.js'
 import {
@@ -11,6 +18,7 @@ import {
 
 type SuccessResult = {
   success: true
+  stack: Stack
   projectName: string
   mode: InstallationType
   features: FeatureName[]
@@ -47,14 +55,28 @@ function parseFeatures(featuresFlag: string | undefined): FeatureName[] {
 
       seen.add(f)
       return true
-    }) as FeatureName[]
+    })
 }
 
 function validate(flags: {
+  stack?: string
   name?: string
   mode?: string
   features?: string
-}): { name: string; mode: InstallationType; features: FeatureName[] } {
+}): {
+  stack: Stack
+  name: string
+  mode: InstallationType
+  features: FeatureName[]
+} {
+  const stackFlag = flags.stack ?? 'evm'
+
+  if (!isStackName(stackFlag)) {
+    fail(`Invalid stack: '${stackFlag}'. Valid stacks: ${stackNames.join(', ')}`)
+  }
+
+  const stack = stackFlag
+
   if (!flags.name) {
     fail('Missing required flag: --name')
   }
@@ -71,13 +93,12 @@ function validate(flags: {
     fail("Invalid mode: must be 'full' or 'custom'")
   }
 
-  // --mode=full ignores --features (everything is installed)
   if (flags.mode === 'full') {
     if (projectDirectoryExists(flags.name)) {
       fail(`Project directory '${flags.name}' already exists`)
     }
 
-    return { name: flags.name, mode: flags.mode, features: featureNames }
+    return { stack, name: flags.name, mode: flags.mode, features: getFeatureNames(stack) }
   }
 
   if (!flags.features) {
@@ -90,11 +111,12 @@ function validate(flags: {
     fail('--features value is empty. Use --info to see available features.')
   }
 
-  const invalidFeatures = features.filter((f) => !featureNames.includes(f))
+  const invalidFeatures = features.filter((f) => !isFeatureNameValid(stack, f))
 
   if (invalidFeatures.length > 0) {
+    const validNames = getFeatureNames(stack).join(', ')
     fail(
-      `Unknown features: ${invalidFeatures.join(', ')}. Valid features: ${featureNames.join(', ')}`,
+      `Unknown features for stack '${stack}': ${invalidFeatures.join(', ')}. Valid features: ${validNames}`,
     )
   }
 
@@ -102,32 +124,34 @@ function validate(flags: {
     fail(`Project directory '${flags.name}' already exists`)
   }
 
-  return { name: flags.name, mode: flags.mode, features }
+  return { stack, name: flags.name, mode: flags.mode, features }
 }
 
 export async function runNonInteractive(flags: {
+  stack?: string
   name?: string
   mode?: string
   features?: string
 }): Promise<void> {
-  const { name, mode, features } = validate(flags)
+  const { stack, name, mode, features } = validate(flags)
 
   try {
-    await cloneRepo(name)
+    await cloneRepo(stack, name)
 
     const projectFolder = getProjectFolder(name)
 
-    await createEnvFile(projectFolder)
-    await installPackages(projectFolder, mode, features)
-    await cleanupFiles(projectFolder, mode, features)
+    await createEnvFile(stack, projectFolder, features)
+    await installPackages(stack, projectFolder, mode, features)
+    await cleanupFiles(stack, projectFolder, mode, features)
 
     const result: SuccessResult = {
       success: true,
+      stack,
       projectName: name,
       mode,
       features,
       path: projectFolder,
-      postInstall: getPostInstallMessages(mode, features),
+      postInstall: getPostInstallMessages(stack, mode, features),
     }
 
     console.log(JSON.stringify(result, null, 2))

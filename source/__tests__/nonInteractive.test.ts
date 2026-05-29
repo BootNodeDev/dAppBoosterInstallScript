@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { featureNames } from '../constants/config.js'
+import { getFeatureNames } from '../constants/config.js'
 
 vi.mock('../operations/index.js', () => ({
   cloneRepo: vi.fn().mockResolvedValue(undefined),
@@ -23,6 +23,9 @@ const { cloneRepo, createEnvFile, installPackages, cleanupFiles } = await import
   '../operations/index.js'
 )
 const { projectDirectoryExists } = await import('../utils/utils.js')
+
+const evmFeatureNames = getFeatureNames('evm')
+const cantonFeatureNames = getFeatureNames('canton')
 
 function getLastJsonOutput(): Record<string, unknown> {
   const lastCall = mockLog.mock.calls.at(-1)
@@ -53,7 +56,13 @@ describe('nonInteractive — validation', () => {
     expect(output.error).toBe('Missing required flag: --mode')
   })
 
-  it('validates --name before --mode', async () => {
+  it('validates stack before --name', async () => {
+    await expect(runNonInteractive({ stack: 'banana' })).rejects.toThrow()
+    const output = getLastJsonOutput()
+    expect(output.error).toMatch(/Invalid stack/)
+  })
+
+  it('validates --name before --mode (when stack is valid)', async () => {
     await expect(runNonInteractive({})).rejects.toThrow()
     const output = getLastJsonOutput()
     expect(output.error).toBe('Missing required flag: --name')
@@ -96,14 +105,34 @@ describe('nonInteractive — validation', () => {
     expect(output.error).toMatch(/--features value is empty/)
   })
 
-  it('rejects unknown feature names', async () => {
+  it('rejects unknown feature names for evm', async () => {
     await expect(
       runNonInteractive({ name: 'my_app', mode: 'custom', features: 'banana,apple' }),
     ).rejects.toThrow()
     const output = getLastJsonOutput()
     expect(output.success).toBe(false)
-    expect(output.error).toMatch(/Unknown features: banana, apple/)
+    expect(output.error).toMatch(/Unknown features for stack 'evm': banana, apple/)
     expect(output.error).toMatch(/Valid features:/)
+  })
+
+  it('rejects evm feature names when stack=canton', async () => {
+    await expect(
+      runNonInteractive({ stack: 'canton', name: 'my_app', mode: 'custom', features: 'subgraph' }),
+    ).rejects.toThrow()
+    const output = getLastJsonOutput()
+    expect(output.error).toMatch(/Unknown features for stack 'canton': subgraph/)
+  })
+
+  it('accepts canton-only feature names when stack=canton', async () => {
+    await runNonInteractive({
+      stack: 'canton',
+      name: 'my_app',
+      mode: 'custom',
+      features: 'counter,e2e',
+    })
+    const output = getLastJsonOutput()
+    expect(output.success).toBe(true)
+    expect(output.features).toEqual(['counter', 'e2e'])
   })
 
   it('rejects mix of valid and invalid features', async () => {
@@ -111,7 +140,7 @@ describe('nonInteractive — validation', () => {
       runNonInteractive({ name: 'my_app', mode: 'custom', features: 'demo,banana' }),
     ).rejects.toThrow()
     const output = getLastJsonOutput()
-    expect(output.error).toMatch(/Unknown features: banana/)
+    expect(output.error).toMatch(/Unknown features for stack 'evm': banana/)
   })
 
   it('rejects when project directory already exists (full mode)', async () => {
@@ -133,7 +162,7 @@ describe('nonInteractive — validation', () => {
   })
 })
 
-describe('nonInteractive — full mode execution', () => {
+describe('nonInteractive — evm full mode execution', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.exitCode = undefined
@@ -159,31 +188,38 @@ describe('nonInteractive — full mode execution', () => {
     expect(callOrder).toEqual(['cloneRepo', 'createEnvFile', 'installPackages', 'cleanupFiles'])
   })
 
-  it('passes correct args to operations', async () => {
+  it('passes stack as first arg to all operations', async () => {
     await runNonInteractive({ name: 'my_app', mode: 'full' })
 
-    expect(cloneRepo).toHaveBeenCalledWith('my_app')
-    expect(createEnvFile).toHaveBeenCalledWith(expect.stringContaining('my_app'))
+    expect(cloneRepo).toHaveBeenCalledWith('evm', 'my_app')
+    expect(createEnvFile).toHaveBeenCalledWith(
+      'evm',
+      expect.stringContaining('my_app'),
+      evmFeatureNames,
+    )
     expect(installPackages).toHaveBeenCalledWith(
+      'evm',
       expect.stringContaining('my_app'),
       'full',
-      featureNames,
+      evmFeatureNames,
     )
     expect(cleanupFiles).toHaveBeenCalledWith(
+      'evm',
       expect.stringContaining('my_app'),
       'full',
-      featureNames,
+      evmFeatureNames,
     )
   })
 
-  it('outputs success JSON with all features for full mode', async () => {
+  it('outputs success JSON with stack=evm and all evm features', async () => {
     await runNonInteractive({ name: 'my_app', mode: 'full' })
 
     const output = getLastJsonOutput()
     expect(output.success).toBe(true)
+    expect(output.stack).toBe('evm')
     expect(output.projectName).toBe('my_app')
     expect(output.mode).toBe('full')
-    expect(output.features).toEqual(featureNames)
+    expect(output.features).toEqual(evmFeatureNames)
     expect(output.path).toEqual(expect.stringContaining('my_app'))
     expect(output.postInstall).toBeInstanceOf(Array)
   })
@@ -201,7 +237,63 @@ describe('nonInteractive — full mode execution', () => {
     await runNonInteractive({ name: 'my_app', mode: 'full', features: 'demo' })
 
     const output = getLastJsonOutput()
-    expect(output.features).toEqual(featureNames)
+    expect(output.features).toEqual(evmFeatureNames)
+  })
+})
+
+describe('nonInteractive — canton execution', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.exitCode = undefined
+  })
+
+  it('canton full mode passes stack=canton to all operations and lists all canton features', async () => {
+    await runNonInteractive({ stack: 'canton', name: 'my_app', mode: 'full' })
+
+    expect(cloneRepo).toHaveBeenCalledWith('canton', 'my_app')
+    expect(installPackages).toHaveBeenCalledWith(
+      'canton',
+      expect.stringContaining('my_app'),
+      'full',
+      cantonFeatureNames,
+    )
+
+    const output = getLastJsonOutput()
+    expect(output.stack).toBe('canton')
+    expect(output.features).toEqual(cantonFeatureNames)
+  })
+
+  it('canton custom mode threads only selected features through', async () => {
+    await runNonInteractive({
+      stack: 'canton',
+      name: 'my_app',
+      mode: 'custom',
+      features: 'counter',
+    })
+
+    expect(installPackages).toHaveBeenCalledWith(
+      'canton',
+      expect.stringContaining('my_app'),
+      'custom',
+      ['counter'],
+    )
+
+    const output = getLastJsonOutput()
+    expect(output.features).toEqual(['counter'])
+    expect(output.stack).toBe('canton')
+  })
+
+  it('canton custom includes counter post-install messages when counter selected', async () => {
+    await runNonInteractive({
+      stack: 'canton',
+      name: 'my_app',
+      mode: 'custom',
+      features: 'counter',
+    })
+
+    const output = getLastJsonOutput()
+    const postInstall = output.postInstall as string[]
+    expect(postInstall.some((msg) => msg.includes('canton:up'))).toBe(true)
   })
 })
 
@@ -214,11 +306,13 @@ describe('nonInteractive — custom mode execution', () => {
   it('passes selected features to operations', async () => {
     await runNonInteractive({ name: 'my_app', mode: 'custom', features: 'demo,subgraph' })
 
-    expect(installPackages).toHaveBeenCalledWith(expect.stringContaining('my_app'), 'custom', [
-      'demo',
-      'subgraph',
-    ])
-    expect(cleanupFiles).toHaveBeenCalledWith(expect.stringContaining('my_app'), 'custom', [
+    expect(installPackages).toHaveBeenCalledWith(
+      'evm',
+      expect.stringContaining('my_app'),
+      'custom',
+      ['demo', 'subgraph'],
+    )
+    expect(cleanupFiles).toHaveBeenCalledWith('evm', expect.stringContaining('my_app'), 'custom', [
       'demo',
       'subgraph',
     ])
@@ -265,7 +359,11 @@ describe('nonInteractive — custom mode execution', () => {
   })
 
   it('deduplicates feature names', async () => {
-    await runNonInteractive({ name: 'my_app', mode: 'custom', features: 'demo,demo,subgraph,demo' })
+    await runNonInteractive({
+      name: 'my_app',
+      mode: 'custom',
+      features: 'demo,demo,subgraph,demo',
+    })
 
     const output = getLastJsonOutput()
     expect(output.features).toEqual(['demo', 'subgraph'])
@@ -344,6 +442,7 @@ describe('nonInteractive — JSON output format', () => {
 
     const output = getLastJsonOutput()
     expect(output).toHaveProperty('success')
+    expect(output).toHaveProperty('stack')
     expect(output).toHaveProperty('projectName')
     expect(output).toHaveProperty('mode')
     expect(output).toHaveProperty('features')
