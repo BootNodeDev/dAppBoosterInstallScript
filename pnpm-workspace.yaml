@@ -1,0 +1,4 @@
+# pnpm settings live here (pnpm v10.26+ / v11). biome ships a native binary and
+# needs its install script allowed; everything else stays blocked by default.
+allowBuilds:
+  '@biomejs/biome': true

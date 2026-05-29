@@ -39,9 +39,7 @@
     "lint": "pnpm biome check",
     "lint:fix": "pnpm biome check --write"
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "dependencies": {
     "figures": "^6.1.0",
     "ink": "^5.2.1",
@@ -63,10 +61,5 @@
     "ts-node": "^10.9.1",
     "typescript": "^5.8.3",
     "vitest": "^4.1.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@biomejs/biome"
-    ]
   }
 }
