@@ -8,6 +8,10 @@ vi.mock('node:fs/promises', () => ({
   copyFile: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('../../operations/exec.js', () => ({
+  execFile: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('node:fs', () => ({
   readFileSync: vi.fn().mockReturnValue(
     JSON.stringify({
@@ -28,6 +32,7 @@ vi.mock('node:fs', () => ({
 
 const { rm, mkdir, copyFile } = await import('node:fs/promises')
 const { readFileSync, writeFileSync } = await import('node:fs')
+const { execFile } = await import('../../operations/exec.js')
 const { cleanupFiles } = await import('../../operations/cleanupFiles.js')
 
 function getRmPaths(): string[] {
@@ -106,27 +111,34 @@ describe('cleanupFiles — evm', () => {
   })
 
   describe('full mode', () => {
-    it('only removes .install-files', async () => {
+    it('removes repository metadata, git automation files, and .install-files', async () => {
       await cleanupFiles('evm', '/project/my_app', 'full')
 
-      expect(rm).toHaveBeenCalledTimes(1)
-      expect(getRmPaths()[0]).toBe(resolve('/project/my_app', '.install-files'))
+      const paths = getRmPaths()
+      expect(paths).toContain(resolve('/project/my_app', '.install-files'))
+      expect(paths).toContain(resolve('/project/my_app', '.github'))
+      expect(paths).toContain(resolve('/project/my_app', '.claude'))
+      expect(paths).toContain(resolve('/project/my_app', '.husky'))
     })
 
-    it('does not patch package.json', async () => {
+    it('patches package.json to remove tooling scripts', async () => {
       await cleanupFiles('evm', '/project/my_app', 'full')
 
-      expect(writeFileSync).not.toHaveBeenCalled()
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts.prepare).toBeUndefined()
+      expect(scripts.dev).toBe('next dev')
+      expect(execFile).not.toHaveBeenCalled()
     })
   })
 
   describe('custom mode — all features selected', () => {
-    it('only removes .install-files and patches package.json', async () => {
+    it('removes hygiene files plus .install-files and patches package.json', async () => {
       const allFeatures: FeatureName[] = ['demo', 'subgraph', 'typedoc', 'vocs', 'husky']
       await cleanupFiles('evm', '/project/my_app', 'custom', allFeatures)
 
-      expect(rm).toHaveBeenCalledTimes(1)
-      expect(getRmPaths()[0]).toBe(resolve('/project/my_app', '.install-files'))
+      const paths = getRmPaths()
+      expect(paths).toContain(resolve('/project/my_app', '.install-files'))
+      expect(paths).toContain(resolve('/project/my_app', '.github'))
       expect(writeFileSync).toHaveBeenCalled()
     })
 
@@ -139,7 +151,7 @@ describe('cleanupFiles — evm', () => {
       expect(scripts['subgraph-codegen']).toBe('graphql-codegen')
       expect(scripts['typedoc:build']).toBe('typedoc')
       expect(scripts['docs:build']).toBe('vocs build')
-      expect(scripts.prepare).toBe('husky install')
+      expect(scripts.prepare).toBeUndefined()
     })
   })
 
@@ -327,7 +339,11 @@ describe('cleanupFiles — evm', () => {
       const steps: string[] = []
       await cleanupFiles('evm', '/project/my_app', 'full', [], (step) => steps.push(step))
 
-      expect(steps).toEqual(['Install script'])
+      expect(steps).toEqual([
+        'Repository metadata',
+        'Git hooks and commit linting',
+        'Install script',
+      ])
     })
 
     it('reports all feature cleanups when no features selected', async () => {
@@ -335,11 +351,12 @@ describe('cleanupFiles — evm', () => {
       await cleanupFiles('evm', '/project/my_app', 'custom', [], (step) => steps.push(step))
 
       expect(steps).toEqual([
+        'Repository metadata',
+        'Git hooks and commit linting',
         'Component demos',
         'Subgraph',
         'Typedoc',
         'Vocs',
-        'Husky',
         'Install script',
       ])
     })
@@ -369,15 +386,19 @@ describe('cleanupFiles — canton', () => {
   })
 
   describe('full mode', () => {
-    it('removes no directories but strips carpincho scripts (carpincho-wallet is always removed)', async () => {
+    it('removes hygiene and llm paths, then strips carpincho scripts', async () => {
       await cleanupFiles('canton', '/project/my_app', 'full')
 
-      expect(rm).not.toHaveBeenCalled()
+      const paths = getRmPaths()
+      expect(paths).toContain(resolve('/project/my_app', '.github'))
+      expect(paths).toContain(resolve('/project/my_app', '.husky'))
+      expect(paths).toContain(resolve('/project/my_app', 'llms.txt'))
       expect(writeFileSync).toHaveBeenCalled()
 
       const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
       expect(scripts['wallet:dev']).toBeUndefined()
       expect(scripts['carpincho:build:extension']).toBeUndefined()
+      expect(execFile).toHaveBeenCalledWith('git', ['add', '.'], { cwd: '/project/my_app' })
     })
 
     it('keeps every non-carpincho script in full mode', async () => {
@@ -491,7 +512,24 @@ describe('cleanupFiles — canton', () => {
       expect(scripts['build-dar']).toBeDefined()
       expect(scripts['wallet-service:dev']).toBeDefined()
       expect(scripts.lint).toBe('biome check')
-      expect(scripts.prepare).toBe('husky')
+      expect(scripts.prepare).toBeUndefined()
+
+      expect(execFile).toHaveBeenCalledWith('git', ['add', '.'], { cwd: '/project/my_app' })
+      expect(execFile).toHaveBeenCalledWith(
+        'git',
+        [
+          '-c',
+          'user.name=dAppBooster',
+          '-c',
+          'user.email=no-reply@dappbooster.dev',
+          '-c',
+          'commit.gpgsign=false',
+          'commit',
+          '-m',
+          'chore: initial commit',
+        ],
+        { cwd: '/project/my_app' },
+      )
     })
   })
 
@@ -500,7 +538,14 @@ describe('cleanupFiles — canton', () => {
       const steps: string[] = []
       await cleanupFiles('canton', '/project/my_app', 'custom', [], (step) => steps.push(step))
 
-      expect(steps).toEqual(['Counter demo', 'E2E tests'])
+      expect(steps).toEqual([
+        'Repository metadata',
+        'Git hooks and commit linting',
+        'LLM artifacts',
+        'Counter demo',
+        'E2E tests',
+        'Initial commit',
+      ])
     })
 
     it('skips steps for selected features', async () => {
@@ -517,7 +562,12 @@ describe('cleanupFiles — canton', () => {
       const steps: string[] = []
       await cleanupFiles('canton', '/project/my_app', 'full', [], (step) => steps.push(step))
 
-      expect(steps).toEqual([])
+      expect(steps).toEqual([
+        'Repository metadata',
+        'Git hooks and commit linting',
+        'LLM artifacts',
+        'Initial commit',
+      ])
     })
   })
 })

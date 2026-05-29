@@ -4,6 +4,104 @@ import { resolve } from 'node:path'
 import { type FeatureName, type Stack, getStackConfig } from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
 import { isFeatureSelected } from '../utils/utils.js'
+import { execFile } from './exec.js'
+
+const COMMON_METADATA_PATHS = ['.claude', 'AGENTS.md', 'CLAUDE.md', 'architecture.md', '.github']
+
+const AUTOMATION_PATHS = ['.husky', '.lintstagedrc.mjs', 'commitlint.config.js']
+
+const CANTON_LLM_PATHS = ['.llm', '.llms', 'llm', 'llms', 'llms.txt', 'docs/llm', 'docs/llms']
+
+const TOOLING_PACKAGES_TO_REMOVE = [
+  'husky',
+  'lint-staged',
+  '@commitlint/cli',
+  '@commitlint/config-conventional',
+]
+
+const TOOLING_SCRIPTS_TO_REMOVE = ['prepare', 'commitlint', 'commitlint:check', 'commitlint:ci']
+
+function removePackageKeys(
+  packageBlock: Record<string, unknown> | undefined,
+  keys: string[],
+): boolean {
+  if (!packageBlock) {
+    return false
+  }
+
+  let changed = false
+  for (const key of keys) {
+    if (key in packageBlock) {
+      delete packageBlock[key]
+      changed = true
+    }
+  }
+
+  return changed
+}
+
+function sanitizeRepositoryPackageJson(projectFolder: string): void {
+  const packageJsonPath = resolve(projectFolder, 'package.json')
+
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+    const scripts = packageJson.scripts as Record<string, string | undefined> | undefined
+    let changed = false
+
+    if (scripts) {
+      for (const scriptName of TOOLING_SCRIPTS_TO_REMOVE) {
+        if (scripts[scriptName] !== undefined) {
+          scripts[scriptName] = undefined
+          changed = true
+        }
+      }
+    }
+
+    const dependencyGroups: Array<Record<string, unknown> | undefined> = [
+      packageJson.dependencies,
+      packageJson.devDependencies,
+      packageJson.optionalDependencies,
+      packageJson.peerDependencies,
+    ]
+
+    for (const group of dependencyGroups) {
+      if (removePackageKeys(group, TOOLING_PACKAGES_TO_REMOVE)) {
+        changed = true
+      }
+    }
+
+    if (changed) {
+      writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+    }
+  } catch {
+    // Some templates may not include a package.json at this level.
+  }
+}
+
+async function removePaths(projectFolder: string, relativePaths: string[]): Promise<void> {
+  for (const relativePath of relativePaths) {
+    await rm(resolve(projectFolder, relativePath), { recursive: true, force: true })
+  }
+}
+
+async function cleanupRepositoryHygiene(
+  stack: Stack,
+  projectFolder: string,
+  onProgress?: (step: string) => void,
+): Promise<void> {
+  onProgress?.('Repository metadata')
+  await removePaths(projectFolder, COMMON_METADATA_PATHS)
+
+  onProgress?.('Git hooks and commit linting')
+  await removePaths(projectFolder, AUTOMATION_PATHS)
+
+  if (stack === 'canton') {
+    onProgress?.('LLM artifacts')
+    await removePaths(projectFolder, CANTON_LLM_PATHS)
+  }
+
+  sanitizeRepositoryPackageJson(projectFolder)
+}
 
 function patchPackageJsonEvm(projectFolder: string, features: FeatureName[]): void {
   const packageJsonPath = resolve(projectFolder, 'package.json')
@@ -29,10 +127,12 @@ function patchPackageJsonEvm(projectFolder: string, features: FeatureName[]): vo
     scripts['docs:preview'] = undefined
   }
 
-  if (!isFeatureSelected('husky', features)) {
-    // biome-ignore lint/complexity/useLiteralKeys: index-signature type requires bracket access
-    scripts['prepare'] = undefined
-  }
+  // biome-ignore lint/complexity/useLiteralKeys: TS index-signature compatibility in strict mode
+  scripts['prepare'] = undefined
+  // biome-ignore lint/complexity/useLiteralKeys: TS index-signature compatibility in strict mode
+  scripts['commitlint'] = undefined
+  scripts['commitlint:check'] = undefined
+  scripts['commitlint:ci'] = undefined
 
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
 }
@@ -62,7 +162,33 @@ function patchPackageJsonCanton(projectFolder: string, removedDirs: string[]): v
     }
   }
 
+  // biome-ignore lint/complexity/useLiteralKeys: TS index-signature compatibility in strict mode
+  scripts['prepare'] = undefined
+  // biome-ignore lint/complexity/useLiteralKeys: TS index-signature compatibility in strict mode
+  scripts['commitlint'] = undefined
+  scripts['commitlint:check'] = undefined
+  scripts['commitlint:ci'] = undefined
+
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+}
+
+async function createInitialCommit(projectFolder: string): Promise<void> {
+  await execFile('git', ['add', '.'], { cwd: projectFolder })
+  await execFile(
+    'git',
+    [
+      '-c',
+      'user.name=dAppBooster',
+      '-c',
+      'user.email=no-reply@dappbooster.dev',
+      '-c',
+      'commit.gpgsign=false',
+      'commit',
+      '-m',
+      'chore: initial commit',
+    ],
+    { cwd: projectFolder },
+  )
 }
 
 async function cleanupDemo(projectFolder: string): Promise<void> {
@@ -99,12 +225,6 @@ async function cleanupVocs(projectFolder: string): Promise<void> {
   await rm(resolve(projectFolder, 'docs'), { recursive: true, force: true })
 }
 
-async function cleanupHusky(projectFolder: string): Promise<void> {
-  await rm(resolve(projectFolder, '.husky'), { recursive: true, force: true })
-  await rm(resolve(projectFolder, '.lintstagedrc.mjs'), { force: true })
-  await rm(resolve(projectFolder, 'commitlint.config.js'), { force: true })
-}
-
 async function cleanupCounter(projectFolder: string): Promise<void> {
   await rm(resolve(projectFolder, 'counter'), { recursive: true, force: true })
 }
@@ -138,11 +258,6 @@ async function cleanupEvmFiles(
     if (!isFeatureSelected('vocs', features)) {
       onProgress?.('Vocs')
       await cleanupVocs(projectFolder)
-    }
-
-    if (!isFeatureSelected('husky', features)) {
-      onProgress?.('Husky')
-      await cleanupHusky(projectFolder)
     }
 
     patchPackageJsonEvm(projectFolder, features)
@@ -187,9 +302,13 @@ export async function cleanupFiles(
   features: FeatureName[] = [],
   onProgress?: (step: string) => void,
 ): Promise<void> {
+  await cleanupRepositoryHygiene(stack, projectFolder, onProgress)
+
   if (stack === 'canton') {
     const { removeAfterClone } = getStackConfig(stack)
     await cleanupCantonFiles(projectFolder, mode, features, removeAfterClone, onProgress)
+    onProgress?.('Initial commit')
+    await createInitialCommit(projectFolder)
     return
   }
 
