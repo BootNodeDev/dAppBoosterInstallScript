@@ -15,28 +15,29 @@
 
 ```
 source/
-  cli.tsx                     Entry point: meow arg parsing, mode routing
-  app.tsx                     Interactive TUI: step-based state machine
+  cli.tsx                     Entry point: meow arg parsing, stack resolution, mode routing
+  app.tsx                     Interactive TUI: step-based state machine, threads `stack` through every step
   nonInteractive.ts           Non-interactive: validate flags → run operations → JSON
-  info.ts                     --info JSON output for agent discovery
+  info.ts                     --info JSON output for agent discovery (optionally filtered by stack)
   constants/
-    config.ts                 Single source of truth: feature definitions, repo URL
+    config.ts                 Single source of truth: Stack type, stackDefinitions, env-var overrides
   operations/
     exec.ts                   exec (shell) and execFile (no shell) helpers
-    cloneRepo.ts              Shallow clone, checkout latest tag, reinit git
-    createEnvFile.ts          Copy .env.example → .env.local
-    installPackages.ts        pnpm install / remove based on mode and features
-    cleanupFiles.ts           Remove files for deselected features, patch package.json
+    cloneRepo.ts              Clone (tag-latest OR branch), apply stack.removeAfterClone, rm .git, git init
+    createEnvFile.ts          Copy each stack's envFiles (with optional ifFeature gate)
+    installPackages.ts        Stack-aware: uses stack.packageManager (pnpm or npm)
+    cleanupFiles.ts           Dispatches to per-stack cleanup (cleanupEvmFiles / cleanupCantonFiles)
     index.ts                  Barrel export
   components/
     steps/                    TUI step components (presentation-only)
+      StackSelection.tsx      First step: pick a stack (skipped if preselectedStack is passed)
       ProjectName.tsx         Prompt for project name
-      CloneRepo/CloneRepo.tsx Clone progress display
+      CloneRepo/CloneRepo.tsx Clone progress display (receives stack)
       InstallationMode.tsx    Full / Custom selection
-      OptionalPackages.tsx    Feature multiselect
-      Install/Install.tsx     Install progress display
-      FileCleanup.tsx         Cleanup progress display
-      PostInstall.tsx         Post-install instructions
+      OptionalPackages.tsx    Feature multiselect (per-stack)
+      Install/Install.tsx     Install progress display (receives stack)
+      FileCleanup.tsx         Cleanup progress display (receives stack)
+      PostInstall.tsx         Post-install instructions, stack-specific
     Ask.tsx                   Text input with validation
     Divider.tsx               Section divider
     MainTitle.tsx             Gradient title banner
@@ -44,49 +45,61 @@ source/
   types/
     types.ts                  Shared TypeScript types
   utils/
-    utils.ts                  Validation, path helpers, package resolution
+    utils.ts                  Stack-aware helpers, validation, path helpers
   __tests__/                  Mirrors source/ layout
-    nonInteractive.test.ts
-    info.test.ts
-    utils.test.ts
-    operations/
-      exec.test.ts
-      cloneRepo.test.ts
-      createEnvFile.test.ts
-      installPackages.test.ts
-      cleanupFiles.test.ts
 ```
 
 ## Key Abstractions
 
-### Feature Definitions (`source/constants/config.ts`)
-
-Single source of truth for feature metadata. All programmatic consumers (`--info`, validation, TUI multiselect, operations) read from here. CLI `--help` text maintains its own copy.
+### Stack (`source/constants/config.ts`)
 
 ```ts
-featureDefinitions: Record<FeatureName, {
-  description: string   // --info output
-  label: string         // TUI multiselect display
-  packages: string[]    // pnpm packages to remove when deselected
-  default: boolean      // --info output
-  postInstall?: string[] // post-install instructions for non-interactive JSON output
-}>
+type Stack = 'evm' | 'canton'
+
+type StackConfig = {
+  label: string
+  description: string
+  repoUrl: string
+  refType: 'tag-latest' | 'branch'
+  ref?: string                              // required when refType === 'branch'
+  packageManager: 'pnpm' | 'npm'
+  removeAfterClone: string[]                // paths nuked between clone and `git init` (empty for both stacks today)
+  envFiles: Array<{ from: string; to: string; ifFeature?: string }>
+  features: Record<string, FeatureDefinition>
+}
 ```
 
-`featureNames` is derived as `Object.keys(featureDefinitions)`.
+`getStackConfig(stack)` reads the base config and overlays the env-var overrides `DAPPBOOSTER_<STACK>_REPO_URL` and `DAPPBOOSTER_<STACK>_REF` before returning — that's the single hook for retargeting either stack at a fork or pre-release branch without editing code.
 
-When adding a new feature, add it here. Programmatic consumers (validation, info output, TUI selection) pick it up automatically — except `cleanupFiles.ts` (which needs explicit cleanup rules) and the CLI `--help` text in `cli.tsx` (which maintains its own copy).
+`getFeatureNames(stack)` and `isFeatureNameValid(stack, name)` are the per-stack feature accessors. There is no global `featureDefinitions` export — that would imply a single stack.
+
+### Feature Definitions
+
+Stored inside each stack's `features` map. Shape:
+
+```ts
+type FeatureDefinition = {
+  description: string   // --info output
+  label: string         // TUI multiselect display
+  packages: string[]    // package-manager packages to remove when deselected (empty for canton features today)
+  default: boolean      // --info output
+  postInstall?: string[] // post-install instructions for non-interactive JSON output
+  paths?: string[]       // files/dirs removed when the feature is deselected (Canton, data-driven cleanup)
+}
+```
+
+When adding a new feature, add it to the relevant stack's `features` map. Programmatic consumers pick it up automatically. Canton feature cleanup is fully data-driven from `paths` (see `cleanupFiles.ts` below), so a new Canton feature needs no cleanup code — only its `paths`. EVM features still need an explicit per-feature cleanup function. The CLI `--help` text in `cli.tsx` maintains its own copy in both cases.
 
 ### Operations Layer (`source/operations/`)
 
-Plain async functions with no UI dependencies. Each operation receives explicit arguments (project folder, mode, features) and performs file system or shell work. Multi-step operations accept an optional `onProgress` callback that the TUI uses to render per-step progress; the non-interactive path omits it.
+Plain async functions, no UI dependencies. Each operation that varies per stack takes `stack: Stack` as its first argument. Multi-step operations accept an optional `onProgress` callback for the TUI; the non-interactive path omits it.
 
 | Function | What it does |
 |---|---|
-| `cloneRepo(projectName, onProgress?)` | Shallow clone, fetch tags, checkout latest tag, rm .git, git init. Uses `execFile` (no shell) for git commands except `git checkout $(...)` which needs shell substitution. Uses `fs.rm` for .git removal. |
-| `createEnvFile(projectFolder)` | Copy .env.example to .env.local via `fs.copyFile` |
-| `installPackages(projectFolder, mode, features, onProgress?)` | Full: `pnpm i`. Custom with packages to remove: `pnpm remove` + postinstall. Custom with all features: `pnpm i`. Uses `execFile` exclusively (no shell). |
-| `cleanupFiles(projectFolder, mode, features, onProgress?)` | Remove files/folders for deselected features, patch package.json scripts, remove .install-files. Uses `node:fs/promises` (`rm`, `mkdir`, `copyFile`) for async operations; `patchPackageJson` uses sync `node:fs`. |
+| `cloneRepo(stack, projectName, onProgress?)` | Reads `stack.refType`. **tag-latest**: shallow clone with `--no-checkout`, `git fetch --tags`, then `git checkout $(git describe --tags …)` (shell required for `$()`). **branch**: shallow clone with `--branch <stack.ref> --single-branch` (no shell). After that, runs `fs.rm` for every entry in `stack.removeAfterClone` (empty for both stacks today), removes `.git`, and reinitializes with `git init`. Uses `execFile` everywhere except the tag-latest shell substitution. |
+| `createEnvFile(stack, projectFolder, features?)` | Copies every entry from `stack.envFiles`. Entries with `ifFeature` are skipped unless the named feature is in the selection (e.g. Canton's `carpincho-wallet/.env.local` only when `carpincho` is selected). |
+| `installPackages(stack, projectFolder, mode, features, onProgress?)` | Uses `stack.packageManager`. Full: `<pm> install`. Custom with packages to remove: `<pm> remove` (pnpm) or `<pm> uninstall` (npm) + `<pm> run postinstall`. Custom with all features: `<pm> install`. `execFile` only — never shell. |
+| `cleanupFiles(stack, projectFolder, mode, features, onProgress?)` | First runs **repository hygiene** (every stack/mode): both stacks always remove `.github` (CI) and the husky/commitlint automation (`.husky`, `.lintstagedrc.mjs`, `commitlint.config.js`) and sanitize tooling deps/scripts from `package.json`; **EVM additionally** always removes its own agent metadata (`.claude`, `AGENTS.md`, `CLAUDE.md`, `architecture.md`), whereas **Canton keeps that metadata** under the optional `llm` feature. Then dispatches to `cleanupEvmFiles` or `cleanupCantonFiles`. EVM removes deselected feature files via per-feature functions plus the `.install-files` staging directory, and patches `package.json` by feature name. Canton cleanup is **data-driven**: it loops the stack's features and, in custom mode, removes each deselected feature's `paths` (e.g. `counter/`, `e2e/`, `carpincho-wallet`, the `llm` artifact paths). The removed directories then drive `package.json` script stripping by **command target** — any script whose command invokes a removed directory is dropped (so deselecting `carpincho` strips `wallet:dev` / `carpincho:build:extension`). Command-based matching keeps cleanup correct as the upstream repo renames or adds scripts. In `full` mode no feature paths are removed, so a full Canton scaffold keeps `carpincho-wallet`, the agent docs, and every script. Canton then makes an initial `git` commit of the scaffold. |
 
 ### Shell Execution (`source/operations/exec.ts`)
 
@@ -104,29 +117,32 @@ Both helpers use `spawn` with stdout ignored and stderr piped. They do not captu
 ```
 CLI flags (string)
   → meow parses to typed flags
-  → validate() converts to { name, mode, features: FeatureName[] }
-  → operations receive typed args
+  → resolveStackFlag merges --canton / --evm / --stack and rejects conflicts
+  → validate() converts to { stack, name, mode, features: FeatureName[] }
+  → operations receive typed args (stack first)
   → JSON output to stdout
 ```
 
 **Routing:** `source/cli.tsx`
 
 ```
---info  →  source/info.ts → print JSON → exit 0
+conflicting stack flags  →  JSON error → exit 1
+--info  →  source/info.ts → print JSON (optionally filtered by stack) → exit 0
 --ni / !isTTY  →  source/nonInteractive.ts → validate → operations → JSON
-default  →  dynamic import ink + App → TUI
+default  →  dynamic import ink + App (preselectedStack passed if resolved) → TUI
 ```
 
 **Non-interactive validation order:**
-1. `--name` required
-2. `--mode` required
-3. `--name` matches `/^[a-zA-Z0-9_]+$/`
-4. `--mode` is `full` or `custom`
-5. Full mode: skip to step 9 (features ignored, all installed)
-6. `--features` required for custom mode
-7. Parsed features list is non-empty (rejects trailing commas, whitespace-only entries)
-8. All feature names are valid keys in `featureDefinitions`
-9. Project directory does not already exist
+1. `--stack` (if explicit) is a valid stack name (else error). When unset, defaults to `evm`.
+2. `--name` required
+3. `--mode` required
+4. `--name` matches `/^[a-zA-Z0-9_]+$/`
+5. `--mode` is `full` or `custom`
+6. Full mode: skip to step 10 (features ignored, all stack features installed)
+7. `--features` required for custom mode
+8. Parsed features list is non-empty (rejects trailing commas, whitespace-only entries)
+9. Every feature name is valid **for the selected stack**
+10. Project directory does not already exist
 
 **Non-interactive execution order:**
 `cloneRepo` → `createEnvFile` → `installPackages` → `cleanupFiles` → success JSON
@@ -137,6 +153,7 @@ Any error produces `{ "success": false, "error": "..." }` and exit code 1. Error
 ```json
 {
   "success": true,
+  "stack": "evm|canton",
   "projectName": "...",
   "mode": "full|custom",
   "features": ["..."],
@@ -145,52 +162,54 @@ Any error produces `{ "success": false, "error": "..." }` and exit code 1. Error
 }
 ```
 
-For full mode, `features` lists all feature names. For custom mode, only the selected ones.
+For full mode, `features` lists all of the stack's feature names. For custom mode, only the selected ones.
 
 ### Interactive (human)
 
 ```
 User input via Ink components
-  → useState in App.tsx
+  → useState in App.tsx (stack, projectName, setupType, selectedFeatures)
   → passed as props to step components
   → components convert MultiSelectItem[] → FeatureName[]
-  → operations receive typed args
+  → operations receive typed args (stack first)
   → Ink renders progress/status
 ```
 
-Steps: ProjectName → CloneRepo → InstallationMode → OptionalPackages → Install → FileCleanup → PostInstall
+Steps: StackSelection → ProjectName → CloneRepo → InstallationMode → OptionalPackages → Install → FileCleanup → PostInstall
 
-Components are presentation-only — they call operations via `useEffect` and render status. Components receive `MultiSelectItem[]` for feature selection (TUI concern) and convert to `FeatureName[]` before calling operations.
+When `cli.tsx` resolves a stack flag, it passes `preselectedStack` to `<App>`, which skips the StackSelection step by starting `currentStep` at 2.
 
-## How to Add a New Feature
+Components are presentation-only — they call operations via `useEffect` and render status. Components receive `MultiSelectItem[]` for feature selection (TUI concern) and convert to `FeatureName[]` before calling operations. `PostInstall` renders stack-specific instructions; the EVM branch shows the subgraph warning when applicable, the Canton branch shows the `canton:up`/`app:dev` commands and — when the `carpincho` feature is selected (or full mode) — the Carpincho extension build/load instructions.
 
-1. **`source/constants/config.ts`** — add entry to `featureDefinitions` with description, label, packages, default, and optional postInstall. Add the name to the `FeatureName` union type.
+## How to Add a New Stack
 
-2. **`source/operations/cleanupFiles.ts`** — add a cleanup function and call it from `cleanupFiles()` when the feature is deselected. If the feature has scripts in package.json, add removal to `patchPackageJson`.
+1. **`source/constants/config.ts`** — add a `Stack` union member and a `stackDefinitions` entry: `label`, `description`, `repoUrl`, `refType`, optional `ref`, `packageManager`, `removeAfterClone`, `envFiles`, `features`.
+2. **`source/operations/cleanupFiles.ts`** — add a `cleanupXxxFiles` function and route to it from the top-level `cleanupFiles` dispatcher.
+3. **`source/components/steps/PostInstall.tsx`** — add stack-specific post-install JSX.
+4. **`source/cli.tsx`** — add a shortcut flag (e.g. `--myStack`) and extend `resolveStackFlag`; update `--help` text.
+5. **Tests** — add per-stack assertions to `nonInteractive.test.ts`, `info.test.ts`, `cloneRepo.test.ts`, `installPackages.test.ts`, `cleanupFiles.test.ts`, `createEnvFile.test.ts`.
+6. **Verify** — `pnpm build && pnpm lint && pnpm test`. Smoke-test with `DAPPBOOSTER_<STACK>_REPO_URL=file:///path/to/local/clone`.
 
-3. **`source/components/steps/PostInstall.tsx`** — if the feature has post-install instructions, add TUI rendering here. The component hardcodes its own display (richer than the `postInstall` strings in config), so new features with post-install steps need manual JSX.
+## How to Add a New Feature to an Existing Stack
 
-4. **`source/cli.tsx`** — update the `--help` text to include the new feature name and description.
-
-5. **Tests** — add test cases in `source/__tests__/operations/cleanupFiles.test.ts` for the new cleanup rules. The nonInteractive, info, installPackages, and utils tests pick up new features automatically since they read from `featureDefinitions`.
-
-6. **Verify** — `pnpm build && pnpm lint && pnpm test`
-
-Steps 1 and 6 are always required. Steps 2-5 depend on whether the feature has cleanup rules, post-install instructions, or descriptions for `--help`.
+1. **`source/constants/config.ts`** — add an entry to the stack's `features` map. For **Canton**, also list the feature's `paths`: cleanup is data-driven, so no cleanup code is needed and scripts that target a removed directory are stripped automatically. If it ships an env file, add an `ifFeature`-gated `envFiles` entry.
+2. **`source/operations/cleanupFiles.ts`** — **EVM only**: add a cleanup function for the feature and call it from `cleanupEvmFiles` when deselected; if it has scripts, add removal to `patchPackageJsonEvm`. Canton needs no change here.
+3. **`source/components/steps/PostInstall.tsx`** — extend stack-specific instructions if needed.
+4. **`source/cli.tsx`** — update the `--help` text.
+5. **Tests** — add assertions in the relevant test files. nonInteractive, info, installPackages, and utils tests pick up new features automatically through `stackDefinitions`.
+6. **Verify** — `pnpm build && pnpm lint && pnpm test`.
 
 ## How to Add a New Operation
 
-1. Create `source/operations/newOperation.ts` — export an async function. Use `execFile` for commands with user input, `exec` only when shell features are needed.
-
+1. Create `source/operations/newOperation.ts` — export an async function. Use `execFile` for commands with user input, `exec` only when shell features are needed. If behavior depends on the stack, take `stack: Stack` as the first argument.
 2. Export from `source/operations/index.ts`.
-
 3. Call from `source/nonInteractive.ts` (in the execution sequence) and from the relevant TUI component.
-
 4. Add tests in `source/__tests__/operations/newOperation.test.ts` — mock `exec`/`execFile` to verify correct commands.
 
 ## Security
 
-- User input (`projectName`) is validated against `/^[a-zA-Z0-9_]+$/` before any use
-- Operations use `execFile` (no shell) for commands that include user input
-- `exec` (shell) is reserved for commands needing shell substitution, and never receives user input in the command string
-- Child process stdout is ignored and stderr is piped (captured for error diagnostics only), guaranteeing clean JSON on the parent's stdout
+- User input (`projectName`) is validated against `/^[a-zA-Z0-9_]+$/` before any use.
+- Operations use `execFile` (no shell) for commands that include user input or stack-config values.
+- `exec` (shell) is reserved for the EVM tag-latest checkout (`git checkout $(git describe …)`); it never receives user input in the command string.
+- Stack `repoUrl` and `ref` may come from the environment (`DAPPBOOSTER_<STACK>_REPO_URL`, `DAPPBOOSTER_<STACK>_REF`) but are passed to git via `execFile`, not interpolated into shell strings.
+- Child process stdout is ignored and stderr is piped (captured for error diagnostics only), guaranteeing clean JSON on the parent's stdout.
