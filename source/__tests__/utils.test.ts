@@ -3,6 +3,7 @@ import { stackDefinitions } from '../constants/config.js'
 import {
   applyFeatureToggle,
   deriveStepDisplay,
+  describeInstallPlan,
   getPackagesToRemove,
   getPostInstallMessages,
   isFeatureSelected,
@@ -171,6 +172,26 @@ describe('resolveSelectedFeatures — canton (e2e requires counter)', () => {
 describe('resolveSelectedFeatures — evm (no requires)', () => {
   it('returns the selection unchanged, in config order', () => {
     expect(resolveSelectedFeatures('evm', ['subgraph', 'demo'])).toEqual(['demo', 'subgraph'])
+  })
+})
+
+describe('describeInstallPlan', () => {
+  it('summarises a full-mode canton plan as all features', () => {
+    expect(describeInstallPlan('canton', 'my_app', 'full', [])).toBe(
+      'Stack: Canton · Project: my_app · Mode: full (all features)',
+    )
+  })
+
+  it('lists the selected features for a custom-mode plan', () => {
+    expect(describeInstallPlan('canton', 'my_app', 'custom', ['counter', 'e2e'])).toBe(
+      'Stack: Canton · Project: my_app · Mode: custom · Features: counter, e2e',
+    )
+  })
+
+  it('shows "none" when a custom plan selects no features', () => {
+    expect(describeInstallPlan('evm', 'demo_app', 'custom', [])).toBe(
+      'Stack: EVM · Project: demo_app · Mode: custom · Features: none',
+    )
   })
 })
 

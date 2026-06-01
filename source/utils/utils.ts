@@ -99,6 +99,25 @@ export function applyFeatureToggle(
   )
 }
 
+// One-line summary of an install plan, shown on the interactive confirmation step before any disk
+// work begins.
+export function describeInstallPlan(
+  stack: Stack,
+  projectName: string,
+  mode: 'full' | 'custom',
+  selectedFeatures: FeatureName[],
+): string {
+  const stackLabel = getStackConfig(stack).label
+  const head = `Stack: ${stackLabel} · Project: ${projectName}`
+
+  if (mode === 'full') {
+    return `${head} · Mode: full (all features)`
+  }
+
+  const features = selectedFeatures.length > 0 ? selectedFeatures.join(', ') : 'none'
+  return `${head} · Mode: custom · Features: ${features}`
+}
+
 export function getPackagesToRemove(stack: Stack, selectedFeatures: FeatureName[]): string[] {
   const features = getStackConfig(stack).features
   return Object.entries(features)
