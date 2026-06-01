@@ -2,6 +2,7 @@ import { Text } from 'ink'
 import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import type { FeatureName, Stack } from '../../constants/config.js'
 import { cleanupFiles } from '../../operations/index.js'
+import { completeInstall } from '../../operations/installGuard.js'
 import type { InstallationType, MultiSelectItem } from '../../types/types.js'
 import { deriveStepDisplay, getProjectFolder } from '../../utils/utils.js'
 import Divider from '../Divider.js'
@@ -32,6 +33,8 @@ const FileCleanup: FC<Props> = ({ stack, onCompletion, installationConfig, proje
 
     cleanupFiles(stack, projectFolder, installationType ?? 'full', features, handleProgress)
       .then(() => {
+        // Scaffold is complete — an interrupt from here on must not delete the finished project.
+        completeInstall()
         setStatus('done')
         onCompletion()
       })

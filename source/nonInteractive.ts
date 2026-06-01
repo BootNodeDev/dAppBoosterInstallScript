@@ -8,6 +8,7 @@ import {
   stackNames,
 } from './constants/config.js'
 import { cleanupFiles, cloneRepo, createEnvFile, installPackages } from './operations/index.js'
+import { beginInstall, completeInstall } from './operations/installGuard.js'
 import type { InstallationType } from './types/types.js'
 import {
   getPostInstallMessages,
@@ -141,14 +142,18 @@ export async function runNonInteractive(flags: {
 }): Promise<void> {
   const { stack, name, mode, features } = validate(flags)
 
+  const projectFolder = getProjectFolder(name)
+
   try {
+    // From here on a project directory exists on disk; an interrupt removes the partial scaffold.
+    beginInstall(projectFolder)
+
     await cloneRepo(stack, name)
-
-    const projectFolder = getProjectFolder(name)
-
     await createEnvFile(stack, projectFolder, features)
     await installPackages(stack, projectFolder, mode, features)
     await cleanupFiles(stack, projectFolder, mode, features)
+
+    completeInstall()
 
     const result: SuccessResult = {
       success: true,
