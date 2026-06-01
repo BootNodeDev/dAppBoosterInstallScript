@@ -1,7 +1,8 @@
 import { Text } from 'ink'
-import { type FC, useEffect, useMemo, useState } from 'react'
-import { type Stack, getStackConfig } from '../../constants/config.js'
+import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
+import { type FeatureName, type Stack, getStackConfig } from '../../constants/config.js'
 import type { MultiSelectItem } from '../../types/types.js'
+import { applyFeatureToggle } from '../../utils/utils.js'
 import MultiSelect from '../Multiselect/index.js'
 
 interface Props {
@@ -21,6 +22,27 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
       value: name,
     }))
   }, [stack])
+
+  // Keep the selection dependency-consistent as the user toggles (e.g. e2e requires counter).
+  const transformSelection = useCallback(
+    (
+      nextSelected: Array<MultiSelectItem>,
+      toggledItem: MultiSelectItem,
+      action: 'select' | 'unselect',
+    ): Array<MultiSelectItem> => {
+      const selectedValues = nextSelected.map((item) => item.value as FeatureName)
+      const resolved = applyFeatureToggle(
+        stack,
+        selectedValues,
+        toggledItem.value as FeatureName,
+        action,
+      )
+      return resolved
+        .map((value) => customPackages.find((pkg) => pkg.value === value))
+        .filter((pkg): pkg is MultiSelectItem => pkg !== undefined)
+    },
+    [stack, customPackages],
+  )
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Run this only once, no matter what
   useEffect(() => {
@@ -61,6 +83,7 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
         focus
         items={customPackages}
         onSubmit={onHandleSubmit}
+        transformSelection={transformSelection}
       />
     </>
   )

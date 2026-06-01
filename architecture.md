@@ -85,10 +85,13 @@ type FeatureDefinition = {
   default: boolean      // --info output
   postInstall?: string[] // post-install instructions for non-interactive JSON output
   paths?: string[]       // files/dirs removed when the feature is deselected (Canton, data-driven cleanup)
+  requires?: FeatureName[] // features this one depends on (one-directional, transitive)
 }
 ```
 
 When adding a new feature, add it to the relevant stack's `features` map. Programmatic consumers pick it up automatically. Canton feature cleanup is fully data-driven from `paths` (see `cleanupFiles.ts` below), so a new Canton feature needs no cleanup code — only its `paths`. EVM features still need an explicit per-feature cleanup function. The CLI `--help` text in `cli.tsx` maintains its own copy in both cases.
+
+**Feature dependencies (`requires`)** are resolved by pure helpers in `utils.ts`. `resolveSelectedFeatures(stack, selected)` expands a selection to include every transitive requirement (used by the non-interactive path, so `--features e2e` yields `[counter, e2e]`). `applyFeatureToggle(stack, selection, toggled, action)` keeps the interactive multiselect consistent: selecting a feature pulls its requirements in, deselecting one cascades its dependents out. `e2e requires counter` is the only dependency today. `--info` surfaces each feature's `requires` so agents can resolve dependencies themselves.
 
 ### Operations Layer (`source/operations/`)
 

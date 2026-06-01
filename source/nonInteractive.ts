@@ -14,6 +14,7 @@ import {
   getProjectFolder,
   isValidName,
   projectDirectoryExists,
+  resolveSelectedFeatures,
 } from './utils/utils.js'
 
 type SuccessResult = {
@@ -124,7 +125,12 @@ function validate(flags: {
     fail(`Project directory '${flags.name}' already exists`)
   }
 
-  return { stack, name: flags.name, mode: flags.mode, features }
+  return {
+    stack,
+    name: flags.name,
+    mode: flags.mode,
+    features: resolveSelectedFeatures(stack, features),
+  }
 }
 
 export async function runNonInteractive(flags: {

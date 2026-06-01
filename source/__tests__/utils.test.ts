@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { stackDefinitions } from '../constants/config.js'
 import {
+  applyFeatureToggle,
   deriveStepDisplay,
   getPackagesToRemove,
   getPostInstallMessages,
   isFeatureSelected,
   isValidName,
+  resolveSelectedFeatures,
 } from '../utils/utils.js'
 
 const evmFeatures = stackDefinitions.evm.features
@@ -133,6 +135,66 @@ describe('getPostInstallMessages', () => {
     const result = getPostInstallMessages('canton', 'custom', ['counter'])
 
     expect(result).toEqual(cantonFeatures.counter.postInstall)
+  })
+})
+
+describe('resolveSelectedFeatures — canton (e2e requires counter)', () => {
+  it('pulls counter in when only e2e is selected', () => {
+    expect(resolveSelectedFeatures('canton', ['e2e'])).toEqual(['counter', 'e2e'])
+  })
+
+  it('leaves an already-complete selection unchanged', () => {
+    expect(resolveSelectedFeatures('canton', ['counter', 'e2e'])).toEqual(['counter', 'e2e'])
+  })
+
+  it('orders the resolved set by config order, not selection order', () => {
+    expect(resolveSelectedFeatures('canton', ['e2e', 'carpincho'])).toEqual([
+      'counter',
+      'e2e',
+      'carpincho',
+    ])
+  })
+
+  it('does not pull e2e in when only counter is selected (one-directional)', () => {
+    expect(resolveSelectedFeatures('canton', ['counter'])).toEqual(['counter'])
+  })
+
+  it('de-duplicates when a requirement is already present', () => {
+    expect(resolveSelectedFeatures('canton', ['counter', 'e2e', 'carpincho'])).toEqual([
+      'counter',
+      'e2e',
+      'carpincho',
+    ])
+  })
+})
+
+describe('resolveSelectedFeatures — evm (no requires)', () => {
+  it('returns the selection unchanged, in config order', () => {
+    expect(resolveSelectedFeatures('evm', ['subgraph', 'demo'])).toEqual(['demo', 'subgraph'])
+  })
+})
+
+describe('applyFeatureToggle — canton (interactive cascade)', () => {
+  it('selecting e2e pulls counter in', () => {
+    expect(applyFeatureToggle('canton', ['carpincho'], 'e2e', 'select')).toEqual([
+      'counter',
+      'e2e',
+      'carpincho',
+    ])
+  })
+
+  it('unselecting counter cascades e2e out', () => {
+    expect(
+      applyFeatureToggle('canton', ['counter', 'e2e', 'carpincho'], 'counter', 'unselect'),
+    ).toEqual(['carpincho'])
+  })
+
+  it('unselecting e2e leaves counter alone', () => {
+    expect(applyFeatureToggle('canton', ['counter', 'e2e'], 'e2e', 'unselect')).toEqual(['counter'])
+  })
+
+  it('selecting counter does not pull e2e', () => {
+    expect(applyFeatureToggle('canton', [], 'counter', 'select')).toEqual(['counter'])
   })
 })
 

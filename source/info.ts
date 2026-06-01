@@ -4,6 +4,7 @@ type FeatureInfo = {
   description: string
   default: boolean
   postInstall?: string[]
+  requires?: string[]
 }
 
 type StackInfo = {
@@ -27,6 +28,7 @@ function buildStackInfo(stack: Stack): StackInfo {
           description: def.description,
           default: def.default,
           ...(def.postInstall ? { postInstall: def.postInstall } : {}),
+          ...(def.requires ? { requires: def.requires } : {}),
         },
       ]),
     ),

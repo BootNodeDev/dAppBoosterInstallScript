@@ -295,6 +295,28 @@ describe('nonInteractive — canton execution', () => {
     const postInstall = output.postInstall as string[]
     expect(postInstall.some((msg) => msg.includes('canton:up'))).toBe(true)
   })
+
+  it('auto-pulls counter when only e2e is requested (e2e requires counter)', async () => {
+    await runNonInteractive({
+      stack: 'canton',
+      name: 'my_app',
+      mode: 'custom',
+      features: 'e2e',
+    })
+
+    expect(installPackages).toHaveBeenCalledWith(
+      'canton',
+      expect.stringContaining('my_app'),
+      'custom',
+      ['counter', 'e2e'],
+    )
+
+    const output = getLastJsonOutput()
+    expect(output.features).toEqual(['counter', 'e2e'])
+    // counter's post-install messages come along with the pulled-in feature
+    const postInstall = output.postInstall as string[]
+    expect(postInstall.some((msg) => msg.includes('canton:up'))).toBe(true)
+  })
 })
 
 describe('nonInteractive — custom mode execution', () => {

@@ -65,7 +65,27 @@ describe('getInfoOutput — no filter', () => {
     }
   })
 
-  it('does not leak label or packages into feature output', () => {
+  it('surfaces requires only for features that declare a dependency', () => {
+    const output = JSON.parse(getInfoOutput())
+
+    for (const stack of stackNames) {
+      for (const [name, def] of Object.entries(stackDefinitions[stack].features)) {
+        const feature = output.stacks[stack].features[name]
+        if (def.requires) {
+          expect(feature.requires).toEqual(def.requires)
+        } else {
+          expect(feature).not.toHaveProperty('requires')
+        }
+      }
+    }
+  })
+
+  it('exposes the e2e -> counter dependency for agents', () => {
+    const output = JSON.parse(getInfoOutput('canton'))
+    expect(output.stacks.canton.features.e2e.requires).toEqual(['counter'])
+  })
+
+  it('does not leak label, packages, or paths into feature output', () => {
     const output = JSON.parse(getInfoOutput())
 
     for (const stack of stackNames) {
@@ -73,6 +93,7 @@ describe('getInfoOutput — no filter', () => {
         const feature = output.stacks[stack].features[name]
         expect(feature).not.toHaveProperty('label')
         expect(feature).not.toHaveProperty('packages')
+        expect(feature).not.toHaveProperty('paths')
       }
     }
   })

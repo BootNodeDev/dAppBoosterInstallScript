@@ -138,9 +138,13 @@ pnpm dlx dappbooster --canton --ni --name my_canton --mode custom --features cou
 | Feature | Key | Default | Description |
 |---|---|---|---|
 | Counter demo | `counter` | ✓ | Counter demo dapp (frontend + Daml + wallet-service) |
-| E2E tests | `e2e` | ✓ | Playwright end-to-end test suite |
+| E2E tests | `e2e` | ✓ | Playwright end-to-end test suite (**requires `counter`**) |
 | Carpincho wallet | `carpincho` | ✓ | Carpincho browser-extension wallet (frontend + build tooling) |
 | LLM & agent artifacts | `llm` | ✓ | `.claude`, `AGENTS.md`, `CLAUDE.md`, `architecture.md`, `llms.txt`, … |
+
+`e2e` drives the counter dapp, so it **requires** `counter`: requesting `--features e2e` auto-pulls
+`counter` in (the success JSON reports `["counter", "e2e"]`), and in the wizard, deselecting
+`counter` also unchecks `e2e`.
 
 The Canton scaffold uses **npm** (a property of the generated project, not this installer). After
 install: review `canton-barebones/.env`, run `npm run canton:up` to start the local Canton stack,

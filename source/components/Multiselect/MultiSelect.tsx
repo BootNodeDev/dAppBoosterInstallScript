@@ -23,6 +23,13 @@ type MultiSelectProps<T> = {
   onUnselect?: (unselectedItem: Item<T>) => void
   onSubmit?: (selectedItems: Item<T>[]) => void
   onHighlight?: (highlightedItem: Item<T>) => void
+  // Optional hook to post-process a toggle (e.g. enforce feature dependencies). Receives the
+  // naive post-toggle selection plus the item that was toggled and the action taken.
+  transformSelection?: (
+    nextSelected: Item<T>[],
+    toggledItem: Item<T>,
+    action: 'select' | 'unselect',
+  ) => Item<T>[]
 }
 
 const MultiSelect = <T,>({
@@ -38,6 +45,7 @@ const MultiSelect = <T,>({
   onUnselect = () => {},
   onSubmit = () => {},
   onHighlight = () => {},
+  transformSelection,
 }: MultiSelectProps<T>) => {
   const [highlightedIndex, setHighlightedIndex] = useState(initialIndex)
   const [selectedItems, setSelectedItems] = useState(defaultSelected)
@@ -56,19 +64,29 @@ const MultiSelect = <T,>({
 
   const handleSelect = useCallback(
     (item: Item<T>) => {
-      if (includesItems(item, selectedItems)) {
-        const newSelectedItems = selectedItems.filter(
-          (selectedItem) => selectedItem.value !== item.value && selectedItem.label !== item.label,
-        )
-        setSelectedItems(newSelectedItems)
+      const isCurrentlySelected = includesItems(item, selectedItems)
+      const action = isCurrentlySelected ? 'unselect' : 'select'
+
+      const naiveSelection = isCurrentlySelected
+        ? selectedItems.filter(
+            (selectedItem) =>
+              selectedItem.value !== item.value && selectedItem.label !== item.label,
+          )
+        : [...selectedItems, item]
+
+      const nextSelection = transformSelection
+        ? transformSelection(naiveSelection, item, action)
+        : naiveSelection
+
+      setSelectedItems(nextSelection)
+
+      if (isCurrentlySelected) {
         onUnselect(item)
       } else {
-        const newSelectedItems = [...selectedItems, item]
-        setSelectedItems(newSelectedItems)
         onSelect(item)
       }
     },
-    [selectedItems, onSelect, onUnselect, includesItems],
+    [selectedItems, onSelect, onUnselect, includesItems, transformSelection],
   )
 
   const handleSubmit = useCallback(() => {

@@ -17,6 +17,9 @@ export type FeatureDefinition = {
   // Relative paths removed when the feature is deselected (custom mode). Directory paths also
   // drive package.json script stripping via scriptTargetsRemovedDir in cleanupFiles.
   paths?: string[]
+  // Other features this one depends on. Selecting it pulls these in; deselecting one of these
+  // cascades this feature out. One-directional and resolved transitively (see utils.ts).
+  requires?: FeatureName[]
 }
 
 export type EnvFile = {
@@ -130,11 +133,12 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
         ],
       },
       e2e: {
-        description: 'Playwright end-to-end test suite',
+        description: 'Playwright end-to-end test suite (drives the counter dapp)',
         label: 'E2E tests',
         packages: [],
         default: true,
         paths: ['e2e'],
+        requires: ['counter'],
       },
       carpincho: {
         description: 'Carpincho browser-extension wallet (frontend + build tooling)',

@@ -27,9 +27,11 @@ const cli = meow(
                                  husky      Git hooks (Husky, lint-staged, commitlint)
                                Canton:
                                  counter    Counter demo dapp
-                                 e2e        Playwright end-to-end tests
+                                 e2e        Playwright end-to-end tests (requires counter)
                                  carpincho  Carpincho browser-extension wallet
                                  llm        LLM and agent artifacts (.claude, AGENTS.md, …)
+                               Dependencies are auto-resolved: requesting e2e
+                               also pulls in counter.
     --non-interactive, --ni  Run without prompts (auto-enabled when not a TTY)
     --info                   Output feature metadata as JSON (filter with --stack)
     --help                   Show this help
@@ -41,8 +43,11 @@ const cli = meow(
     Use --ni to force non-interactive mode in a TTY environment.
 
     AI agents: non-interactive mode activates automatically. Run --info
-    to discover available stacks and features, then pass --canton or --evm
-    plus --name and --mode flags. Output is JSON for easy parsing.
+    to discover available stacks and features (including each feature's
+    "requires"), then pass --canton or --evm plus --name and --mode flags.
+    Feature dependencies are resolved automatically, so the returned
+    "features" list may include extras pulled in by your selection.
+    Output is JSON for easy parsing.
 
   Examples
     Interactive (prompts for stack and options):
