@@ -6,11 +6,13 @@ import type { InstallationType } from '../types/types.js'
 import { isFeatureSelected } from '../utils/utils.js'
 import { execFile } from './exec.js'
 
-const COMMON_METADATA_PATHS = ['.claude', 'AGENTS.md', 'CLAUDE.md', 'architecture.md', '.github']
+// CI config is hygiene for both stacks. EVM additionally always strips its agent/LLM metadata;
+// Canton keeps that metadata under the optional `llm` feature instead.
+const CI_PATHS = ['.github']
+
+const EVM_METADATA_PATHS = ['.claude', 'AGENTS.md', 'CLAUDE.md', 'architecture.md']
 
 const AUTOMATION_PATHS = ['.husky', '.lintstagedrc.mjs', 'commitlint.config.js']
-
-const CANTON_LLM_PATHS = ['.llm', '.llms', 'llm', 'llms', 'llms.txt', 'docs/llm', 'docs/llms']
 
 const TOOLING_PACKAGES_TO_REMOVE = [
   'husky',
@@ -90,15 +92,11 @@ async function cleanupRepositoryHygiene(
   onProgress?: (step: string) => void,
 ): Promise<void> {
   onProgress?.('Repository metadata')
-  await removePaths(projectFolder, COMMON_METADATA_PATHS)
+  const metadataPaths = stack === 'evm' ? [...EVM_METADATA_PATHS, ...CI_PATHS] : CI_PATHS
+  await removePaths(projectFolder, metadataPaths)
 
   onProgress?.('Git hooks and commit linting')
   await removePaths(projectFolder, AUTOMATION_PATHS)
-
-  if (stack === 'canton') {
-    onProgress?.('LLM artifacts')
-    await removePaths(projectFolder, CANTON_LLM_PATHS)
-  }
 
   sanitizeRepositoryPackageJson(projectFolder)
 }
@@ -225,14 +223,6 @@ async function cleanupVocs(projectFolder: string): Promise<void> {
   await rm(resolve(projectFolder, 'docs'), { recursive: true, force: true })
 }
 
-async function cleanupCounter(projectFolder: string): Promise<void> {
-  await rm(resolve(projectFolder, 'counter'), { recursive: true, force: true })
-}
-
-async function cleanupE2e(projectFolder: string): Promise<void> {
-  await rm(resolve(projectFolder, 'e2e'), { recursive: true, force: true })
-}
-
 async function cleanupEvmFiles(
   projectFolder: string,
   mode: InstallationType,
@@ -271,24 +261,23 @@ async function cleanupCantonFiles(
   projectFolder: string,
   mode: InstallationType,
   features: FeatureName[],
-  alwaysRemovedDirs: string[],
   onProgress?: (step: string) => void,
 ): Promise<void> {
-  // Clone-time removals (e.g. carpincho-wallet) apply in every mode; deselected
-  // feature directories add to the set only in custom mode.
-  const removedDirs = [...alwaysRemovedDirs]
+  const cantonFeatures = getStackConfig('canton').features
+
+  // Each deselected feature contributes its paths to removal (custom mode only). Directory paths
+  // also feed script stripping, so a removed feature's package.json scripts disappear with it.
+  const removedDirs: string[] = []
 
   if (mode === 'custom') {
-    if (!isFeatureSelected('counter', features)) {
-      onProgress?.('Counter demo')
-      await cleanupCounter(projectFolder)
-      removedDirs.push('counter')
-    }
+    for (const [name, definition] of Object.entries(cantonFeatures)) {
+      if (isFeatureSelected(name, features) || !definition.paths || definition.paths.length === 0) {
+        continue
+      }
 
-    if (!isFeatureSelected('e2e', features)) {
-      onProgress?.('E2E tests')
-      await cleanupE2e(projectFolder)
-      removedDirs.push('e2e')
+      onProgress?.(definition.label)
+      await removePaths(projectFolder, definition.paths)
+      removedDirs.push(...definition.paths)
     }
   }
 
@@ -305,8 +294,7 @@ export async function cleanupFiles(
   await cleanupRepositoryHygiene(stack, projectFolder, onProgress)
 
   if (stack === 'canton') {
-    const { removeAfterClone } = getStackConfig(stack)
-    await cleanupCantonFiles(projectFolder, mode, features, removeAfterClone, onProgress)
+    await cleanupCantonFiles(projectFolder, mode, features, onProgress)
     onProgress?.('Initial commit')
     await createInitialCommit(projectFolder)
     return

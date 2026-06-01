@@ -385,23 +385,25 @@ describe('cleanupFiles — canton', () => {
     mockCantonPackageJson()
   })
 
-  describe('full mode', () => {
-    it('removes hygiene and llm paths, then strips carpincho scripts', async () => {
+  describe('hygiene (every mode)', () => {
+    it('removes .github and git automation but keeps llm/agent metadata', async () => {
       await cleanupFiles('canton', '/project/my_app', 'full')
 
       const paths = getRmPaths()
       expect(paths).toContain(resolve('/project/my_app', '.github'))
       expect(paths).toContain(resolve('/project/my_app', '.husky'))
-      expect(paths).toContain(resolve('/project/my_app', 'llms.txt'))
-      expect(writeFileSync).toHaveBeenCalled()
-
-      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
-      expect(scripts['wallet:dev']).toBeUndefined()
-      expect(scripts['carpincho:build:extension']).toBeUndefined()
-      expect(execFile).toHaveBeenCalledWith('git', ['add', '.'], { cwd: '/project/my_app' })
+      expect(paths).toContain(resolve('/project/my_app', '.lintstagedrc.mjs'))
+      expect(paths).toContain(resolve('/project/my_app', 'commitlint.config.js'))
+      // Metadata + LLM artifacts belong to the `llm` feature, so full mode keeps them.
+      expect(paths).not.toContain(resolve('/project/my_app', '.claude'))
+      expect(paths).not.toContain(resolve('/project/my_app', 'AGENTS.md'))
+      expect(paths).not.toContain(resolve('/project/my_app', 'architecture.md'))
+      expect(paths).not.toContain(resolve('/project/my_app', 'llms.txt'))
     })
+  })
 
-    it('keeps every non-carpincho script in full mode', async () => {
+  describe('full mode', () => {
+    it('keeps every script — including carpincho — and makes the initial commit', async () => {
       await cleanupFiles('canton', '/project/my_app', 'full')
 
       const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
@@ -411,33 +413,73 @@ describe('cleanupFiles — canton', () => {
       expect(scripts['wallet-service:dev']).toBe(
         'npm --prefix canton-barebones/wallet-service run dev',
       )
+      expect(scripts['wallet:dev']).toBe('npm --prefix carpincho-wallet run dev')
+      expect(scripts['carpincho:build:extension']).toBe(
+        'npm --prefix carpincho-wallet run build:extension',
+      )
       expect(scripts['app:dev']).toBeDefined()
       expect(scripts.e2e).toBe('npm --prefix e2e test')
+      expect(execFile).toHaveBeenCalledWith('git', ['add', '.'], { cwd: '/project/my_app' })
+    })
+
+    it('keeps the carpincho-wallet, counter and e2e directories', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'full')
+
+      const paths = getRmPaths()
+      expect(paths).not.toContain(resolve('/project/my_app', 'carpincho-wallet'))
+      expect(paths).not.toContain(resolve('/project/my_app', 'counter'))
+      expect(paths).not.toContain(resolve('/project/my_app', 'e2e'))
     })
   })
 
-  describe('carpincho scripts are stripped in every scenario', () => {
-    const scenarios: Array<[string, 'full' | 'custom', FeatureName[]]> = [
-      ['full', 'full', []],
-      ['custom counter+e2e', 'custom', ['counter', 'e2e']],
-      ['custom counter only', 'custom', ['counter']],
-      ['custom nothing', 'custom', []],
-    ]
+  describe('custom mode — carpincho deselected', () => {
+    it('removes the carpincho-wallet directory', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter', 'e2e', 'llm'])
 
-    for (const [label, mode, features] of scenarios) {
-      it(`strips wallet:dev and carpincho:build:extension (${label})`, async () => {
-        await cleanupFiles('canton', '/project/my_app', mode, features)
+      expect(getRmPaths()).toContain(resolve('/project/my_app', 'carpincho-wallet'))
+    })
 
-        const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
-        expect(scripts['wallet:dev']).toBeUndefined()
-        expect(scripts['carpincho:build:extension']).toBeUndefined()
-      })
-    }
+    it('strips wallet:dev and carpincho:build:extension', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter', 'e2e', 'llm'])
+
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts['wallet:dev']).toBeUndefined()
+      expect(scripts['carpincho:build:extension']).toBeUndefined()
+    })
+
+    it('keeps carpincho-wallet and its scripts when carpincho IS selected', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['carpincho'])
+
+      expect(getRmPaths()).not.toContain(resolve('/project/my_app', 'carpincho-wallet'))
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts['wallet:dev']).toBe('npm --prefix carpincho-wallet run dev')
+    })
+  })
+
+  describe('custom mode — llm deselected', () => {
+    it('removes agent metadata and llm artifact paths', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter', 'e2e', 'carpincho'])
+
+      const paths = getRmPaths()
+      expect(paths).toContain(resolve('/project/my_app', '.claude'))
+      expect(paths).toContain(resolve('/project/my_app', 'AGENTS.md'))
+      expect(paths).toContain(resolve('/project/my_app', 'CLAUDE.md'))
+      expect(paths).toContain(resolve('/project/my_app', 'architecture.md'))
+      expect(paths).toContain(resolve('/project/my_app', 'llms.txt'))
+      expect(paths).toContain(resolve('/project/my_app', 'docs/llm'))
+    })
+
+    it('keeps agent metadata when llm IS selected', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['llm'])
+
+      expect(getRmPaths()).not.toContain(resolve('/project/my_app', '.claude'))
+      expect(getRmPaths()).not.toContain(resolve('/project/my_app', 'AGENTS.md'))
+    })
   })
 
   describe('custom mode — counter deselected', () => {
     it('removes counter/ (and not the base canton-barebones/dars)', async () => {
-      await cleanupFiles('canton', '/project/my_app', 'custom', ['e2e'])
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['e2e', 'carpincho', 'llm'])
 
       const paths = getRmPaths()
       expect(paths).toContain(resolve('/project/my_app', 'counter'))
@@ -445,14 +487,14 @@ describe('cleanupFiles — canton', () => {
     })
 
     it('strips only counter-owned scripts (app:dev)', async () => {
-      await cleanupFiles('canton', '/project/my_app', 'custom', ['e2e'])
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['e2e', 'carpincho', 'llm'])
 
       const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
       expect(scripts['app:dev']).toBeUndefined()
     })
 
     it('keeps base-infra scripts: canton:*, build-dar, deploy-dar, wallet-service:*', async () => {
-      await cleanupFiles('canton', '/project/my_app', 'custom', ['e2e'])
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['e2e', 'carpincho', 'llm'])
 
       const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
       expect(scripts['canton:up']).toBe('npm --prefix canton-barebones run up')
@@ -469,13 +511,13 @@ describe('cleanupFiles — canton', () => {
 
   describe('custom mode — e2e deselected', () => {
     it('removes e2e/ directory', async () => {
-      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter'])
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter', 'carpincho', 'llm'])
 
       expect(getRmPaths()).toContain(resolve('/project/my_app', 'e2e'))
     })
 
     it('strips all e2e scripts (e2e, e2e:headed, e2e:ui)', async () => {
-      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter'])
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter', 'carpincho', 'llm'])
 
       const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
       expect(scripts.e2e).toBeUndefined()
@@ -484,7 +526,7 @@ describe('cleanupFiles — canton', () => {
     })
 
     it('keeps counter scripts (app:dev)', async () => {
-      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter'])
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter', 'carpincho', 'llm'])
 
       const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
       expect(scripts['app:dev']).toBeDefined()
@@ -492,22 +534,26 @@ describe('cleanupFiles — canton', () => {
   })
 
   describe('custom mode — nothing selected', () => {
-    it('removes both counter/ and e2e/ (never canton-barebones)', async () => {
+    it('removes counter/, e2e/, carpincho-wallet and llm paths (never canton-barebones)', async () => {
       await cleanupFiles('canton', '/project/my_app', 'custom', [])
 
       const paths = getRmPaths()
       expect(paths).toContain(resolve('/project/my_app', 'counter'))
       expect(paths).toContain(resolve('/project/my_app', 'e2e'))
+      expect(paths).toContain(resolve('/project/my_app', 'carpincho-wallet'))
+      expect(paths).toContain(resolve('/project/my_app', '.claude'))
       expect(paths).not.toContain(resolve('/project/my_app', 'canton-barebones'))
     })
 
-    it('strips app:dev and all e2e scripts but keeps base infra', async () => {
+    it('strips app:dev, e2e and carpincho scripts but keeps base infra, then commits', async () => {
       await cleanupFiles('canton', '/project/my_app', 'custom', [])
 
       const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
       expect(scripts['app:dev']).toBeUndefined()
       expect(scripts.e2e).toBeUndefined()
       expect(scripts['e2e:ui']).toBeUndefined()
+      expect(scripts['wallet:dev']).toBeUndefined()
+      expect(scripts['carpincho:build:extension']).toBeUndefined()
       expect(scripts['canton:up']).toBeDefined()
       expect(scripts['build-dar']).toBeDefined()
       expect(scripts['wallet-service:dev']).toBeDefined()
@@ -534,38 +580,40 @@ describe('cleanupFiles — canton', () => {
   })
 
   describe('onProgress callback', () => {
-    it('reports per-feature steps', async () => {
+    it('reports per-feature steps in config order', async () => {
       const steps: string[] = []
       await cleanupFiles('canton', '/project/my_app', 'custom', [], (step) => steps.push(step))
 
       expect(steps).toEqual([
         'Repository metadata',
         'Git hooks and commit linting',
-        'LLM artifacts',
         'Counter demo',
         'E2E tests',
+        'Carpincho wallet',
+        'LLM & agent artifacts',
         'Initial commit',
       ])
     })
 
     it('skips steps for selected features', async () => {
       const steps: string[] = []
-      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter'], (step) =>
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['counter', 'carpincho'], (step) =>
         steps.push(step),
       )
 
       expect(steps).not.toContain('Counter demo')
+      expect(steps).not.toContain('Carpincho wallet')
       expect(steps).toContain('E2E tests')
+      expect(steps).toContain('LLM & agent artifacts')
     })
 
-    it('reports nothing for full mode', async () => {
+    it('reports only hygiene and the commit for full mode', async () => {
       const steps: string[] = []
       await cleanupFiles('canton', '/project/my_app', 'full', [], (step) => steps.push(step))
 
       expect(steps).toEqual([
         'Repository metadata',
         'Git hooks and commit linting',
-        'LLM artifacts',
         'Initial commit',
       ])
     })

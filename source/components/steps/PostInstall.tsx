@@ -84,11 +84,14 @@ const EvmPostInstallMessage: FC<{ projectName: string }> = ({ projectName }) => 
   </Box>
 )
 
-const CantonPostInstallMessage: FC<{ projectName: string; features: FeatureName[] }> = ({
-  projectName,
-  features,
-}) => {
-  const counterEnabled = isFeatureSelected('counter', features)
+const CantonPostInstallMessage: FC<{
+  projectName: string
+  features: FeatureName[]
+  installationType: InstallationType | undefined
+}> = ({ projectName, features, installationType }) => {
+  const isFull = installationType === 'full'
+  const counterEnabled = isFull || isFeatureSelected('counter', features)
+  const carpinchoEnabled = isFull || isFeatureSelected('carpincho', features)
 
   return (
     <Box
@@ -115,19 +118,23 @@ const CantonPostInstallMessage: FC<{ projectName: string; features: FeatureName[
           </Text>
         )}
       </Box>
-      <Box
-        alignItems={'center'}
-        borderColor={'yellow'}
-        borderStyle={'bold'}
-        flexDirection={'column'}
-        justifyContent={'center'}
-        padding={1}
-      >
-        <Text color={'yellow'}>
-          {figures.warning} <Text bold>Carpincho Wallet</Text> must be installed separately as a
-          browser extension {figures.warning}
-        </Text>
-      </Box>
+      {carpinchoEnabled && (
+        <Box
+          alignItems={'center'}
+          borderColor={'yellow'}
+          borderStyle={'bold'}
+          flexDirection={'column'}
+          justifyContent={'center'}
+          padding={1}
+        >
+          <Text color={'yellow'}>
+            {figures.info} <Text bold>Carpincho Wallet</Text>: build it with{' '}
+            <Text color={'gray'}>npm run carpincho:build:extension</Text> and load{' '}
+            <Text color={'gray'}>carpincho-wallet/dist-extension</Text> as an unpacked browser
+            extension {figures.info}
+          </Text>
+        </Box>
+      )}
       <Text>See the Canton stack README inside the project for full instructions.</Text>
     </Box>
   )
@@ -163,6 +170,7 @@ const PostInstall: FC<Props> = ({ stack, installationConfig, projectName }) => {
           <CantonPostInstallMessage
             projectName={projectName}
             features={features}
+            installationType={installationType}
           />
         )}
       </Box>

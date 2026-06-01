@@ -14,6 +14,9 @@ export type FeatureDefinition = {
   packages: string[]
   default: boolean
   postInstall?: string[]
+  // Relative paths removed when the feature is deselected (custom mode). Directory paths also
+  // drive package.json script stripping via scriptTargetsRemovedDir in cleanupFiles.
+  paths?: string[]
 }
 
 export type EnvFile = {
@@ -99,13 +102,18 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
     refType: 'branch',
     ref: 'main',
     packageManager: 'npm',
-    removeAfterClone: ['carpincho-wallet'],
+    removeAfterClone: [],
     envFiles: [
       { from: 'canton-barebones/.env.example', to: 'canton-barebones/.env' },
       {
         from: 'counter/frontend/.env.local.example',
         to: 'counter/frontend/.env.local',
         ifFeature: 'counter',
+      },
+      {
+        from: 'carpincho-wallet/.env.local.example',
+        to: 'carpincho-wallet/.env.local',
+        ifFeature: 'carpincho',
       },
     ],
     features: {
@@ -114,11 +122,11 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
         label: 'Counter demo',
         packages: [],
         default: true,
+        paths: ['counter'],
         postInstall: [
           'Review canton-barebones/.env (created from the example)',
           'Run npm run canton:up to start the local Canton stack',
           'Run npm run app:dev to start the counter dapp frontend',
-          'Install the Carpincho wallet browser extension separately (see the project README)',
         ],
       },
       e2e: {
@@ -126,6 +134,37 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
         label: 'E2E tests',
         packages: [],
         default: true,
+        paths: ['e2e'],
+      },
+      carpincho: {
+        description: 'Carpincho browser-extension wallet (frontend + build tooling)',
+        label: 'Carpincho wallet',
+        packages: [],
+        default: true,
+        paths: ['carpincho-wallet'],
+        postInstall: [
+          'Build the Carpincho extension with npm run carpincho:build:extension',
+          'Load carpincho-wallet/dist-extension as an unpacked browser extension',
+        ],
+      },
+      llm: {
+        description: 'LLM and agent artifacts (.claude, AGENTS.md, CLAUDE.md, architecture.md, …)',
+        label: 'LLM & agent artifacts',
+        packages: [],
+        default: true,
+        paths: [
+          '.claude',
+          'AGENTS.md',
+          'CLAUDE.md',
+          'architecture.md',
+          '.llm',
+          '.llms',
+          'llm',
+          'llms',
+          'llms.txt',
+          'docs/llm',
+          'docs/llms',
+        ],
       },
     },
   },

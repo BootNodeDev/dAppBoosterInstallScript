@@ -65,4 +65,22 @@ describe('createEnvFile — canton', () => {
       expect.any(String),
     )
   })
+
+  it('copies carpincho-wallet env file only when carpincho feature selected', async () => {
+    await createEnvFile('canton', '/project/my_app', ['carpincho'])
+
+    expect(copyFile).toHaveBeenCalledWith(
+      '/project/my_app/carpincho-wallet/.env.local.example',
+      '/project/my_app/carpincho-wallet/.env.local',
+    )
+  })
+
+  it('skips carpincho env file when carpincho not selected', async () => {
+    await createEnvFile('canton', '/project/my_app', ['counter'])
+
+    expect(copyFile).not.toHaveBeenCalledWith(
+      '/project/my_app/carpincho-wallet/.env.local.example',
+      expect.any(String),
+    )
+  })
 })

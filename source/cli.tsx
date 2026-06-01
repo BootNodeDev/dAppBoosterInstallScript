@@ -28,6 +28,8 @@ const cli = meow(
                                Canton:
                                  counter    Counter demo dapp
                                  e2e        Playwright end-to-end tests
+                                 carpincho  Carpincho browser-extension wallet
+                                 llm        LLM and agent artifacts (.claude, AGENTS.md, …)
     --non-interactive, --ni  Run without prompts (auto-enabled when not a TTY)
     --info                   Output feature metadata as JSON (filter with --stack)
     --help                   Show this help

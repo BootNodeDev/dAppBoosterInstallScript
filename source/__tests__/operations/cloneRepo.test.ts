@@ -119,21 +119,6 @@ describe('cloneRepo — canton (branch)', () => {
     expect(exec).not.toHaveBeenCalled()
   })
 
-  it('removes carpincho-wallet before reinitializing git', async () => {
-    const callOrder: string[] = []
-    vi.mocked(rm).mockImplementation(async (path) => {
-      callOrder.push(String(path))
-    })
-
-    await cloneRepo('canton', 'my_app')
-
-    const carpincho = callOrder.findIndex((p) => p.endsWith('carpincho-wallet'))
-    const gitFolder = callOrder.findIndex((p) => p.endsWith('.git'))
-
-    expect(carpincho).toBeGreaterThanOrEqual(0)
-    expect(gitFolder).toBeGreaterThan(carpincho)
-  })
-
   it('reinitializes git with execFile', async () => {
     await cloneRepo('canton', 'my_app')
 
@@ -149,7 +134,6 @@ describe('cloneRepo — canton (branch)', () => {
     expect(steps[0]).toContain('Canton')
     expect(steps[0]).toContain('my_app')
     expect(steps[0]).toContain(cantonBranch as string)
-    expect(steps).toContain('Removing carpincho-wallet')
     expect(steps.at(-1)).toBe('Initializing Git repository')
   })
 })
