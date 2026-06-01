@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { featureDefinitions } from '../constants/config.js'
+import { stackDefinitions } from '../constants/config.js'
 import {
+  applyFeatureToggle,
   deriveStepDisplay,
+  describeInstallPlan,
   getPackagesToRemove,
   getPostInstallMessages,
   isFeatureSelected,
   isValidName,
+  resolveSelectedFeatures,
 } from '../utils/utils.js'
+
+const evmFeatures = stackDefinitions.evm.features
+const cantonFeatures = stackDefinitions.canton.features
 
 describe('isValidName', () => {
   it('accepts alphanumeric names', () => {
@@ -58,61 +64,158 @@ describe('isFeatureSelected', () => {
   })
 })
 
-describe('getPackagesToRemove', () => {
+describe('getPackagesToRemove — evm', () => {
   it('returns empty when all features selected', () => {
-    const allFeatures = Object.keys(featureDefinitions) as Array<keyof typeof featureDefinitions>
-    expect(getPackagesToRemove(allFeatures)).toEqual([])
+    const allFeatures = Object.keys(evmFeatures)
+    expect(getPackagesToRemove('evm', allFeatures)).toEqual([])
   })
 
   it('returns all packages when no features selected', () => {
-    const result = getPackagesToRemove([])
+    const result = getPackagesToRemove('evm', [])
 
-    const allPackages = Object.values(featureDefinitions).flatMap((def) => def.packages)
+    const allPackages = Object.values(evmFeatures).flatMap((def) => def.packages)
     expect(result).toEqual(allPackages)
   })
 
   it('returns packages only for deselected features', () => {
-    const result = getPackagesToRemove(['demo', 'subgraph'])
+    const result = getPackagesToRemove('evm', ['demo', 'subgraph'])
 
-    for (const pkg of featureDefinitions.subgraph.packages) {
+    for (const pkg of evmFeatures.subgraph.packages) {
       expect(result).not.toContain(pkg)
     }
-    for (const pkg of featureDefinitions.typedoc.packages) {
+    for (const pkg of evmFeatures.typedoc.packages) {
       expect(result).toContain(pkg)
     }
   })
 
   it('handles demo (which has no packages) correctly', () => {
-    const withDemo = getPackagesToRemove(['demo'])
-    const withoutDemo = getPackagesToRemove([])
+    const withDemo = getPackagesToRemove('evm', ['demo'])
+    const withoutDemo = getPackagesToRemove('evm', [])
     expect(withDemo).toEqual(withoutDemo)
   })
 })
 
-describe('getPostInstallMessages', () => {
-  it('returns all messages for full mode', () => {
-    const result = getPostInstallMessages('full', [])
+describe('getPackagesToRemove — canton', () => {
+  it('returns empty when all canton features selected', () => {
+    const allFeatures = Object.keys(cantonFeatures)
+    expect(getPackagesToRemove('canton', allFeatures)).toEqual([])
+  })
 
-    const allMessages = Object.values(featureDefinitions).flatMap((def) => def.postInstall ?? [])
+  it('returns empty even with none selected (canton features carry no packages)', () => {
+    expect(getPackagesToRemove('canton', [])).toEqual([])
+  })
+})
+
+describe('getPostInstallMessages', () => {
+  it('returns all evm messages for full mode', () => {
+    const result = getPostInstallMessages('evm', 'full', [])
+
+    const allMessages = Object.values(evmFeatures).flatMap((def) => def.postInstall ?? [])
     expect(result).toEqual(allMessages)
   })
 
   it('returns only selected feature messages for custom mode', () => {
-    const result = getPostInstallMessages('custom', ['subgraph'])
+    const result = getPostInstallMessages('evm', 'custom', ['subgraph'])
 
-    expect(result).toEqual(featureDefinitions.subgraph.postInstall)
+    expect(result).toEqual(evmFeatures.subgraph.postInstall)
   })
 
   it('returns empty for custom mode with no postInstall features', () => {
-    const result = getPostInstallMessages('custom', ['demo'])
+    const result = getPostInstallMessages('evm', 'custom', ['demo'])
 
     expect(result).toEqual([])
   })
 
   it('returns empty for custom mode with no features', () => {
-    const result = getPostInstallMessages('custom', [])
+    const result = getPostInstallMessages('evm', 'custom', [])
 
     expect(result).toEqual([])
+  })
+
+  it('returns canton counter messages for canton custom mode', () => {
+    const result = getPostInstallMessages('canton', 'custom', ['counter'])
+
+    expect(result).toEqual(cantonFeatures.counter.postInstall)
+  })
+})
+
+describe('resolveSelectedFeatures — canton (e2e requires counter)', () => {
+  it('pulls counter in when only e2e is selected', () => {
+    expect(resolveSelectedFeatures('canton', ['e2e'])).toEqual(['counter', 'e2e'])
+  })
+
+  it('leaves an already-complete selection unchanged', () => {
+    expect(resolveSelectedFeatures('canton', ['counter', 'e2e'])).toEqual(['counter', 'e2e'])
+  })
+
+  it('orders the resolved set by config order, not selection order', () => {
+    expect(resolveSelectedFeatures('canton', ['e2e', 'carpincho'])).toEqual([
+      'counter',
+      'e2e',
+      'carpincho',
+    ])
+  })
+
+  it('does not pull e2e in when only counter is selected (one-directional)', () => {
+    expect(resolveSelectedFeatures('canton', ['counter'])).toEqual(['counter'])
+  })
+
+  it('de-duplicates when a requirement is already present', () => {
+    expect(resolveSelectedFeatures('canton', ['counter', 'e2e', 'carpincho'])).toEqual([
+      'counter',
+      'e2e',
+      'carpincho',
+    ])
+  })
+})
+
+describe('resolveSelectedFeatures — evm (no requires)', () => {
+  it('returns the selection unchanged, in config order', () => {
+    expect(resolveSelectedFeatures('evm', ['subgraph', 'demo'])).toEqual(['demo', 'subgraph'])
+  })
+})
+
+describe('describeInstallPlan', () => {
+  it('summarises a full-mode canton plan as all features', () => {
+    expect(describeInstallPlan('canton', 'my_app', 'full', [])).toBe(
+      'Stack: Canton · Project: my_app · Mode: full (all features)',
+    )
+  })
+
+  it('lists the selected features for a custom-mode plan', () => {
+    expect(describeInstallPlan('canton', 'my_app', 'custom', ['counter', 'e2e'])).toBe(
+      'Stack: Canton · Project: my_app · Mode: custom · Features: counter, e2e',
+    )
+  })
+
+  it('shows "none" when a custom plan selects no features', () => {
+    expect(describeInstallPlan('evm', 'demo_app', 'custom', [])).toBe(
+      'Stack: EVM · Project: demo_app · Mode: custom · Features: none',
+    )
+  })
+})
+
+describe('applyFeatureToggle — canton (interactive cascade)', () => {
+  it('selecting e2e pulls counter in', () => {
+    expect(applyFeatureToggle('canton', ['carpincho'], 'e2e', 'select')).toEqual([
+      'counter',
+      'e2e',
+      'carpincho',
+    ])
+  })
+
+  it('unselecting counter cascades e2e out', () => {
+    expect(
+      applyFeatureToggle('canton', ['counter', 'e2e', 'carpincho'], 'counter', 'unselect'),
+    ).toEqual(['carpincho'])
+  })
+
+  it('unselecting e2e leaves counter alone', () => {
+    expect(applyFeatureToggle('canton', ['counter', 'e2e'], 'e2e', 'unselect')).toEqual(['counter'])
+  })
+
+  it('selecting counter does not pull e2e', () => {
+    expect(applyFeatureToggle('canton', [], 'counter', 'select')).toEqual(['counter'])
   })
 })
 

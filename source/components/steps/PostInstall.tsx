@@ -2,7 +2,7 @@ import figures from 'figures'
 import { Box, Text } from 'ink'
 import Link from 'ink-link'
 import type { FC } from 'react'
-import type { FeatureName } from '../../constants/config.js'
+import { type FeatureName, type Stack, getStackConfig } from '../../constants/config.js'
 import type { InstallationType, MultiSelectItem } from '../../types/types.js'
 import { isFeatureSelected } from '../../utils/utils.js'
 import Divider from '../Divider.js'
@@ -52,7 +52,7 @@ const SubgraphWarningMessage: FC = () => (
   </Box>
 )
 
-const PostInstallMessage: FC<{ projectName: string }> = ({ projectName }) => (
+const EvmPostInstallMessage: FC<{ projectName: string }> = ({ projectName }) => (
   <Box
     flexDirection={'column'}
     rowGap={1}
@@ -84,7 +84,64 @@ const PostInstallMessage: FC<{ projectName: string }> = ({ projectName }) => (
   </Box>
 )
 
+const CantonPostInstallMessage: FC<{
+  projectName: string
+  features: FeatureName[]
+  installationType: InstallationType | undefined
+}> = ({ projectName, features, installationType }) => {
+  const isFull = installationType === 'full'
+  const counterEnabled = isFull || isFeatureSelected('counter', features)
+  const carpinchoEnabled = isFull || isFeatureSelected('carpincho', features)
+
+  return (
+    <Box
+      flexDirection={'column'}
+      rowGap={1}
+      paddingBottom={2}
+    >
+      <Text color={'whiteBright'}>To start the Canton stack:</Text>
+      <Box flexDirection={'column'}>
+        <Text>
+          1- Move into the project's folder with <Text color={'gray'}>cd {projectName}</Text>
+        </Text>
+        <Text>
+          2- Configure canton-barebones: <Text color={'gray'}>canton-barebones/.env</Text> was
+          created from the example — review it.
+        </Text>
+        <Text>
+          3- Start the local Canton stack with <Text color={'gray'}>npm run canton:up</Text>
+        </Text>
+        {counterEnabled && (
+          <Text>
+            4- In a separate terminal, run the counter dapp:{' '}
+            <Text color={'gray'}>npm run app:dev</Text>
+          </Text>
+        )}
+      </Box>
+      {carpinchoEnabled && (
+        <Box
+          alignItems={'center'}
+          borderColor={'yellow'}
+          borderStyle={'bold'}
+          flexDirection={'column'}
+          justifyContent={'center'}
+          padding={1}
+        >
+          <Text color={'yellow'}>
+            {figures.info} <Text bold>Carpincho Wallet</Text>: build it with{' '}
+            <Text color={'gray'}>npm run carpincho:build:extension</Text> and load{' '}
+            <Text color={'gray'}>carpincho-wallet/dist-extension</Text> as an unpacked browser
+            extension {figures.info}
+          </Text>
+        </Box>
+      )}
+      <Text>See the Canton stack README inside the project for full instructions.</Text>
+    </Box>
+  )
+}
+
 interface Props {
+  stack: Stack
   installationConfig: {
     installationType: InstallationType | undefined
     selectedFeatures?: Array<MultiSelectItem>
@@ -92,20 +149,30 @@ interface Props {
   projectName: string
 }
 
-const PostInstall: FC<Props> = ({ installationConfig, projectName }) => {
+const PostInstall: FC<Props> = ({ stack, installationConfig, projectName }) => {
   const { selectedFeatures, installationType } = installationConfig
   const features = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
-  const subgraphSupport = isFeatureSelected('subgraph', features)
+  const stackLabel = getStackConfig(stack).label
 
   return (
     <>
-      <Divider title={'Post-install instructions'} />
+      <Divider title={`Post-install instructions — ${stackLabel}`} />
       <Box
         flexDirection={'column'}
         rowGap={2}
       >
-        {(subgraphSupport || installationType === 'full') && <SubgraphWarningMessage />}
-        <PostInstallMessage projectName={projectName} />
+        {stack === 'evm' &&
+          (isFeatureSelected('subgraph', features) || installationType === 'full') && (
+            <SubgraphWarningMessage />
+          )}
+        {stack === 'evm' && <EvmPostInstallMessage projectName={projectName} />}
+        {stack === 'canton' && (
+          <CantonPostInstallMessage
+            projectName={projectName}
+            features={features}
+            installationType={installationType}
+          />
+        )}
       </Box>
     </>
   )

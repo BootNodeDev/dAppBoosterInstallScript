@@ -1,13 +1,31 @@
 # dAppBooster installer
 
-Agent-friendly installer for [dAppBooster](https://dappbooster.dev/) that scaffolds Web3 dApps via TUI or non-interactive CLI/CI with JSON output.
+Agent-friendly installer that scaffolds a Web3 dApp. It supports **two stacks** — pick one per
+run, either through the interactive wizard or with a single flag (`--evm` / `--canton`). It works
+interactively (a React + Ink TUI) and non-interactively (flag-driven, JSON output) for CI and AI
+agents.
+
+- **EVM** — the original [dAppBooster](https://dappbooster.dev/) for Ethereum, Polygon, Base, and
+  other EVM chains.
+- **Canton** — [dAppBooster for Canton](https://dappbooster-canton-landing.vercel.app/): Daml
+  ledger, Carpincho wallet, off-chain services.
+
+## Choose your stack
+
+```shell
+pnpm dlx dappbooster --evm      # EVM stack
+pnpm dlx dappbooster --canton   # Canton stack
+```
+
+Omit the flag to be prompted for the stack in the wizard. Jump to the [EVM stack](#evm-stack) or
+[Canton stack](#canton-stack) section for the details of each.
 
 ## Requirements
 
 - Node >= 20
-- pnpm
+- pnpm (used by the installer itself; the scaffolded project uses pnpm or npm depending on the stack)
 
-## Usage
+## Quick start (interactive)
 
 <img src="./demo.svg" width="600">
 
@@ -15,71 +33,84 @@ Agent-friendly installer for [dAppBooster](https://dappbooster.dev/) that scaffo
 pnpm dlx dappbooster
 ```
 
+The wizard prompts for stack → project name → mode (full / custom) → features, then clones,
+installs, cleans up, and prints next steps. Pass `--evm` or `--canton` to skip the stack prompt.
+
 dAppBooster documentation: https://docs.dappbooster.dev/
 
-## Agent / CI quickstart
+## Agents & CI (non-interactive)
 
-Use `--info` to discover features, then run a non-interactive install that returns JSON.
+Non-interactive mode activates automatically when stdout is not a TTY, or explicitly with `--ni`.
+It returns JSON on stdout and a non-zero exit code on error.
 
-```shell
-pnpm dlx dappbooster --info
-pnpm dlx dappbooster --ni --name my_dapp --mode full
-```
-
-## Agent / non-interactive / CI mode
-
-The installer supports a non-interactive mode for CI pipelines and AI agents. It activates automatically when stdout is not a TTY, or explicitly with the `--ni` flag.
-
-### Discover available features
+Discover stacks and features first, then install:
 
 ```shell
-pnpm dlx dappbooster --info
+pnpm dlx dappbooster --info                  # all stacks + features as JSON
+pnpm dlx dappbooster --info --stack canton   # filter to one stack (or --info --canton)
 ```
+
+| Flag | Purpose |
+|---|---|
+| `--canton` / `--evm` | Pick the stack (mutually exclusive shortcuts) |
+| `--stack <evm\|canton>` | Pick the stack by name (useful when scripting) |
+| `--name <name>` | Project directory name (`/^[a-zA-Z0-9_]+$/`) |
+| `--mode <full\|custom>` | `full` installs every feature; `custom` needs `--features` |
+| `--features <a,b,c>` | Comma-separated feature keys (custom mode only) |
+| `--ni` | Force non-interactive mode |
+
+Mixing flags that disagree (`--canton --evm`, or `--canton --stack evm`) is an error. Each stack
+accepts only its own feature keys, and validation errors name the stack:
 
 ```json
 {
-  "features": {
-    "demo": {
-      "description": "Component demos and example pages",
-      "default": true
-    },
-    "subgraph": {
-      "description": "TheGraph subgraph integration",
-      "default": true,
-      "postInstall": [
-        "Provide your own API key for PUBLIC_SUBGRAPHS_API_KEY in .env.local",
-        "Run pnpm subgraph-codegen from the project folder"
-      ]
-    },
-    "typedoc": {
-      "description": "TypeDoc API documentation generation",
-      "default": true
-    },
-    "vocs": {
-      "description": "Vocs documentation site",
-      "default": true
-    },
-    "husky": {
-      "description": "Git hooks with Husky, lint-staged, and commitlint",
-      "default": true
-    }
-  },
-  "modes": {
-    "full": "Install all features",
-    "custom": "Choose features individually"
-  }
+  "success": false,
+  "error": "Unknown features for stack 'canton': subgraph. Valid features: counter, e2e, carpincho, llm"
 }
 ```
 
-### Full install
+Any failure returns `{ "success": false, "error": "..." }` with exit code 1 (e.g. a missing
+`--name`).
 
-```shell
-pnpm dlx dappbooster --ni --name my_dapp --mode full
-```
+A successful install prints:
 
 ```json
 {
   "success": true,
+  "stack": "evm|canton",
+  "projectName": "...",
+  "mode": "full|custom",
+  "features": ["..."],
+  "path": "/absolute/path",
+  "postInstall": ["..."]
+}
+```
+
+## EVM stack
+
+```shell
+pnpm dlx dappbooster --evm
+```
+
+Interactive (skips the stack prompt) or non-interactive:
+
+```shell
+pnpm dlx dappbooster --evm --ni --name my_dapp --mode full
+pnpm dlx dappbooster --evm --ni --name my_dapp --mode custom --features demo,subgraph
+```
+
+| Feature | Key | Default | Description |
+|---|---|---|---|
+| Component Demos | `demo` | ✓ | Component demos and example pages |
+| Subgraph support | `subgraph` | ✓ | TheGraph subgraph integration |
+| Typedoc | `typedoc` | ✓ | TypeDoc API documentation generation |
+| Vocs | `vocs` | ✓ | Vocs documentation site |
+| Husky | `husky` | ✓ | Git hooks with Husky, lint-staged, and commitlint |
+
+```json
+{
+  "success": true,
+  "stack": "evm",
   "projectName": "my_dapp",
   "mode": "full",
   "features": ["demo", "subgraph", "typedoc", "vocs", "husky"],
@@ -91,63 +122,94 @@ pnpm dlx dappbooster --ni --name my_dapp --mode full
 }
 ```
 
-### Custom install with selected features
+## Canton stack
 
 ```shell
-pnpm dlx dappbooster --ni --name my_dapp --mode custom --features demo,subgraph
+pnpm dlx dappbooster --canton
 ```
+
+Interactive (skips the stack prompt) or non-interactive:
+
+```shell
+pnpm dlx dappbooster --canton --ni --name my_canton_dapp --mode full
+pnpm dlx dappbooster --canton --ni --name my_canton --mode custom --features counter,carpincho
+```
+
+| Feature | Key | Default | Description |
+|---|---|---|---|
+| Counter demo | `counter` | ✓ | Counter demo dapp (frontend + Daml + wallet-service) |
+| E2E tests | `e2e` | ✓ | Playwright end-to-end test suite (**requires `counter`**) |
+| Carpincho wallet | `carpincho` | ✓ | Carpincho browser-extension wallet (frontend + build tooling) |
+| LLM & agent artifacts | `llm` | ✓ | `.claude`, `AGENTS.md`, `CLAUDE.md`, `architecture.md`, `llms.txt`, … |
+
+`e2e` drives the counter dapp, so it **requires** `counter`: requesting `--features e2e` auto-pulls
+`counter` in (the success JSON reports `["counter", "e2e"]`), and in the wizard, deselecting
+`counter` also unchecks `e2e`.
+
+The Canton scaffold uses **npm** (a property of the generated project, not this installer). After
+install: review `canton-barebones/.env`, run `npm run canton:up` to start the local Canton stack,
+and `npm run app:dev` to run the counter dapp frontend. When `carpincho` is included, build the
+extension with `npm run carpincho:build:extension` and load `carpincho-wallet/dist-extension` as an
+unpacked browser extension.
+
+**What gets stripped:**
+
+- **Always** (every stack and mode): CI config (`.github`) and the husky/commitlint automation
+  (`.husky`, `.lintstagedrc.mjs`, `commitlint.config.js`), plus their entries in the root
+  `package.json`.
+- **Per feature** (custom mode): deselecting a feature removes its files and any `package.json`
+  scripts that target them — deselecting `carpincho` removes `carpincho-wallet/` and its scripts
+  (`wallet:dev`, `carpincho:build:extension`); deselecting `llm` removes the agent docs.
+- A **full** install keeps all four features — including `carpincho-wallet/` and the agent docs.
 
 ```json
 {
   "success": true,
-  "projectName": "my_dapp",
-  "mode": "custom",
-  "features": ["demo", "subgraph"],
-  "path": "/absolute/path/to/my_dapp",
+  "stack": "canton",
+  "projectName": "my_canton_dapp",
+  "mode": "full",
+  "features": ["counter", "e2e", "carpincho", "llm"],
+  "path": "/absolute/path/to/my_canton_dapp",
   "postInstall": [
-    "Provide your own API key for PUBLIC_SUBGRAPHS_API_KEY in .env.local",
-    "Run pnpm subgraph-codegen from the project folder"
+    "Review canton-barebones/.env (created from the example)",
+    "Run npm run canton:up to start the local Canton stack",
+    "Run npm run app:dev to start the counter dapp frontend",
+    "Build the Carpincho extension with npm run carpincho:build:extension",
+    "Load carpincho-wallet/dist-extension as an unpacked browser extension"
   ]
 }
 ```
 
-### Error handling
+## Repo / ref overrides (env vars)
 
-Errors return structured JSON with a non-zero exit code:
+Each stack's source repository and ref can be overridden — useful for forks, or for testing a
+feature branch before it lands on `main`.
+
+| Variable | Effect |
+|---|---|
+| `DAPPBOOSTER_EVM_REPO_URL` | Override the EVM stack git URL |
+| `DAPPBOOSTER_EVM_REF` | Override the EVM stack ref (still checks out the latest tag if unset) |
+| `DAPPBOOSTER_CANTON_REPO_URL` | Override the Canton stack git URL |
+| `DAPPBOOSTER_CANTON_REF` | Override the Canton stack branch |
 
 ```shell
-pnpm dlx dappbooster --ni --mode full
+DAPPBOOSTER_CANTON_REF=some-feature-branch \
+  pnpm dlx dappbooster --canton --ni --name my_canton --mode full
 ```
 
-```json
-{
-  "success": false,
-  "error": "Missing required flag: --name"
-}
-```
+The Canton stack defaults to `BootNodeDev/cn-dappbooster` on the `main` branch. The repo has no
+release tags yet, so it tracks `main`; once a release is tagged, switch the default to
+`refType: 'tag-latest'` (or pin a `ref`) in `source/constants/config.ts`.
 
 ## Development
 
-Clone the repo
-
 ```shell
 git clone git@github.com:BootNodeDev/dAppBoosterInstallScript.git
-```
-
-Move into the folder you just created and install the dependencies
-
-```shell
 cd dAppBoosterInstallScript
-
 pnpm i
-```
-
-You can run the script by doing
-
-```shell
-node cli.js
+node dist/cli.js
 ```
 
 ## Releasing new versions to NPM
 
-New releases are automatically uploaded to NPM using GitHub actions.
+New releases are automatically uploaded to NPM via GitHub Actions.

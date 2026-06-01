@@ -6,10 +6,11 @@
 
 ## What This Is
 
-A CLI installer tool for dAppBooster projects. It supports two modes:
+A CLI installer tool for dAppBooster projects. It supports two **stacks** and two **modes**:
 
-- **Interactive** (default): React + Ink TUI that walks users through project naming, repo cloning, installation mode selection, optional packages, and post-install steps.
-- **Non-interactive**: Flag-driven mode (`--ni` or auto-detected when not a TTY) for AI agents and CI. Outputs JSON to stdout. Run `--info` for feature discovery, then `--name` + `--mode` [+ `--features`] to install.
+- **Stacks:** `evm` (the original dAppBooster for EVM chains) and `canton` (dAppBooster for Canton: Daml ledger, Carpincho wallet, off-chain services). Each stack declares its own source repository, ref strategy (tag-latest vs branch), package manager, env files, optional `removeAfterClone` paths, and features.
+- **Interactive** (default): React + Ink TUI that prompts for stack first, then project name, then clone → installation mode → optional packages → install → cleanup → post-install. The stack prompt is skipped when `--canton`, `--evm`, or `--stack` is supplied.
+- **Non-interactive**: Flag-driven (`--ni` or auto-detected when not a TTY) for AI agents and CI. Outputs JSON to stdout. Run `--info` for stack + feature discovery, then `--canton`/`--evm` (or `--stack`) + `--name` + `--mode` [+ `--features`]. Omitting a stack flag in non-interactive mode defaults to `evm` for backward compatibility.
 
 ## Stack & Conventions
 
@@ -35,11 +36,12 @@ A CLI installer tool for dAppBooster projects. It supports two modes:
 
 ## Working Rules
 
-- Use **pnpm** only (never npm or yarn)
+- Use **pnpm** only for this installer (never npm or yarn). The Canton stack scaffolds an npm project; that's a property of the generated project, not this installer.
 - Treat `dist/` as build output — never edit directly
 - User input (`projectName`) must never be interpolated into shell command strings — use `execFile` (args array) instead
-- `source/constants/config.ts` is the single source of truth for feature metadata — all programmatic consumers read from it (CLI `--help` text maintains its own copy)
-- Components are presentation-only — business logic lives in `source/operations/`
+- `source/constants/config.ts` is the single source of truth for stack and feature metadata — all programmatic consumers read it through `getStackConfig(stack)`. CLI `--help` text maintains its own copy.
+- Stack overrides come from env vars `DAPPBOOSTER_<STACK>_REPO_URL` and `DAPPBOOSTER_<STACK>_REF` (read inside `getStackConfig`) — useful for forks and pre-release testing.
+- Components are presentation-only — business logic lives in `source/operations/`. Every operation that varies per stack takes `stack` as its first argument.
 
 ## Architecture
 

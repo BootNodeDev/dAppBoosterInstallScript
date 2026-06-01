@@ -1,56 +1,100 @@
 import { describe, expect, it } from 'vitest'
-import { featureDefinitions, featureNames } from '../constants/config.js'
+import { stackDefinitions, stackNames } from '../constants/config.js'
 import { getInfoOutput } from '../info.js'
 
-describe('getInfoOutput', () => {
+describe('getInfoOutput — no filter', () => {
   it('returns valid JSON', () => {
-    const raw = getInfoOutput()
-    expect(() => JSON.parse(raw)).not.toThrow()
+    expect(() => JSON.parse(getInfoOutput())).not.toThrow()
   })
 
-  it('has features and modes top-level keys', () => {
+  it('has stacks and modes top-level keys', () => {
     const output = JSON.parse(getInfoOutput())
-    expect(output).toHaveProperty('features')
+    expect(output).toHaveProperty('stacks')
     expect(output).toHaveProperty('modes')
   })
 
-  it('includes all defined features', () => {
+  it('includes every defined stack', () => {
     const output = JSON.parse(getInfoOutput())
-    const outputFeatureNames = Object.keys(output.features)
-    expect(outputFeatureNames).toEqual(featureNames)
+    expect(Object.keys(output.stacks)).toEqual(stackNames)
+  })
+
+  it('each stack lists its features', () => {
+    const output = JSON.parse(getInfoOutput())
+
+    for (const stack of stackNames) {
+      const expected = Object.keys(stackDefinitions[stack].features)
+      expect(Object.keys(output.stacks[stack].features)).toEqual(expected)
+    }
+  })
+
+  it('each stack reports its package manager and label', () => {
+    const output = JSON.parse(getInfoOutput())
+
+    for (const stack of stackNames) {
+      expect(output.stacks[stack].label).toBe(stackDefinitions[stack].label)
+      expect(output.stacks[stack].packageManager).toBe(stackDefinitions[stack].packageManager)
+    }
   })
 
   it('each feature has description and default', () => {
     const output = JSON.parse(getInfoOutput())
 
-    for (const name of featureNames) {
-      expect(output.features[name]).toHaveProperty('description')
-      expect(output.features[name]).toHaveProperty('default')
-      expect(typeof output.features[name].description).toBe('string')
-      expect(typeof output.features[name].default).toBe('boolean')
-    }
-  })
-
-  it('includes postInstall only for features that have it', () => {
-    const output = JSON.parse(getInfoOutput())
-
-    for (const name of featureNames) {
-      const def = featureDefinitions[name]
-
-      if (def.postInstall) {
-        expect(output.features[name].postInstall).toEqual(def.postInstall)
-      } else {
-        expect(output.features[name]).not.toHaveProperty('postInstall')
+    for (const stack of stackNames) {
+      for (const name of Object.keys(stackDefinitions[stack].features)) {
+        const feature = output.stacks[stack].features[name]
+        expect(feature).toHaveProperty('description')
+        expect(feature).toHaveProperty('default')
+        expect(typeof feature.description).toBe('string')
+        expect(typeof feature.default).toBe('boolean')
       }
     }
   })
 
-  it('does not leak label or packages into output', () => {
+  it('includes postInstall only for features that declare it', () => {
     const output = JSON.parse(getInfoOutput())
 
-    for (const name of featureNames) {
-      expect(output.features[name]).not.toHaveProperty('label')
-      expect(output.features[name]).not.toHaveProperty('packages')
+    for (const stack of stackNames) {
+      for (const [name, def] of Object.entries(stackDefinitions[stack].features)) {
+        const feature = output.stacks[stack].features[name]
+        if (def.postInstall) {
+          expect(feature.postInstall).toEqual(def.postInstall)
+        } else {
+          expect(feature).not.toHaveProperty('postInstall')
+        }
+      }
+    }
+  })
+
+  it('surfaces requires only for features that declare a dependency', () => {
+    const output = JSON.parse(getInfoOutput())
+
+    for (const stack of stackNames) {
+      for (const [name, def] of Object.entries(stackDefinitions[stack].features)) {
+        const feature = output.stacks[stack].features[name]
+        if (def.requires) {
+          expect(feature.requires).toEqual(def.requires)
+        } else {
+          expect(feature).not.toHaveProperty('requires')
+        }
+      }
+    }
+  })
+
+  it('exposes the e2e -> counter dependency for agents', () => {
+    const output = JSON.parse(getInfoOutput('canton'))
+    expect(output.stacks.canton.features.e2e.requires).toEqual(['counter'])
+  })
+
+  it('does not leak label, packages, or paths into feature output', () => {
+    const output = JSON.parse(getInfoOutput())
+
+    for (const stack of stackNames) {
+      for (const name of Object.keys(stackDefinitions[stack].features)) {
+        const feature = output.stacks[stack].features[name]
+        expect(feature).not.toHaveProperty('label')
+        expect(feature).not.toHaveProperty('packages')
+        expect(feature).not.toHaveProperty('paths')
+      }
     }
   })
 
@@ -58,7 +102,21 @@ describe('getInfoOutput', () => {
     const output = JSON.parse(getInfoOutput())
     expect(output.modes).toHaveProperty('full')
     expect(output.modes).toHaveProperty('custom')
-    expect(typeof output.modes.full).toBe('string')
-    expect(typeof output.modes.custom).toBe('string')
+  })
+})
+
+describe('getInfoOutput — filter by stack', () => {
+  it('returns only the requested stack', () => {
+    const output = JSON.parse(getInfoOutput('canton'))
+    expect(Object.keys(output.stacks)).toEqual(['canton'])
+  })
+
+  it('throws on unknown stack filter', () => {
+    expect(() => getInfoOutput('does-not-exist')).toThrow(/Unknown stack 'does-not-exist'/)
+  })
+
+  it('filtering by evm hides canton', () => {
+    const output = JSON.parse(getInfoOutput('evm'))
+    expect(Object.keys(output.stacks)).toEqual(['evm'])
   })
 })

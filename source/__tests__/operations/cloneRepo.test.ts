@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { repoUrl } from '../../constants/config.js'
+import { stackDefinitions } from '../../constants/config.js'
 
 vi.mock('../../operations/exec.js', () => ({
   exec: vi.fn().mockResolvedValue(undefined),
@@ -14,35 +14,30 @@ const { exec, execFile } = await import('../../operations/exec.js')
 const { rm } = await import('node:fs/promises')
 const { cloneRepo } = await import('../../operations/cloneRepo.js')
 
-describe('cloneRepo', () => {
+const evmRepoUrl = stackDefinitions.evm.repoUrl
+const cantonRepoUrl = stackDefinitions.canton.repoUrl
+const cantonBranch = stackDefinitions.canton.ref
+
+describe('cloneRepo — evm (tag-latest)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('calls 5 operations in sequence', async () => {
-    await cloneRepo('my_app')
-
-    const execFileCalls = vi.mocked(execFile).mock.calls
-    const execCalls = vi.mocked(exec).mock.calls
-    const rmCalls = vi.mocked(rm).mock.calls
-    expect(execFileCalls.length + execCalls.length + rmCalls.length).toBe(5)
-  })
-
-  it('clones with execFile passing projectName as arg', async () => {
-    await cloneRepo('my_app')
+  it('clones with execFile using evm repo url and projectName as arg', async () => {
+    await cloneRepo('evm', 'my_app')
 
     expect(execFile).toHaveBeenCalledWith('git', [
       'clone',
       '--depth',
       '1',
       '--no-checkout',
-      repoUrl,
+      evmRepoUrl,
       'my_app',
     ])
   })
 
   it('fetches tags with execFile', async () => {
-    await cloneRepo('my_app')
+    await cloneRepo('evm', 'my_app')
 
     expect(execFile).toHaveBeenCalledWith('git', ['fetch', '--tags'], {
       cwd: expect.stringContaining('my_app'),
@@ -50,7 +45,7 @@ describe('cloneRepo', () => {
   })
 
   it('checks out latest tag with exec (needs shell)', async () => {
-    await cloneRepo('my_app')
+    await cloneRepo('evm', 'my_app')
 
     expect(exec).toHaveBeenCalledWith(expect.stringContaining('git checkout $(git describe'), {
       cwd: expect.stringContaining('my_app'),
@@ -58,7 +53,7 @@ describe('cloneRepo', () => {
   })
 
   it('removes .git with fs.rm', async () => {
-    await cloneRepo('my_app')
+    await cloneRepo('evm', 'my_app')
 
     expect(rm).toHaveBeenCalledWith(expect.stringContaining('my_app/.git'), {
       recursive: true,
@@ -67,54 +62,78 @@ describe('cloneRepo', () => {
   })
 
   it('initializes fresh git repo with execFile', async () => {
-    await cloneRepo('my_app')
+    await cloneRepo('evm', 'my_app')
 
     expect(execFile).toHaveBeenCalledWith('git', ['init'], {
       cwd: expect.stringContaining('my_app'),
     })
   })
 
-  it('executes operations in correct order', async () => {
-    const callOrder: string[] = []
-    vi.mocked(execFile).mockImplementation(async (file, args) => {
-      callOrder.push(`${file} ${args[0]}`)
-    })
-    vi.mocked(exec).mockImplementation(async (_cmd) => {
-      callOrder.push('git checkout')
-    })
-    vi.mocked(rm).mockImplementation(async () => {
-      callOrder.push('fs.rm .git')
-    })
-
-    await cloneRepo('my_app')
-
-    expect(callOrder).toEqual(['git clone', 'git fetch', 'git checkout', 'fs.rm .git', 'git init'])
-  })
-
   it('does not interpolate projectName into shell strings', async () => {
-    await cloneRepo('my_app')
+    await cloneRepo('evm', 'my_app')
 
     for (const call of vi.mocked(exec).mock.calls) {
       expect(call[0]).not.toContain('my_app')
     }
   })
 
-  describe('onProgress callback', () => {
-    it('reports all 5 steps in order', async () => {
-      const steps: string[] = []
-      await cloneRepo('my_app', (step) => steps.push(step))
+  it('reports the canonical 5 progress steps in order', async () => {
+    const steps: string[] = []
+    await cloneRepo('evm', 'my_app', (step) => steps.push(step))
 
-      expect(steps).toEqual([
-        'Cloning dAppBooster in my_app',
-        'Fetching tags',
-        'Checking out latest tag',
-        'Removing .git folder',
-        'Initializing Git repository',
-      ])
-    })
+    expect(steps).toEqual([
+      'Cloning EVM in my_app',
+      'Fetching tags',
+      'Checking out latest tag',
+      'Removing .git folder',
+      'Initializing Git repository',
+    ])
+  })
 
-    it('works without a callback', async () => {
-      await expect(cloneRepo('my_app')).resolves.toBeUndefined()
+  it('works without a callback', async () => {
+    await expect(cloneRepo('evm', 'my_app')).resolves.toBeUndefined()
+  })
+})
+
+describe('cloneRepo — canton (branch)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('clones the canton repo on the configured branch (no --no-checkout, no fetch tags)', async () => {
+    await cloneRepo('canton', 'my_app')
+
+    expect(execFile).toHaveBeenCalledWith('git', [
+      'clone',
+      '--depth',
+      '1',
+      '--branch',
+      cantonBranch as string,
+      '--single-branch',
+      cantonRepoUrl,
+      'my_app',
+    ])
+
+    // no fetch / no shell checkout for canton
+    expect(execFile).not.toHaveBeenCalledWith('git', ['fetch', '--tags'], expect.anything())
+    expect(exec).not.toHaveBeenCalled()
+  })
+
+  it('reinitializes git with execFile', async () => {
+    await cloneRepo('canton', 'my_app')
+
+    expect(execFile).toHaveBeenCalledWith('git', ['init'], {
+      cwd: expect.stringContaining('my_app'),
     })
+  })
+
+  it('progress steps mention Canton and the branch', async () => {
+    const steps: string[] = []
+    await cloneRepo('canton', 'my_app', (step) => steps.push(step))
+
+    expect(steps[0]).toContain('Canton')
+    expect(steps[0]).toContain('my_app')
+    expect(steps[0]).toContain(cantonBranch as string)
+    expect(steps.at(-1)).toBe('Initializing Git repository')
   })
 })

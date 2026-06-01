@@ -1,7 +1,12 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
-import { type FeatureName, featureDefinitions } from '../constants/config.js'
+import {
+  type FeatureName,
+  type Stack,
+  getFeatureNames,
+  getStackConfig,
+} from '../constants/config.js'
 
 export function getProjectFolder(projectName: string) {
   return join(process.cwd(), projectName)
@@ -25,21 +30,113 @@ export function isFeatureSelected(feature: FeatureName, selectedFeatures: Featur
   return selectedFeatures.includes(feature)
 }
 
-export function getPackagesToRemove(selectedFeatures: FeatureName[]): string[] {
-  return Object.entries(featureDefinitions)
-    .filter(([name]) => !selectedFeatures.includes(name as FeatureName))
+type FeatureToggleAction = 'select' | 'unselect'
+
+// Walks a feature's `requires` chain, adding every (transitive) requirement to `accumulator`.
+function collectRequiredFeatures(
+  stack: Stack,
+  feature: FeatureName,
+  accumulator: Set<FeatureName>,
+): void {
+  const definition = getStackConfig(stack).features[feature]
+  if (!definition?.requires) {
+    return
+  }
+
+  for (const required of definition.requires) {
+    if (!accumulator.has(required)) {
+      accumulator.add(required)
+      collectRequiredFeatures(stack, required, accumulator)
+    }
+  }
+}
+
+// Features that depend (transitively) on `target` — removing `target` should remove these too.
+function getDependentFeatures(stack: Stack, target: FeatureName): Set<FeatureName> {
+  const dependents = new Set<FeatureName>()
+
+  for (const name of getFeatureNames(stack)) {
+    const required = new Set<FeatureName>()
+    collectRequiredFeatures(stack, name, required)
+    if (required.has(target)) {
+      dependents.add(name)
+    }
+  }
+
+  return dependents
+}
+
+// Expands a selection to include every transitive requirement, returned in config order.
+export function resolveSelectedFeatures(
+  stack: Stack,
+  selectedFeatures: FeatureName[],
+): FeatureName[] {
+  const resolved = new Set<FeatureName>(selectedFeatures)
+  for (const feature of selectedFeatures) {
+    collectRequiredFeatures(stack, feature, resolved)
+  }
+
+  return getFeatureNames(stack).filter((name) => resolved.has(name))
+}
+
+// Interactive toggle that keeps the selection dependency-consistent: selecting a feature pulls
+// its requirements in; unselecting one cascades its dependents out. Result is in config order.
+export function applyFeatureToggle(
+  stack: Stack,
+  selectedFeatures: FeatureName[],
+  toggledFeature: FeatureName,
+  action: FeatureToggleAction,
+): FeatureName[] {
+  if (action === 'select') {
+    return resolveSelectedFeatures(stack, [...selectedFeatures, toggledFeature])
+  }
+
+  const toRemove = getDependentFeatures(stack, toggledFeature)
+  toRemove.add(toggledFeature)
+
+  return getFeatureNames(stack).filter(
+    (name) => selectedFeatures.includes(name) && !toRemove.has(name),
+  )
+}
+
+// One-line summary of an install plan, shown on the interactive confirmation step before any disk
+// work begins.
+export function describeInstallPlan(
+  stack: Stack,
+  projectName: string,
+  mode: 'full' | 'custom',
+  selectedFeatures: FeatureName[],
+): string {
+  const stackLabel = getStackConfig(stack).label
+  const head = `Stack: ${stackLabel} · Project: ${projectName}`
+
+  if (mode === 'full') {
+    return `${head} · Mode: full (all features)`
+  }
+
+  const features = selectedFeatures.length > 0 ? selectedFeatures.join(', ') : 'none'
+  return `${head} · Mode: custom · Features: ${features}`
+}
+
+export function getPackagesToRemove(stack: Stack, selectedFeatures: FeatureName[]): string[] {
+  const features = getStackConfig(stack).features
+  return Object.entries(features)
+    .filter(([name]) => !selectedFeatures.includes(name))
     .flatMap(([, def]) => def.packages)
 }
 
 export function getPostInstallMessages(
+  stack: Stack,
   mode: 'full' | 'custom',
   selectedFeatures: FeatureName[],
 ): string[] {
+  const features = getStackConfig(stack).features
+
   if (mode === 'full') {
-    return Object.values(featureDefinitions).flatMap((def) => def.postInstall ?? [])
+    return Object.values(features).flatMap((def) => def.postInstall ?? [])
   }
 
-  return selectedFeatures.flatMap((name) => featureDefinitions[name]?.postInstall ?? [])
+  return selectedFeatures.flatMap((name) => features[name]?.postInstall ?? [])
 }
 
 export function projectDirectoryExists(projectName: string): boolean {

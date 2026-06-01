@@ -2,50 +2,44 @@ import figures from 'figures'
 import { Text } from 'ink'
 import SelectInput from 'ink-select-input'
 import { type FC, useState } from 'react'
-import type { InstallationSelectItem } from '../../types/types.js'
+import { type Stack, stackDefinitions, stackNames } from '../../constants/config.js'
 import Divider from '../Divider.js'
 
 interface Props {
   onCompletion: () => void
-  onSelect: (item: InstallationSelectItem) => void
+  onSelect: (stack: Stack) => void
 }
 
-const installationTypeItems: Array<InstallationSelectItem> = [
-  {
-    label: 'Full',
-    value: 'full',
-  },
-  {
-    label: 'Custom',
-    value: 'custom',
-  },
-]
+const stackItems = stackNames.map((name) => ({
+  label: `${stackDefinitions[name].label} — ${stackDefinitions[name].description}`,
+  value: name,
+}))
 
-const InstallationMode: FC<Props> = ({ onCompletion, onSelect }) => {
-  const [selected, setSelected] = useState<InstallationSelectItem>()
+const StackSelection: FC<Props> = ({ onCompletion, onSelect }) => {
+  const [selectedStack, setSelectedStack] = useState<Stack>()
 
-  const handleSelect = (item: InstallationSelectItem) => {
-    onSelect(item)
-    setSelected(item)
+  const handleSelect = (item: { value: Stack }) => {
+    onSelect(item.value)
+    setSelectedStack(item.value)
     onCompletion()
   }
 
   return (
     <>
-      <Divider title={'Installation setup'} />
-      {selected ? (
+      <Divider title={'Select stack'} />
+      {selectedStack ? (
         <Text>
-          Installation type:{' '}
+          Stack:{' '}
           <Text
             bold
             color={'green'}
           >
-            {selected.label}
+            {stackDefinitions[selectedStack].label}
           </Text>
         </Text>
       ) : (
         <>
-          <Text color={'whiteBright'}>Choose installation type</Text>
+          <Text color={'whiteBright'}>Which stack do you want to scaffold?</Text>
           <SelectInput
             indicatorComponent={({ isSelected }) => (
               <Text color="green">{isSelected ? `${figures.pointer} ` : '  '}</Text>
@@ -58,7 +52,7 @@ const InstallationMode: FC<Props> = ({ onCompletion, onSelect }) => {
                 {label}
               </Text>
             )}
-            items={installationTypeItems}
+            items={stackItems}
             onSelect={handleSelect}
           />
         </>
@@ -67,4 +61,4 @@ const InstallationMode: FC<Props> = ({ onCompletion, onSelect }) => {
   )
 }
 
-export default InstallationMode
+export default StackSelection
