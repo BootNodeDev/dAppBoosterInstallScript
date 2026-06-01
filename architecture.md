@@ -37,6 +37,7 @@ source/
     createEnvFile.ts          Copy each stack's envFiles (with optional ifFeature gate)
     installPackages.ts        Stack-aware: uses stack.packageManager (pnpm or npm)
     cleanupFiles.ts           Dispatches to per-stack cleanup (cleanupEvmFiles / cleanupCantonFiles)
+    installGuard.ts           Removes the partial project dir if interrupted mid-scaffold
     index.ts                  Barrel export
   components/
     steps/                    TUI step components (presentation-only)

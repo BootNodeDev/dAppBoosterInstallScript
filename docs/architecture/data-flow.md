@@ -70,8 +70,15 @@ User input via Ink components
   → Ink renders progress/status
 ```
 
-Steps: StackSelection → ProjectName → CloneRepo → InstallationMode → OptionalPackages → Install → FileCleanup → PostInstall
+All questions come **before** any disk work, mirroring the non-interactive path — so abandoning the wizard while answering leaves nothing behind.
 
-When `cli.tsx` resolves a stack flag, it passes `preselectedStack` to `<App>`, which skips the StackSelection step by starting `currentStep` at 2.
+```
+Questions (no disk):  ProjectName → [StackSelection] → InstallationMode → OptionalPackages (custom only) → Confirmation
+Operations (disk):    CloneRepo → Install → FileCleanup → PostInstall
+```
+
+`Confirmation` shows a one-line plan summary (`describeInstallPlan`) and is the last side-effect-free step. **Yes** starts the operations; **No** loops back to the first question (state is reset and the question steps are re-keyed so they re-mount fresh). When `cli.tsx` resolves a stack flag, it passes `preselectedStack` to `<App>`, which skips the `StackSelection` step.
+
+Once operations begin, `CloneRepo` calls `beginInstall` (see [abstractions → installGuard](./abstractions.md#interrupt-safety-installguard)) and `FileCleanup` calls `completeInstall` on success, so a Ctrl+C mid-scaffold removes the partial directory while a finished project is left intact.
 
 Components are presentation-only — they call operations via `useEffect` and render status. Components receive `MultiSelectItem[]` for feature selection (TUI concern) and convert to `FeatureName[]` before calling operations. The `OptionalPackages` multiselect enforces feature dependencies live via `applyFeatureToggle`. `PostInstall` renders stack-specific instructions; the EVM branch shows the subgraph warning when applicable, the Canton branch shows the `canton:up`/`app:dev` commands and — when the `carpincho` feature is selected (or full mode) — the Carpincho extension build/load instructions.
