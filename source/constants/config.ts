@@ -1,4 +1,5 @@
 import process from 'node:process'
+import type { InstallationType } from '../types/types.js'
 
 export type Stack = 'evm' | 'canton'
 
@@ -36,6 +37,8 @@ export type StackConfig = {
   ref?: string
   packageManager: PackageManager
   removeAfterClone: string[]
+  // Stack-level post-install guidance shown for every scaffold of this stack (any mode).
+  postInstall?: string[]
   envFiles: EnvFile[]
   features: Record<FeatureName, FeatureDefinition>
 }
@@ -199,4 +202,16 @@ export function isFeatureNameValid(stack: Stack, name: string): boolean {
 
 export function isStackName(name: string): name is Stack {
   return (stackNames as string[]).includes(name)
+}
+
+export function getDefaultFeatureNames(stack: Stack): FeatureName[] {
+  return Object.entries(stackDefinitions[stack].features)
+    .filter(([, definition]) => definition.default)
+    .map(([name]) => name)
+}
+
+// Available installation modes per stack. `default` (keep only default:true features) is Canton-only:
+// EVM has no default:false features, so default would be identical to full there.
+export function getInstallationModes(stack: Stack): InstallationType[] {
+  return stack === 'canton' ? ['default', 'full', 'custom'] : ['full', 'custom']
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { stackDefinitions } from '../constants/config.js'
+import { getDefaultFeatureNames, getFeatureNames, stackDefinitions } from '../constants/config.js'
 import {
   applyFeatureToggle,
   deriveStepDisplay,
@@ -8,6 +8,7 @@ import {
   getPostInstallMessages,
   isFeatureSelected,
   isValidName,
+  resolveModeFeatures,
   resolveSelectedFeatures,
 } from '../utils/utils.js'
 
@@ -191,6 +192,30 @@ describe('describeInstallPlan', () => {
   it('shows "none" when a custom plan selects no features', () => {
     expect(describeInstallPlan('evm', 'demo_app', 'custom', [])).toBe(
       'Stack: EVM · Project: demo_app · Mode: custom · Features: none',
+    )
+  })
+})
+
+describe('describeInstallPlan — default mode', () => {
+  it('summarises a default-mode plan as recommended', () => {
+    expect(describeInstallPlan('canton', 'my_app', 'default', [])).toBe(
+      'Stack: Canton · Project: my_app · Mode: default (recommended)',
+    )
+  })
+})
+
+describe('resolveModeFeatures', () => {
+  it('returns all features for full mode', () => {
+    expect(resolveModeFeatures('canton', 'full')).toEqual(getFeatureNames('canton'))
+  })
+
+  it('returns the default:true set for default mode', () => {
+    expect(resolveModeFeatures('canton', 'default')).toEqual(getDefaultFeatureNames('canton'))
+  })
+
+  it('resolves the custom selection (no requires today, so identity in config order)', () => {
+    expect(resolveModeFeatures('canton', 'custom', ['llm', 'carpincho'])).toEqual(
+      resolveSelectedFeatures('canton', ['llm', 'carpincho']),
     )
   })
 })
