@@ -140,13 +140,7 @@ export function getPostInstallMessages(
   const features = config.features
   const stackLevel = config.postInstall ?? []
 
-  const kept =
-    mode === 'full'
-      ? getFeatureNames(stack)
-      : mode === 'default'
-        ? getDefaultFeatureNames(stack)
-        : selectedFeatures
-
+  const kept = resolveModeFeatures(stack, mode, selectedFeatures)
   const featureMessages = kept.flatMap((name) => features[name]?.postInstall ?? [])
   return [...stackLevel, ...featureMessages]
 }
