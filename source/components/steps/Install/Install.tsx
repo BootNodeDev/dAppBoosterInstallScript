@@ -33,19 +33,14 @@ const Install: FC<Props> = ({ stack, projectName, onCompletion, installationConf
   }, [])
 
   useEffect(() => {
+    const mode = installationType ?? 'full'
     const selectedNames = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
-    const features = resolveModeFeatures(stack, installationType ?? 'full', selectedNames)
+    const features = resolveModeFeatures(stack, mode, selectedNames)
 
     const run = async () => {
       handleProgress('Creating env files')
       await createEnvFile(stack, projectFolder, features)
-      await installPackages(
-        stack,
-        projectFolder,
-        installationType ?? 'full',
-        features,
-        handleProgress,
-      )
+      await installPackages(stack, projectFolder, mode, features, handleProgress)
     }
 
     run()

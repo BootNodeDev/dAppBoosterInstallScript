@@ -29,10 +29,11 @@ const FileCleanup: FC<Props> = ({ stack, onCompletion, installationConfig, proje
   }, [])
 
   useEffect(() => {
+    const mode = installationType ?? 'full'
     const selectedNames = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
-    const features = resolveModeFeatures(stack, installationType ?? 'full', selectedNames)
+    const features = resolveModeFeatures(stack, mode, selectedNames)
 
-    cleanupFiles(stack, projectFolder, installationType ?? 'full', features, handleProgress)
+    cleanupFiles(stack, projectFolder, mode, features, handleProgress)
       .then(() => {
         // Scaffold is complete — an interrupt from here on must not delete the finished project.
         completeInstall()

@@ -24,13 +24,10 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
   }, [stack])
 
   // Pre-check only default:true features (e.g. Canton's github/precommit start unchecked).
-  const defaultSelected: Array<MultiSelectItem> = useMemo(
-    () =>
-      customPackages.filter(
-        (pkg) => getStackConfig(stack).features[pkg.value as FeatureName]?.default,
-      ),
-    [stack, customPackages],
-  )
+  const defaultSelected: Array<MultiSelectItem> = useMemo(() => {
+    const features = getStackConfig(stack).features
+    return customPackages.filter((pkg) => features[pkg.value as FeatureName]?.default)
+  }, [stack, customPackages])
 
   // Keep the selection dependency-consistent as the user toggles (resolves any feature `requires`).
   const transformSelection = useCallback(
