@@ -61,6 +61,7 @@ export function getInfoOutput(stackFilter?: string): string {
       stacks,
       modes: {
         full: 'Install all features',
+        default: 'Install the recommended set (Canton only; for EVM this equals full)',
         custom: 'Choose features individually',
       },
     },

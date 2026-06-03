@@ -98,6 +98,11 @@ describe('getInfoOutput — no filter', () => {
     expect(output.modes).toHaveProperty('full')
     expect(output.modes).toHaveProperty('custom')
   })
+
+  it('modes documents the default mode', () => {
+    const output = JSON.parse(getInfoOutput())
+    expect(output.modes).toHaveProperty('default')
+  })
 })
 
 describe('getInfoOutput — filter by stack', () => {
