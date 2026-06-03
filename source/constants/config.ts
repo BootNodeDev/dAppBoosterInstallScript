@@ -1,4 +1,5 @@
 import process from 'node:process'
+import type { InstallationType } from '../types/types.js'
 
 export type Stack = 'evm' | 'canton'
 
@@ -36,6 +37,8 @@ export type StackConfig = {
   ref?: string
   packageManager: PackageManager
   removeAfterClone: string[]
+  // Stack-level post-install guidance shown for every scaffold of this stack (any mode).
+  postInstall?: string[]
   envFiles: EnvFile[]
   features: Record<FeatureName, FeatureDefinition>
 }
@@ -106,13 +109,14 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
     ref: 'main',
     packageManager: 'npm',
     removeAfterClone: [],
+    postInstall: [
+      'Review canton-barebones/.env (created from the example)',
+      'Run npm run canton:up to start the local Canton stack',
+      'Run npm run app:dev to start the dapp frontend',
+    ],
     envFiles: [
       { from: 'canton-barebones/.env.example', to: 'canton-barebones/.env' },
-      {
-        from: 'counter/frontend/.env.local.example',
-        to: 'counter/frontend/.env.local',
-        ifFeature: 'counter',
-      },
+      { from: 'dapp/frontend/.env.local.example', to: 'dapp/frontend/.env.local' },
       {
         from: 'carpincho-wallet/.env.local.example',
         to: 'carpincho-wallet/.env.local',
@@ -120,25 +124,19 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
       },
     ],
     features: {
-      counter: {
-        description: 'Counter demo dapp (frontend + Daml + wallet-service)',
-        label: 'Counter demo',
+      github: {
+        description: 'GitHub issue/PR templates and workflows (.github)',
+        label: 'GitHub templates & workflows',
         packages: [],
-        default: true,
-        paths: ['counter'],
-        postInstall: [
-          'Review canton-barebones/.env (created from the example)',
-          'Run npm run canton:up to start the local Canton stack',
-          'Run npm run app:dev to start the counter dapp frontend',
-        ],
+        default: false,
+        paths: ['.github'],
       },
-      e2e: {
-        description: 'Playwright end-to-end test suite (drives the counter dapp)',
-        label: 'E2E tests',
+      precommit: {
+        description: 'Pre-commit hooks (Husky, lint-staged, commitlint)',
+        label: 'Pre-commit hooks',
         packages: [],
-        default: true,
-        paths: ['e2e'],
-        requires: ['counter'],
+        default: false,
+        paths: ['.husky', '.lintstagedrc.mjs', 'commitlint.config.js'],
       },
       carpincho: {
         description: 'Carpincho browser-extension wallet (frontend + build tooling)',
@@ -199,4 +197,18 @@ export function isFeatureNameValid(stack: Stack, name: string): boolean {
 
 export function isStackName(name: string): name is Stack {
   return (stackNames as string[]).includes(name)
+}
+
+export function getDefaultFeatureNames(stack: Stack): FeatureName[] {
+  return Object.entries(stackDefinitions[stack].features)
+    .filter(([, definition]) => definition.default)
+    .map(([name]) => name)
+}
+
+// Available installation modes per stack. `default` (keep only default:true features) is offered
+// only when the stack has at least one opt-out (default:false) feature; otherwise it would be
+// identical to `full`. Today that means Canton only (EVM's features are all default:true).
+export function getInstallationModes(stack: Stack): InstallationType[] {
+  const hasOptOutFeature = getDefaultFeatureNames(stack).length < getFeatureNames(stack).length
+  return hasOptOutFeature ? ['default', 'full', 'custom'] : ['full', 'custom']
 }

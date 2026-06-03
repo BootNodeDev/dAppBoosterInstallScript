@@ -14,7 +14,7 @@
 
 ## How to Add a New Feature to an Existing Stack
 
-1. **`source/constants/config.ts`** — add an entry to the stack's `features` map. For **Canton**, also list the feature's `paths`: cleanup is data-driven, so no cleanup code is needed and scripts that target a removed directory are stripped automatically. If it ships an env file, add an `ifFeature`-gated `envFiles` entry. If it depends on another feature, add `requires` — resolution is automatic in both the interactive and non-interactive paths.
+1. **`source/constants/config.ts`** — add an entry to the stack's `features` map. The `default` flag governs both the custom-mode pre-check and `default`-mode membership: set `default: true` for "kept by the recommended install", `default: false` for "removed by default / opt-in" (Canton's `github` and `precommit`). For **Canton**, also list the feature's `paths`: cleanup is data-driven, so no cleanup code is needed and scripts that target a removed directory are stripped automatically. If it ships an env file, add an `ifFeature`-gated `envFiles` entry. If it depends on another feature, add `requires` — resolution is automatic in both the interactive and non-interactive paths.
 2. **`source/operations/cleanupFiles.ts`** — **EVM only**: add a cleanup function for the feature and call it from `cleanupEvmFiles` when deselected; if it has scripts, add removal to `patchPackageJsonEvm`. Canton needs no change here.
 3. **`source/components/steps/PostInstall.tsx`** — extend stack-specific instructions if needed.
 4. **`source/cli.tsx`** — update the `--help` text.

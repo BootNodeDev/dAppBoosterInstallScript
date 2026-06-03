@@ -33,8 +33,9 @@ Omit the flag to be prompted for the stack in the wizard. Jump to the [EVM stack
 pnpm dlx dappbooster
 ```
 
-The wizard prompts for stack → project name → mode (full / custom) → features, then clones,
-installs, cleans up, and prints next steps. Pass `--evm` or `--canton` to skip the stack prompt.
+The wizard prompts for stack → project name → mode (Canton offers default / full / custom; EVM
+offers full / custom) → features, then clones, installs, cleans up, and prints next steps. Pass
+`--evm` or `--canton` to skip the stack prompt.
 
 dAppBooster documentation: https://docs.dappbooster.dev/
 
@@ -55,7 +56,7 @@ pnpm dlx dappbooster --info --stack canton   # filter to one stack (or --info --
 | `--canton` / `--evm` | Pick the stack (mutually exclusive shortcuts) |
 | `--stack <evm\|canton>` | Pick the stack by name (useful when scripting) |
 | `--name <name>` | Project directory name (`/^[a-zA-Z0-9_]+$/`) |
-| `--mode <full\|custom>` | `full` installs every feature; `custom` needs `--features` |
+| `--mode <full\|default\|custom>` | `default` (Canton only) keeps the recommended set; `full` installs every feature; `custom` needs `--features` |
 | `--features <a,b,c>` | Comma-separated feature keys (custom mode only) |
 | `--ni` | Force non-interactive mode |
 
@@ -65,7 +66,7 @@ accepts only its own feature keys, and validation errors name the stack:
 ```json
 {
   "success": false,
-  "error": "Unknown features for stack 'canton': subgraph. Valid features: counter, e2e, carpincho, llm"
+  "error": "Unknown features for stack 'canton': subgraph. Valid features: github, precommit, carpincho, llm"
 }
 ```
 
@@ -79,7 +80,7 @@ A successful install prints:
   "success": true,
   "stack": "evm|canton",
   "projectName": "...",
-  "mode": "full|custom",
+  "mode": "full|default|custom",
   "features": ["..."],
   "path": "/absolute/path",
   "postInstall": ["..."]
@@ -131,49 +132,52 @@ pnpm dlx dappbooster --canton
 Interactive (skips the stack prompt) or non-interactive:
 
 ```shell
-pnpm dlx dappbooster --canton --ni --name my_canton_dapp --mode full
-pnpm dlx dappbooster --canton --ni --name my_canton --mode custom --features counter,carpincho
+pnpm dlx dappbooster --canton --ni --name my_canton_dapp --mode default
+pnpm dlx dappbooster --canton --ni --name my_canton --mode custom --features carpincho,github
 ```
 
 | Feature | Key | Default | Description |
 |---|---|---|---|
-| Counter demo | `counter` | ✓ | Counter demo dapp (frontend + Daml + wallet-service) |
-| E2E tests | `e2e` | ✓ | Playwright end-to-end test suite (**requires `counter`**) |
+| GitHub templates & workflows | `github` |  | GitHub issue/PR templates and workflows (`.github`) |
+| Pre-commit hooks | `precommit` |  | Husky, lint-staged, and commitlint |
 | Carpincho wallet | `carpincho` | ✓ | Carpincho browser-extension wallet (frontend + build tooling) |
 | LLM & agent artifacts | `llm` | ✓ | `.claude`, `AGENTS.md`, `CLAUDE.md`, `architecture.md`, `llms.txt`, … |
 
-`e2e` drives the counter dapp, so it **requires** `counter`: requesting `--features e2e` auto-pulls
-`counter` in (the success JSON reports `["counter", "e2e"]`), and in the wizard, deselecting
-`counter` also unchecks `e2e`.
+`default` mode (the recommended Canton install) keeps `carpincho` + `llm` and removes `github` +
+`precommit`; `full` keeps all four; `custom` lets you pick (in the wizard `github` and `precommit`
+start unchecked). To remove the demo features (`counter`, `sign-message`) after scaffolding, follow
+the "Removing a feature" guide in the generated `dapp/frontend/README.md` — the installer never
+deletes demo source itself.
 
 The Canton scaffold uses **npm** (a property of the generated project, not this installer). After
 install: review `canton-barebones/.env`, run `npm run canton:up` to start the local Canton stack,
-and `npm run app:dev` to run the counter dapp frontend. When `carpincho` is included, build the
-extension with `npm run carpincho:build:extension` and load `carpincho-wallet/dist-extension` as an
-unpacked browser extension.
+and `npm run app:dev` to run the dapp frontend. When `carpincho` is included, build the extension
+with `npm run carpincho:build:extension` and load `carpincho-wallet/dist-extension` as an unpacked
+browser extension.
 
 **What gets stripped:**
 
-- **Always** (every stack and mode): CI config (`.github`) and the husky/commitlint automation
-  (`.husky`, `.lintstagedrc.mjs`, `commitlint.config.js`), plus their entries in the root
-  `package.json`.
-- **Per feature** (custom mode): deselecting a feature removes its files and any `package.json`
-  scripts that target them — deselecting `carpincho` removes `carpincho-wallet/` and its scripts
-  (`wallet:dev`, `carpincho:build:extension`); deselecting `llm` removes the agent docs.
-- A **full** install keeps all four features — including `carpincho-wallet/` and the agent docs.
+- **EVM** always removes CI config (`.github`) and the husky/commitlint automation as hygiene.
+- **Canton** treats `.github` and pre-commit hooks as optional features: `default` mode removes
+  both; `full` keeps both; `custom` removes whichever you uncheck. Deselecting `carpincho` removes
+  `carpincho-wallet/` and its scripts (`wallet:dev`, `carpincho:build:extension`); deselecting `llm`
+  removes the agent docs. Removing `precommit` also strips the `prepare` script and the
+  husky/lint-staged/commitlint dev-dependencies from the root `package.json`.
+- The Canton installer never deletes demo source (the `counter`/`sign-message` features) — that is
+  user-controlled via the template's `dapp/frontend/README.md`.
 
 ```json
 {
   "success": true,
   "stack": "canton",
   "projectName": "my_canton_dapp",
-  "mode": "full",
-  "features": ["counter", "e2e", "carpincho", "llm"],
+  "mode": "default",
+  "features": ["carpincho", "llm"],
   "path": "/absolute/path/to/my_canton_dapp",
   "postInstall": [
     "Review canton-barebones/.env (created from the example)",
     "Run npm run canton:up to start the local Canton stack",
-    "Run npm run app:dev to start the counter dapp frontend",
+    "Run npm run app:dev to start the dapp frontend",
     "Build the Carpincho extension with npm run carpincho:build:extension",
     "Load carpincho-wallet/dist-extension as an unpacked browser extension"
   ]

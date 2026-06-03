@@ -4,9 +4,11 @@ import process from 'node:process'
 import {
   type FeatureName,
   type Stack,
+  getDefaultFeatureNames,
   getFeatureNames,
   getStackConfig,
 } from '../constants/config.js'
+import type { InstallationType } from '../types/types.js'
 
 export function getProjectFolder(projectName: string) {
   return join(process.cwd(), projectName)
@@ -104,7 +106,7 @@ export function applyFeatureToggle(
 export function describeInstallPlan(
   stack: Stack,
   projectName: string,
-  mode: 'full' | 'custom',
+  mode: InstallationType,
   selectedFeatures: FeatureName[],
 ): string {
   const stackLabel = getStackConfig(stack).label
@@ -112,6 +114,10 @@ export function describeInstallPlan(
 
   if (mode === 'full') {
     return `${head} · Mode: full (all features)`
+  }
+
+  if (mode === 'default') {
+    return `${head} · Mode: default (recommended)`
   }
 
   const features = selectedFeatures.length > 0 ? selectedFeatures.join(', ') : 'none'
@@ -127,16 +133,35 @@ export function getPackagesToRemove(stack: Stack, selectedFeatures: FeatureName[
 
 export function getPostInstallMessages(
   stack: Stack,
-  mode: 'full' | 'custom',
+  mode: InstallationType,
   selectedFeatures: FeatureName[],
 ): string[] {
-  const features = getStackConfig(stack).features
+  const config = getStackConfig(stack)
+  const features = config.features
+  const stackLevel = config.postInstall ?? []
 
+  const kept = resolveModeFeatures(stack, mode, selectedFeatures)
+  const featureMessages = kept.flatMap((name) => features[name]?.postInstall ?? [])
+  return [...stackLevel, ...featureMessages]
+}
+
+// Resolves the kept-feature list for a mode: full → all, default → default:true set,
+// custom → the user's selection (transitive requires resolved). Shared by the non-interactive
+// path and the interactive Install/FileCleanup/PostInstall steps.
+export function resolveModeFeatures(
+  stack: Stack,
+  mode: InstallationType,
+  customSelection: FeatureName[] = [],
+): FeatureName[] {
   if (mode === 'full') {
-    return Object.values(features).flatMap((def) => def.postInstall ?? [])
+    return getFeatureNames(stack)
   }
 
-  return selectedFeatures.flatMap((name) => features[name]?.postInstall ?? [])
+  if (mode === 'default') {
+    return getDefaultFeatureNames(stack)
+  }
+
+  return resolveSelectedFeatures(stack, customSelection)
 }
 
 export function projectDirectoryExists(projectName: string): boolean {

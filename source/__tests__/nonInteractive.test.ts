@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getFeatureNames } from '../constants/config.js'
+import { getDefaultFeatureNames, getFeatureNames } from '../constants/config.js'
 
 vi.mock('../operations/index.js', () => ({
   cloneRepo: vi.fn().mockResolvedValue(undefined),
@@ -128,11 +128,11 @@ describe('nonInteractive — validation', () => {
       stack: 'canton',
       name: 'my_app',
       mode: 'custom',
-      features: 'counter,e2e',
+      features: 'carpincho,llm',
     })
     const output = getLastJsonOutput()
     expect(output.success).toBe(true)
-    expect(output.features).toEqual(['counter', 'e2e'])
+    expect(output.features).toEqual(['carpincho', 'llm'])
   })
 
   it('rejects mix of valid and invalid features', async () => {
@@ -268,54 +268,68 @@ describe('nonInteractive — canton execution', () => {
       stack: 'canton',
       name: 'my_app',
       mode: 'custom',
-      features: 'counter',
+      features: 'carpincho',
     })
 
     expect(installPackages).toHaveBeenCalledWith(
       'canton',
       expect.stringContaining('my_app'),
       'custom',
-      ['counter'],
+      ['carpincho'],
     )
 
     const output = getLastJsonOutput()
-    expect(output.features).toEqual(['counter'])
+    expect(output.features).toEqual(['carpincho'])
     expect(output.stack).toBe('canton')
   })
 
-  it('canton custom includes counter post-install messages when counter selected', async () => {
+  it('canton post-install always includes the canton:up run guidance', async () => {
     await runNonInteractive({
       stack: 'canton',
       name: 'my_app',
       mode: 'custom',
-      features: 'counter',
+      features: 'llm',
     })
 
     const output = getLastJsonOutput()
     const postInstall = output.postInstall as string[]
     expect(postInstall.some((msg) => msg.includes('canton:up'))).toBe(true)
   })
+})
 
-  it('auto-pulls counter when only e2e is requested (e2e requires counter)', async () => {
-    await runNonInteractive({
-      stack: 'canton',
-      name: 'my_app',
-      mode: 'custom',
-      features: 'e2e',
-    })
+describe('nonInteractive — default mode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.exitCode = undefined
+  })
 
+  it('canton default mode keeps the default:true feature set', async () => {
+    await runNonInteractive({ stack: 'canton', name: 'my_app', mode: 'default' })
+
+    const expected = getDefaultFeatureNames('canton')
     expect(installPackages).toHaveBeenCalledWith(
       'canton',
       expect.stringContaining('my_app'),
-      'custom',
-      ['counter', 'e2e'],
+      'default',
+      expected,
     )
-
     const output = getLastJsonOutput()
-    expect(output.features).toEqual(['counter', 'e2e'])
-    // counter's post-install messages come along with the pulled-in feature
-    const postInstall = output.postInstall as string[]
-    expect(postInstall.some((msg) => msg.includes('canton:up'))).toBe(true)
+    expect(output.success).toBe(true)
+    expect(output.mode).toBe('default')
+    expect(output.features).toEqual(expected)
+  })
+
+  it('default mode does not require --features', async () => {
+    await runNonInteractive({ stack: 'canton', name: 'my_app', mode: 'default' })
+    const output = getLastJsonOutput()
+    expect(output.success).toBe(true)
+  })
+
+  it('rejects --mode default for the evm stack', async () => {
+    await expect(runNonInteractive({ name: 'my_app', mode: 'default' })).rejects.toThrow()
+    const output = getLastJsonOutput()
+    expect(output.success).toBe(false)
+    expect(output.error).toMatch(/'default' is only available for the canton stack/)
   })
 })
 

@@ -28,16 +28,18 @@ default  →  dynamic import ink + App (preselectedStack passed if resolved) →
 2. `--name` required
 3. `--mode` required
 4. `--name` matches `/^[a-zA-Z0-9_]+$/`
-5. `--mode` is `full` or `custom`
-6. Full mode: skip to step 10 (features ignored, all stack features installed)
-7. `--features` required for custom mode
-8. Parsed features list is non-empty (rejects trailing commas, whitespace-only entries)
-9. Every feature name is valid **for the selected stack**
-10. Project directory does not already exist
+5. `--mode` is `full`, `default`, or `custom`
+6. `default` mode is rejected for the `evm` stack (Canton-only)
+7. Full / default mode: skip to step 11 (features come from the mode, `--features` ignored — `full` = all, `default` = the `default: true` set)
+8. `--features` required for custom mode
+9. Parsed features list is non-empty (rejects trailing commas, whitespace-only entries)
+10. Every feature name is valid **for the selected stack**
+11. Project directory does not already exist
 
-Custom-mode selections are then expanded with `resolveSelectedFeatures` (see
-[abstractions](./abstractions.md#feature-definitions)), so feature dependencies are pulled in
-before the operations run and before the result is reported.
+The kept-feature list is derived from the mode via `resolveModeFeatures` (see
+[abstractions](./abstractions.md#feature-definitions)); for custom mode this expands the selection
+with `resolveSelectedFeatures` so any feature dependencies are pulled in before the operations run
+and before the result is reported.
 
 **Non-interactive execution order:**
 `cloneRepo` → `createEnvFile` → `installPackages` → `cleanupFiles` → success JSON
@@ -50,14 +52,14 @@ Any error produces `{ "success": false, "error": "..." }` and exit code 1. Error
   "success": true,
   "stack": "evm|canton",
   "projectName": "...",
-  "mode": "full|custom",
+  "mode": "full|default|custom",
   "features": ["..."],
   "path": "/absolute/path",
   "postInstall": ["..."]
 }
 ```
 
-For full mode, `features` lists all of the stack's feature names. For custom mode, the selected ones plus any dependencies they pulled in.
+For full mode, `features` lists all of the stack's feature names; for default mode, the `default: true` set (Canton: `carpincho`, `llm`); for custom mode, the selected ones plus any dependencies they pulled in.
 
 ## Interactive (human)
 
@@ -81,4 +83,4 @@ Operations (disk):    CloneRepo → Install → FileCleanup → PostInstall
 
 Once operations begin, `CloneRepo` calls `beginInstall` (see [abstractions → installGuard](./abstractions.md#interrupt-safety-installguard)) and `FileCleanup` calls `completeInstall` on success, so a Ctrl+C mid-scaffold removes the partial directory while a finished project is left intact.
 
-Components are presentation-only — they call operations via `useEffect` and render status. Components receive `MultiSelectItem[]` for feature selection (TUI concern) and convert to `FeatureName[]` before calling operations. The `OptionalPackages` multiselect enforces feature dependencies live via `applyFeatureToggle`. `PostInstall` renders stack-specific instructions; the EVM branch shows the subgraph warning when applicable, the Canton branch shows the `canton:up`/`app:dev` commands and — when the `carpincho` feature is selected (or full mode) — the Carpincho extension build/load instructions.
+Components are presentation-only — they call operations via `useEffect` and render status. Components receive `MultiSelectItem[]` for feature selection (TUI concern), then derive the kept-feature `FeatureName[]` via `resolveModeFeatures(stack, mode, selected)` before calling operations — so `full`/`default` resolve correctly even though the multiselect is skipped. The `OptionalPackages` multiselect pre-checks `default: true` features and enforces feature dependencies live via `applyFeatureToggle`. `PostInstall` renders stack-specific instructions; the EVM branch shows the subgraph warning when applicable, the Canton branch always shows the `canton:up`/`app:dev` commands and — when the `carpincho` feature is in the resolved set — the Carpincho extension build/load instructions.

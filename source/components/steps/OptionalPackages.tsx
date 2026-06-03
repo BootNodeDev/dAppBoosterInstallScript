@@ -23,7 +23,13 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
     }))
   }, [stack])
 
-  // Keep the selection dependency-consistent as the user toggles (e.g. e2e requires counter).
+  // Pre-check only default:true features (e.g. Canton's github/precommit start unchecked).
+  const defaultSelected: Array<MultiSelectItem> = useMemo(() => {
+    const features = getStackConfig(stack).features
+    return customPackages.filter((pkg) => features[pkg.value as FeatureName]?.default)
+  }, [stack, customPackages])
+
+  // Keep the selection dependency-consistent as the user toggles (resolves any feature `requires`).
   const transformSelection = useCallback(
     (
       nextSelected: Array<MultiSelectItem>,
@@ -79,7 +85,7 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
     <>
       <Text color={'whiteBright'}>Choose optional packages</Text>
       <MultiSelect
-        defaultSelected={customPackages}
+        defaultSelected={defaultSelected}
         focus
         items={customPackages}
         onSubmit={onHandleSubmit}

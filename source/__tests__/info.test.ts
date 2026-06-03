@@ -80,11 +80,6 @@ describe('getInfoOutput — no filter', () => {
     }
   })
 
-  it('exposes the e2e -> counter dependency for agents', () => {
-    const output = JSON.parse(getInfoOutput('canton'))
-    expect(output.stacks.canton.features.e2e.requires).toEqual(['counter'])
-  })
-
   it('does not leak label, packages, or paths into feature output', () => {
     const output = JSON.parse(getInfoOutput())
 
@@ -102,6 +97,11 @@ describe('getInfoOutput — no filter', () => {
     const output = JSON.parse(getInfoOutput())
     expect(output.modes).toHaveProperty('full')
     expect(output.modes).toHaveProperty('custom')
+  })
+
+  it('modes documents the default mode', () => {
+    const output = JSON.parse(getInfoOutput())
+    expect(output.modes).toHaveProperty('default')
   })
 })
 

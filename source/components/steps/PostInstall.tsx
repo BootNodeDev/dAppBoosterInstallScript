@@ -4,7 +4,7 @@ import Link from 'ink-link'
 import type { FC } from 'react'
 import { type FeatureName, type Stack, getStackConfig } from '../../constants/config.js'
 import type { InstallationType, MultiSelectItem } from '../../types/types.js'
-import { isFeatureSelected } from '../../utils/utils.js'
+import { isFeatureSelected, resolveModeFeatures } from '../../utils/utils.js'
 import Divider from '../Divider.js'
 
 const SubgraphWarningMessage: FC = () => (
@@ -87,11 +87,8 @@ const EvmPostInstallMessage: FC<{ projectName: string }> = ({ projectName }) => 
 const CantonPostInstallMessage: FC<{
   projectName: string
   features: FeatureName[]
-  installationType: InstallationType | undefined
-}> = ({ projectName, features, installationType }) => {
-  const isFull = installationType === 'full'
-  const counterEnabled = isFull || isFeatureSelected('counter', features)
-  const carpinchoEnabled = isFull || isFeatureSelected('carpincho', features)
+}> = ({ projectName, features }) => {
+  const carpinchoEnabled = isFeatureSelected('carpincho', features)
 
   return (
     <Box
@@ -111,12 +108,10 @@ const CantonPostInstallMessage: FC<{
         <Text>
           3- Start the local Canton stack with <Text color={'gray'}>npm run canton:up</Text>
         </Text>
-        {counterEnabled && (
-          <Text>
-            4- In a separate terminal, run the counter dapp:{' '}
-            <Text color={'gray'}>npm run app:dev</Text>
-          </Text>
-        )}
+        <Text>
+          4- In a separate terminal, run the dapp frontend:{' '}
+          <Text color={'gray'}>npm run app:dev</Text>
+        </Text>
       </Box>
       {carpinchoEnabled && (
         <Box
@@ -151,7 +146,8 @@ interface Props {
 
 const PostInstall: FC<Props> = ({ stack, installationConfig, projectName }) => {
   const { selectedFeatures, installationType } = installationConfig
-  const features = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
+  const selectedNames = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
+  const features = resolveModeFeatures(stack, installationType ?? 'full', selectedNames)
   const stackLabel = getStackConfig(stack).label
 
   return (
@@ -170,7 +166,6 @@ const PostInstall: FC<Props> = ({ stack, installationConfig, projectName }) => {
           <CantonPostInstallMessage
             projectName={projectName}
             features={features}
-            installationType={installationType}
           />
         )}
       </Box>

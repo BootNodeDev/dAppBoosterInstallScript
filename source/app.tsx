@@ -47,7 +47,7 @@ const App: FC<Props> = ({ preselectedStack }) => {
     setAttempt((prev) => prev + 1)
   }, [preselectedStack])
 
-  const skipFeatures = setupType?.value === 'full'
+  const skipFeatures = setupType?.value === 'full' || setupType?.value === 'default'
 
   const mode = setupType?.value ?? 'full'
   const planFeatures = selectedFeatures?.map((item) => item.value as FeatureName) ?? []
@@ -82,6 +82,7 @@ const App: FC<Props> = ({ preselectedStack }) => {
     // --- remaining questions (need the stack) ---
     orderedSteps.push(
       <InstallationMode
+        stack={stack}
         onCompletion={finishStep}
         onSelect={onSelectSetupType}
         key={`installation-mode-${attempt}`}

@@ -17,7 +17,7 @@ const cli = meow(
 
   Common options
     --name <string>          Project name (alphanumeric, underscores)
-    --mode <full|custom>     Installation mode
+    --mode <full|default|custom>  Installation mode (default mode is Canton-only)
     --features <list>        Comma-separated features (with --mode=custom)
                                EVM:
                                  demo       Component demos and example pages
@@ -26,12 +26,13 @@ const cli = meow(
                                  vocs       Vocs documentation site
                                  husky      Git hooks (Husky, lint-staged, commitlint)
                                Canton:
-                                 counter    Counter demo dapp
-                                 e2e        Playwright end-to-end tests (requires counter)
+                                 github     GitHub issue/PR templates and workflows
+                                 precommit  Pre-commit hooks (Husky, lint-staged, commitlint)
                                  carpincho  Carpincho browser-extension wallet
                                  llm        LLM and agent artifacts (.claude, AGENTS.md, …)
-                               Dependencies are auto-resolved: requesting e2e
-                               also pulls in counter.
+                               Canton's default mode keeps carpincho + llm and removes
+                               github + precommit; full keeps everything; custom lets you
+                               pick (github + precommit start unchecked).
     --non-interactive, --ni  Run without prompts (auto-enabled when not a TTY)
     --info                   Output feature metadata as JSON (filter with --stack)
     --help                   Show this help
@@ -53,8 +54,8 @@ const cli = meow(
     Interactive (prompts for stack and options):
       $ dappbooster
 
-    Canton stack, full install (non-interactive):
-      $ dappbooster --canton --ni --name my_dapp --mode full
+    Canton stack, recommended install (non-interactive):
+      $ dappbooster --canton --ni --name my_dapp --mode default
 
     EVM stack, custom install:
       $ dappbooster --evm --ni --name my_dapp --mode custom --features demo,subgraph

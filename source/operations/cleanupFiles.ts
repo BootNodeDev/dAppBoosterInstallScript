@@ -42,37 +42,57 @@ function removePackageKeys(
   return changed
 }
 
+type DependencyGroup = Record<string, unknown> | undefined
+
+type PackageJsonShape = {
+  scripts?: Record<string, string | undefined>
+  dependencies?: DependencyGroup
+  devDependencies?: DependencyGroup
+  optionalDependencies?: DependencyGroup
+  peerDependencies?: DependencyGroup
+}
+
+// Strip the husky/lint-staged/commitlint tooling scripts and dependencies from a parsed
+// package.json (mutates in place). Returns whether anything was removed.
+function stripToolingEntries(
+  packageJson: PackageJsonShape,
+  scripts: Record<string, string | undefined> | undefined,
+): boolean {
+  let changed = false
+
+  if (scripts) {
+    for (const scriptName of TOOLING_SCRIPTS_TO_REMOVE) {
+      if (scripts[scriptName] !== undefined) {
+        scripts[scriptName] = undefined
+        changed = true
+      }
+    }
+  }
+
+  const dependencyGroups: DependencyGroup[] = [
+    packageJson.dependencies,
+    packageJson.devDependencies,
+    packageJson.optionalDependencies,
+    packageJson.peerDependencies,
+  ]
+
+  for (const group of dependencyGroups) {
+    if (removePackageKeys(group, TOOLING_PACKAGES_TO_REMOVE)) {
+      changed = true
+    }
+  }
+
+  return changed
+}
+
 function sanitizeRepositoryPackageJson(projectFolder: string): void {
   const packageJsonPath = resolve(projectFolder, 'package.json')
 
   try {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
     const scripts = packageJson.scripts as Record<string, string | undefined> | undefined
-    let changed = false
 
-    if (scripts) {
-      for (const scriptName of TOOLING_SCRIPTS_TO_REMOVE) {
-        if (scripts[scriptName] !== undefined) {
-          scripts[scriptName] = undefined
-          changed = true
-        }
-      }
-    }
-
-    const dependencyGroups: Array<Record<string, unknown> | undefined> = [
-      packageJson.dependencies,
-      packageJson.devDependencies,
-      packageJson.optionalDependencies,
-      packageJson.peerDependencies,
-    ]
-
-    for (const group of dependencyGroups) {
-      if (removePackageKeys(group, TOOLING_PACKAGES_TO_REMOVE)) {
-        changed = true
-      }
-    }
-
-    if (changed) {
+    if (stripToolingEntries(packageJson, scripts)) {
       writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
     }
   } catch {
@@ -86,14 +106,14 @@ async function removePaths(projectFolder: string, relativePaths: string[]): Prom
   }
 }
 
+// EVM-only hygiene: always strip CI metadata, agent metadata, and git automation. Canton models
+// .github and pre-commit hooks as optional features instead (see cleanupCantonFiles).
 async function cleanupRepositoryHygiene(
-  stack: Stack,
   projectFolder: string,
   onProgress?: (step: string) => void,
 ): Promise<void> {
   onProgress?.('Repository metadata')
-  const metadataPaths = stack === 'evm' ? [...EVM_METADATA_PATHS, ...CI_PATHS] : CI_PATHS
-  await removePaths(projectFolder, metadataPaths)
+  await removePaths(projectFolder, [...EVM_METADATA_PATHS, ...CI_PATHS])
 
   onProgress?.('Git hooks and commit linting')
   await removePaths(projectFolder, AUTOMATION_PATHS)
@@ -135,7 +155,7 @@ function patchPackageJsonEvm(projectFolder: string, features: FeatureName[]): vo
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
 }
 
-// Strip scripts by what they run (e.g. `npm --prefix counter/frontend ...`)
+// Strip scripts by what they run (e.g. `npm --prefix carpincho-wallet ...`)
 // rather than by name, so cleanup tracks directory removal even as scripts change.
 function scriptTargetsRemovedDir(command: string, removedDirs: string[]): boolean {
   const tokens = command.split(/\s+/)
@@ -144,34 +164,38 @@ function scriptTargetsRemovedDir(command: string, removedDirs: string[]): boolea
   )
 }
 
-function patchPackageJsonCanton(projectFolder: string, removedDirs: string[]): void {
+function patchPackageJsonCanton(
+  projectFolder: string,
+  removedDirs: string[],
+  precommitRemoved: boolean,
+): void {
   const packageJsonPath = resolve(projectFolder, 'package.json')
   const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
   const scripts = packageJson.scripts as Record<string, string | undefined> | undefined
 
-  if (!scripts) {
-    writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
-    return
-  }
-
-  for (const [name, command] of Object.entries(scripts)) {
-    if (command !== undefined && scriptTargetsRemovedDir(command, removedDirs)) {
-      scripts[name] = undefined
+  if (scripts) {
+    for (const [name, command] of Object.entries(scripts)) {
+      if (command !== undefined && scriptTargetsRemovedDir(command, removedDirs)) {
+        scripts[name] = undefined
+      }
     }
   }
 
-  // biome-ignore lint/complexity/useLiteralKeys: TS index-signature compatibility in strict mode
-  scripts['prepare'] = undefined
-  // biome-ignore lint/complexity/useLiteralKeys: TS index-signature compatibility in strict mode
-  scripts['commitlint'] = undefined
-  scripts['commitlint:check'] = undefined
-  scripts['commitlint:ci'] = undefined
+  // The husky tooling (prepare/commitlint scripts + husky/lint-staged/commitlint deps) only leaves
+  // with the pre-commit feature.
+  if (precommitRemoved) {
+    stripToolingEntries(packageJson, scripts)
+  }
 
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
 }
 
 async function createInitialCommit(projectFolder: string): Promise<void> {
   await execFile('git', ['add', '.'], { cwd: projectFolder })
+  // --no-verify: the scaffold's baseline commit must not run the project's own git hooks. When the
+  // `precommit` feature is kept, husky's pre-commit/commit-msg hooks are present and would lint and
+  // test the freshly-cloned tree (and fail), blocking the install. The user's later commits still
+  // run hooks normally.
   await execFile(
     'git',
     [
@@ -182,6 +206,7 @@ async function createInitialCommit(projectFolder: string): Promise<void> {
       '-c',
       'commit.gpgsign=false',
       'commit',
+      '--no-verify',
       '-m',
       'chore: initial commit',
     ],
@@ -265,11 +290,12 @@ async function cleanupCantonFiles(
 ): Promise<void> {
   const cantonFeatures = getStackConfig('canton').features
 
-  // Each deselected feature contributes its paths to removal (custom mode only). Directory paths
-  // also feed script stripping, so a removed feature's package.json scripts disappear with it.
+  // Each deselected feature contributes its paths to removal. `default` and `custom` remove;
+  // `full` keeps everything. Directory paths also feed script stripping, so a removed feature's
+  // package.json scripts disappear with it.
   const removedDirs: string[] = []
 
-  if (mode === 'custom') {
+  if (mode !== 'full') {
     for (const [name, definition] of Object.entries(cantonFeatures)) {
       if (isFeatureSelected(name, features) || !definition.paths || definition.paths.length === 0) {
         continue
@@ -281,7 +307,8 @@ async function cleanupCantonFiles(
     }
   }
 
-  patchPackageJsonCanton(projectFolder, removedDirs)
+  const precommitRemoved = mode !== 'full' && !isFeatureSelected('precommit', features)
+  patchPackageJsonCanton(projectFolder, removedDirs, precommitRemoved)
 }
 
 export async function cleanupFiles(
@@ -291,8 +318,6 @@ export async function cleanupFiles(
   features: FeatureName[] = [],
   onProgress?: (step: string) => void,
 ): Promise<void> {
-  await cleanupRepositoryHygiene(stack, projectFolder, onProgress)
-
   if (stack === 'canton') {
     await cleanupCantonFiles(projectFolder, mode, features, onProgress)
     onProgress?.('Initial commit')
@@ -300,5 +325,6 @@ export async function cleanupFiles(
     return
   }
 
+  await cleanupRepositoryHygiene(projectFolder, onProgress)
   await cleanupEvmFiles(projectFolder, mode, features, onProgress)
 }
