@@ -44,8 +44,8 @@ source/
       StackSelection.tsx      First step: pick a stack (skipped if preselectedStack is passed)
       ProjectName.tsx         Prompt for project name
       CloneRepo/CloneRepo.tsx Clone progress display (receives stack)
-      InstallationMode.tsx    Full / Custom selection
-      OptionalPackages.tsx    Feature multiselect (per-stack, enforces feature dependencies)
+      InstallationMode.tsx    Mode selection (Canton: Default/Full/Custom; EVM: Full/Custom)
+      OptionalPackages.tsx    Feature multiselect (per-stack; pre-checks default:true features)
       Install/Install.tsx     Install progress display (receives stack)
       FileCleanup.tsx         Cleanup progress display (receives stack)
       PostInstall.tsx         Post-install instructions, stack-specific

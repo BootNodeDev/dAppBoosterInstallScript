@@ -9,8 +9,8 @@
 A CLI installer tool for dAppBooster projects. It supports two **stacks** and two **modes**:
 
 - **Stacks:** `evm` (the original dAppBooster for EVM chains) and `canton` (dAppBooster for Canton: Daml ledger, Carpincho wallet, off-chain services). Each stack declares its own source repository, ref strategy (tag-latest vs branch), package manager, env files, optional `removeAfterClone` paths, and features.
-- **Interactive** (default): React + Ink TUI that prompts for stack first, then project name, then clone → installation mode → optional packages → install → cleanup → post-install. The stack prompt is skipped when `--canton`, `--evm`, or `--stack` is supplied.
-- **Non-interactive**: Flag-driven (`--ni` or auto-detected when not a TTY) for AI agents and CI. Outputs JSON to stdout. Run `--info` for stack + feature discovery, then `--canton`/`--evm` (or `--stack`) + `--name` + `--mode` [+ `--features`]. Omitting a stack flag in non-interactive mode defaults to `evm` for backward compatibility.
+- **Interactive** (default): React + Ink TUI that prompts for stack first, then project name, then installation mode (Canton offers **default** / full / custom; EVM offers full / custom) → optional packages → install → cleanup → post-install. The stack prompt is skipped when `--canton`, `--evm`, or `--stack` is supplied.
+- **Non-interactive**: Flag-driven (`--ni` or auto-detected when not a TTY) for AI agents and CI. Outputs JSON to stdout. Run `--info` for stack + feature discovery, then `--canton`/`--evm` (or `--stack`) + `--name` + `--mode` [+ `--features`]. Canton supports `--mode default` (the recommended set: keeps `carpincho` + `llm`, removes `github` + `precommit`); `default` is rejected for EVM. Omitting a stack flag in non-interactive mode defaults to `evm` for backward compatibility.
 
 ## Stack & Conventions
 
