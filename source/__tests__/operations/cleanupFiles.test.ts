@@ -410,6 +410,16 @@ describe('cleanupFiles — canton', () => {
       expect(devDeps.husky).toBe('^9.1.7')
       expect(execFile).toHaveBeenCalledWith('git', ['add', '.'], { cwd: '/project/my_app' })
     })
+
+    it('makes the initial commit with --no-verify so kept project hooks cannot block it', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'full')
+
+      const commitCall = vi
+        .mocked(execFile)
+        .mock.calls.find((call) => call[0] === 'git' && (call[1] as string[]).includes('commit'))
+      expect(commitCall).toBeDefined()
+      expect(commitCall?.[1]).toContain('--no-verify')
+    })
   })
 
   describe('default mode (drop github + precommit, keep the rest)', () => {

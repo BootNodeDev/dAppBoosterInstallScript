@@ -188,6 +188,10 @@ function patchPackageJsonCanton(
 
 async function createInitialCommit(projectFolder: string): Promise<void> {
   await execFile('git', ['add', '.'], { cwd: projectFolder })
+  // --no-verify: the scaffold's baseline commit must not run the project's own git hooks. When the
+  // `precommit` feature is kept, husky's pre-commit/commit-msg hooks are present and would lint and
+  // test the freshly-cloned tree (and fail), blocking the install. The user's later commits still
+  // run hooks normally.
   await execFile(
     'git',
     [
@@ -198,6 +202,7 @@ async function createInitialCommit(projectFolder: string): Promise<void> {
       '-c',
       'commit.gpgsign=false',
       'commit',
+      '--no-verify',
       '-m',
       'chore: initial commit',
     ],
