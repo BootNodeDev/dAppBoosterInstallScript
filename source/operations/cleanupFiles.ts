@@ -135,7 +135,7 @@ function patchPackageJsonEvm(projectFolder: string, features: FeatureName[]): vo
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
 }
 
-// Strip scripts by what they run (e.g. `npm --prefix counter/frontend ...`)
+// Strip scripts by what they run (e.g. `npm --prefix carpincho-wallet ...`)
 // rather than by name, so cleanup tracks directory removal even as scripts change.
 function scriptTargetsRemovedDir(command: string, removedDirs: string[]): boolean {
   const tokens = command.split(/\s+/)

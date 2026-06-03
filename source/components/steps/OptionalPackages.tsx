@@ -32,7 +32,7 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
     [stack, customPackages],
   )
 
-  // Keep the selection dependency-consistent as the user toggles (e.g. e2e requires counter).
+  // Keep the selection dependency-consistent as the user toggles (resolves any feature `requires`).
   const transformSelection = useCallback(
     (
       nextSelected: Array<MultiSelectItem>,
