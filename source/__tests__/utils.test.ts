@@ -133,40 +133,38 @@ describe('getPostInstallMessages', () => {
     expect(result).toEqual([])
   })
 
-  it('returns canton counter messages for canton custom mode', () => {
-    const result = getPostInstallMessages('canton', 'custom', ['counter'])
+  it('returns canton stack-level guidance plus carpincho messages for full mode', () => {
+    const result = getPostInstallMessages('canton', 'full', [])
 
-    expect(result).toEqual(cantonFeatures.counter.postInstall)
+    expect(result).toEqual([
+      ...(stackDefinitions.canton.postInstall ?? []),
+      ...(cantonFeatures.carpincho.postInstall ?? []),
+    ])
+  })
+
+  it('returns canton stack-level guidance plus carpincho messages for default mode', () => {
+    const result = getPostInstallMessages('canton', 'default', [])
+
+    expect(result).toEqual([
+      ...(stackDefinitions.canton.postInstall ?? []),
+      ...(cantonFeatures.carpincho.postInstall ?? []),
+    ])
+  })
+
+  it('returns only stack-level guidance for a custom plan without carpincho', () => {
+    const result = getPostInstallMessages('canton', 'custom', ['llm'])
+
+    expect(result).toEqual(stackDefinitions.canton.postInstall ?? [])
   })
 })
 
-describe('resolveSelectedFeatures — canton (e2e requires counter)', () => {
-  it('pulls counter in when only e2e is selected', () => {
-    expect(resolveSelectedFeatures('canton', ['e2e'])).toEqual(['counter', 'e2e'])
+describe('resolveSelectedFeatures — canton (no requires)', () => {
+  it('returns the selection unchanged, in config order', () => {
+    expect(resolveSelectedFeatures('canton', ['llm', 'carpincho'])).toEqual(['carpincho', 'llm'])
   })
 
-  it('leaves an already-complete selection unchanged', () => {
-    expect(resolveSelectedFeatures('canton', ['counter', 'e2e'])).toEqual(['counter', 'e2e'])
-  })
-
-  it('orders the resolved set by config order, not selection order', () => {
-    expect(resolveSelectedFeatures('canton', ['e2e', 'carpincho'])).toEqual([
-      'counter',
-      'e2e',
-      'carpincho',
-    ])
-  })
-
-  it('does not pull e2e in when only counter is selected (one-directional)', () => {
-    expect(resolveSelectedFeatures('canton', ['counter'])).toEqual(['counter'])
-  })
-
-  it('de-duplicates when a requirement is already present', () => {
-    expect(resolveSelectedFeatures('canton', ['counter', 'e2e', 'carpincho'])).toEqual([
-      'counter',
-      'e2e',
-      'carpincho',
-    ])
+  it('leaves a single-feature selection unchanged', () => {
+    expect(resolveSelectedFeatures('canton', ['github'])).toEqual(['github'])
   })
 })
 
@@ -184,8 +182,8 @@ describe('describeInstallPlan', () => {
   })
 
   it('lists the selected features for a custom-mode plan', () => {
-    expect(describeInstallPlan('canton', 'my_app', 'custom', ['counter', 'e2e'])).toBe(
-      'Stack: Canton · Project: my_app · Mode: custom · Features: counter, e2e',
+    expect(describeInstallPlan('canton', 'my_app', 'custom', ['github', 'carpincho'])).toBe(
+      'Stack: Canton · Project: my_app · Mode: custom · Features: github, carpincho',
     )
   })
 
@@ -220,27 +218,18 @@ describe('resolveModeFeatures', () => {
   })
 })
 
-describe('applyFeatureToggle — canton (interactive cascade)', () => {
-  it('selecting e2e pulls counter in', () => {
-    expect(applyFeatureToggle('canton', ['carpincho'], 'e2e', 'select')).toEqual([
-      'counter',
-      'e2e',
+describe('applyFeatureToggle — canton (no dependencies)', () => {
+  it('selecting a feature adds it in config order', () => {
+    expect(applyFeatureToggle('canton', ['carpincho'], 'github', 'select')).toEqual([
+      'github',
       'carpincho',
     ])
   })
 
-  it('unselecting counter cascades e2e out', () => {
+  it('unselecting a feature removes only that feature', () => {
     expect(
-      applyFeatureToggle('canton', ['counter', 'e2e', 'carpincho'], 'counter', 'unselect'),
-    ).toEqual(['carpincho'])
-  })
-
-  it('unselecting e2e leaves counter alone', () => {
-    expect(applyFeatureToggle('canton', ['counter', 'e2e'], 'e2e', 'unselect')).toEqual(['counter'])
-  })
-
-  it('selecting counter does not pull e2e', () => {
-    expect(applyFeatureToggle('canton', [], 'counter', 'select')).toEqual(['counter'])
+      applyFeatureToggle('canton', ['github', 'carpincho', 'llm'], 'carpincho', 'unselect'),
+    ).toEqual(['github', 'llm'])
   })
 })
 

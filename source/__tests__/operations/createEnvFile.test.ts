@@ -40,7 +40,7 @@ describe('createEnvFile — canton', () => {
   })
 
   it('always copies canton-barebones/.env.example', async () => {
-    await createEnvFile('canton', '/project/my_app', ['counter', 'e2e'])
+    await createEnvFile('canton', '/project/my_app', ['carpincho', 'llm'])
 
     expect(copyFile).toHaveBeenCalledWith(
       '/project/my_app/canton-barebones/.env.example',
@@ -48,21 +48,12 @@ describe('createEnvFile — canton', () => {
     )
   })
 
-  it('copies counter frontend env file only when counter feature selected', async () => {
-    await createEnvFile('canton', '/project/my_app', ['counter'])
+  it('always copies the dapp frontend env file (ungated)', async () => {
+    await createEnvFile('canton', '/project/my_app', [])
 
     expect(copyFile).toHaveBeenCalledWith(
-      '/project/my_app/counter/frontend/.env.local.example',
-      '/project/my_app/counter/frontend/.env.local',
-    )
-  })
-
-  it('skips counter env file when counter not selected', async () => {
-    await createEnvFile('canton', '/project/my_app', ['e2e'])
-
-    expect(copyFile).not.toHaveBeenCalledWith(
-      '/project/my_app/counter/frontend/.env.local.example',
-      expect.any(String),
+      '/project/my_app/dapp/frontend/.env.local.example',
+      '/project/my_app/dapp/frontend/.env.local',
     )
   })
 
@@ -76,7 +67,7 @@ describe('createEnvFile — canton', () => {
   })
 
   it('skips carpincho env file when carpincho not selected', async () => {
-    await createEnvFile('canton', '/project/my_app', ['counter'])
+    await createEnvFile('canton', '/project/my_app', ['llm'])
 
     expect(copyFile).not.toHaveBeenCalledWith(
       '/project/my_app/carpincho-wallet/.env.local.example',

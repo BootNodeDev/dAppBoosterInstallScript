@@ -86,14 +86,14 @@ async function removePaths(projectFolder: string, relativePaths: string[]): Prom
   }
 }
 
+// EVM-only hygiene: always strip CI metadata, agent metadata, and git automation. Canton models
+// .github and pre-commit hooks as optional features instead (see cleanupCantonFiles).
 async function cleanupRepositoryHygiene(
-  stack: Stack,
   projectFolder: string,
   onProgress?: (step: string) => void,
 ): Promise<void> {
   onProgress?.('Repository metadata')
-  const metadataPaths = stack === 'evm' ? [...EVM_METADATA_PATHS, ...CI_PATHS] : CI_PATHS
-  await removePaths(projectFolder, metadataPaths)
+  await removePaths(projectFolder, [...EVM_METADATA_PATHS, ...CI_PATHS])
 
   onProgress?.('Git hooks and commit linting')
   await removePaths(projectFolder, AUTOMATION_PATHS)
@@ -144,28 +144,44 @@ function scriptTargetsRemovedDir(command: string, removedDirs: string[]): boolea
   )
 }
 
-function patchPackageJsonCanton(projectFolder: string, removedDirs: string[]): void {
+function patchPackageJsonCanton(
+  projectFolder: string,
+  removedDirs: string[],
+  precommitRemoved: boolean,
+): void {
   const packageJsonPath = resolve(projectFolder, 'package.json')
   const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
   const scripts = packageJson.scripts as Record<string, string | undefined> | undefined
 
-  if (!scripts) {
-    writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
-    return
-  }
+  if (scripts) {
+    for (const [name, command] of Object.entries(scripts)) {
+      if (command !== undefined && scriptTargetsRemovedDir(command, removedDirs)) {
+        scripts[name] = undefined
+      }
+    }
 
-  for (const [name, command] of Object.entries(scripts)) {
-    if (command !== undefined && scriptTargetsRemovedDir(command, removedDirs)) {
-      scripts[name] = undefined
+    // The husky `prepare` hook and commitlint scripts only leave with the pre-commit feature.
+    if (precommitRemoved) {
+      for (const scriptName of TOOLING_SCRIPTS_TO_REMOVE) {
+        if (scripts[scriptName] !== undefined) {
+          scripts[scriptName] = undefined
+        }
+      }
     }
   }
 
-  // biome-ignore lint/complexity/useLiteralKeys: TS index-signature compatibility in strict mode
-  scripts['prepare'] = undefined
-  // biome-ignore lint/complexity/useLiteralKeys: TS index-signature compatibility in strict mode
-  scripts['commitlint'] = undefined
-  scripts['commitlint:check'] = undefined
-  scripts['commitlint:ci'] = undefined
+  if (precommitRemoved) {
+    const dependencyGroups: Array<Record<string, unknown> | undefined> = [
+      packageJson.dependencies,
+      packageJson.devDependencies,
+      packageJson.optionalDependencies,
+      packageJson.peerDependencies,
+    ]
+
+    for (const group of dependencyGroups) {
+      removePackageKeys(group, TOOLING_PACKAGES_TO_REMOVE)
+    }
+  }
 
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
 }
@@ -265,11 +281,12 @@ async function cleanupCantonFiles(
 ): Promise<void> {
   const cantonFeatures = getStackConfig('canton').features
 
-  // Each deselected feature contributes its paths to removal (custom mode only). Directory paths
-  // also feed script stripping, so a removed feature's package.json scripts disappear with it.
+  // Each deselected feature contributes its paths to removal. `default` and `custom` remove;
+  // `full` keeps everything. Directory paths also feed script stripping, so a removed feature's
+  // package.json scripts disappear with it.
   const removedDirs: string[] = []
 
-  if (mode === 'custom') {
+  if (mode !== 'full') {
     for (const [name, definition] of Object.entries(cantonFeatures)) {
       if (isFeatureSelected(name, features) || !definition.paths || definition.paths.length === 0) {
         continue
@@ -281,7 +298,8 @@ async function cleanupCantonFiles(
     }
   }
 
-  patchPackageJsonCanton(projectFolder, removedDirs)
+  const precommitRemoved = mode !== 'full' && !isFeatureSelected('precommit', features)
+  patchPackageJsonCanton(projectFolder, removedDirs, precommitRemoved)
 }
 
 export async function cleanupFiles(
@@ -291,8 +309,6 @@ export async function cleanupFiles(
   features: FeatureName[] = [],
   onProgress?: (step: string) => void,
 ): Promise<void> {
-  await cleanupRepositoryHygiene(stack, projectFolder, onProgress)
-
   if (stack === 'canton') {
     await cleanupCantonFiles(projectFolder, mode, features, onProgress)
     onProgress?.('Initial commit')
@@ -300,5 +316,6 @@ export async function cleanupFiles(
     return
   }
 
+  await cleanupRepositoryHygiene(projectFolder, onProgress)
   await cleanupEvmFiles(projectFolder, mode, features, onProgress)
 }
