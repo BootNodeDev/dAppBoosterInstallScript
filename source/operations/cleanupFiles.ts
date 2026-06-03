@@ -42,37 +42,57 @@ function removePackageKeys(
   return changed
 }
 
+type DependencyGroup = Record<string, unknown> | undefined
+
+type PackageJsonShape = {
+  scripts?: Record<string, string | undefined>
+  dependencies?: DependencyGroup
+  devDependencies?: DependencyGroup
+  optionalDependencies?: DependencyGroup
+  peerDependencies?: DependencyGroup
+}
+
+// Strip the husky/lint-staged/commitlint tooling scripts and dependencies from a parsed
+// package.json (mutates in place). Returns whether anything was removed.
+function stripToolingEntries(
+  packageJson: PackageJsonShape,
+  scripts: Record<string, string | undefined> | undefined,
+): boolean {
+  let changed = false
+
+  if (scripts) {
+    for (const scriptName of TOOLING_SCRIPTS_TO_REMOVE) {
+      if (scripts[scriptName] !== undefined) {
+        scripts[scriptName] = undefined
+        changed = true
+      }
+    }
+  }
+
+  const dependencyGroups: DependencyGroup[] = [
+    packageJson.dependencies,
+    packageJson.devDependencies,
+    packageJson.optionalDependencies,
+    packageJson.peerDependencies,
+  ]
+
+  for (const group of dependencyGroups) {
+    if (removePackageKeys(group, TOOLING_PACKAGES_TO_REMOVE)) {
+      changed = true
+    }
+  }
+
+  return changed
+}
+
 function sanitizeRepositoryPackageJson(projectFolder: string): void {
   const packageJsonPath = resolve(projectFolder, 'package.json')
 
   try {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
     const scripts = packageJson.scripts as Record<string, string | undefined> | undefined
-    let changed = false
 
-    if (scripts) {
-      for (const scriptName of TOOLING_SCRIPTS_TO_REMOVE) {
-        if (scripts[scriptName] !== undefined) {
-          scripts[scriptName] = undefined
-          changed = true
-        }
-      }
-    }
-
-    const dependencyGroups: Array<Record<string, unknown> | undefined> = [
-      packageJson.dependencies,
-      packageJson.devDependencies,
-      packageJson.optionalDependencies,
-      packageJson.peerDependencies,
-    ]
-
-    for (const group of dependencyGroups) {
-      if (removePackageKeys(group, TOOLING_PACKAGES_TO_REMOVE)) {
-        changed = true
-      }
-    }
-
-    if (changed) {
+    if (stripToolingEntries(packageJson, scripts)) {
       writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
     }
   } catch {
@@ -159,28 +179,12 @@ function patchPackageJsonCanton(
         scripts[name] = undefined
       }
     }
-
-    // The husky `prepare` hook and commitlint scripts only leave with the pre-commit feature.
-    if (precommitRemoved) {
-      for (const scriptName of TOOLING_SCRIPTS_TO_REMOVE) {
-        if (scripts[scriptName] !== undefined) {
-          scripts[scriptName] = undefined
-        }
-      }
-    }
   }
 
+  // The husky tooling (prepare/commitlint scripts + husky/lint-staged/commitlint deps) only leaves
+  // with the pre-commit feature.
   if (precommitRemoved) {
-    const dependencyGroups: Array<Record<string, unknown> | undefined> = [
-      packageJson.dependencies,
-      packageJson.devDependencies,
-      packageJson.optionalDependencies,
-      packageJson.peerDependencies,
-    ]
-
-    for (const group of dependencyGroups) {
-      removePackageKeys(group, TOOLING_PACKAGES_TO_REMOVE)
-    }
+    stripToolingEntries(packageJson, scripts)
   }
 
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
