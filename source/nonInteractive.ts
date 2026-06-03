@@ -15,7 +15,7 @@ import {
   getProjectFolder,
   isValidName,
   projectDirectoryExists,
-  resolveSelectedFeatures,
+  resolveModeFeatures,
 } from './utils/utils.js'
 
 type SuccessResult = {
@@ -91,16 +91,25 @@ function validate(flags: {
     fail('Invalid project name: only letters, numbers, and underscores are allowed')
   }
 
-  if (flags.mode !== 'full' && flags.mode !== 'custom') {
-    fail("Invalid mode: must be 'full' or 'custom'")
+  if (flags.mode !== 'full' && flags.mode !== 'default' && flags.mode !== 'custom') {
+    fail("Invalid mode: must be 'full', 'default', or 'custom'")
   }
 
-  if (flags.mode === 'full') {
+  if (flags.mode === 'default' && stack === 'evm') {
+    fail("Invalid mode: 'default' is only available for the canton stack")
+  }
+
+  if (flags.mode === 'full' || flags.mode === 'default') {
     if (projectDirectoryExists(flags.name)) {
       fail(`Project directory '${flags.name}' already exists`)
     }
 
-    return { stack, name: flags.name, mode: flags.mode, features: getFeatureNames(stack) }
+    return {
+      stack,
+      name: flags.name,
+      mode: flags.mode,
+      features: resolveModeFeatures(stack, flags.mode),
+    }
   }
 
   if (!flags.features) {
@@ -130,7 +139,7 @@ function validate(flags: {
     stack,
     name: flags.name,
     mode: flags.mode,
-    features: resolveSelectedFeatures(stack, features),
+    features: resolveModeFeatures(stack, 'custom', features),
   }
 }
 
