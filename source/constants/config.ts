@@ -205,8 +205,10 @@ export function getDefaultFeatureNames(stack: Stack): FeatureName[] {
     .map(([name]) => name)
 }
 
-// Available installation modes per stack. `default` (keep only default:true features) is Canton-only:
-// EVM has no default:false features, so default would be identical to full there.
+// Available installation modes per stack. `default` (keep only default:true features) is offered
+// only when the stack has at least one opt-out (default:false) feature; otherwise it would be
+// identical to `full`. Today that means Canton only (EVM's features are all default:true).
 export function getInstallationModes(stack: Stack): InstallationType[] {
-  return stack === 'canton' ? ['default', 'full', 'custom'] : ['full', 'custom']
+  const hasOptOutFeature = getDefaultFeatureNames(stack).length < getFeatureNames(stack).length
+  return hasOptOutFeature ? ['default', 'full', 'custom'] : ['full', 'custom']
 }
