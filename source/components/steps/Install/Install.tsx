@@ -4,7 +4,7 @@ import type { FeatureName, Stack } from '../../../constants/config.js'
 import { createEnvFile } from '../../../operations/createEnvFile.js'
 import { installPackages } from '../../../operations/installPackages.js'
 import type { InstallationType, MultiSelectItem } from '../../../types/types.js'
-import { deriveStepDisplay, getProjectFolder } from '../../../utils/utils.js'
+import { deriveStepDisplay, getProjectFolder, resolveModeFeatures } from '../../../utils/utils.js'
 import Divider from '../../Divider.js'
 
 interface Props {
@@ -33,7 +33,8 @@ const Install: FC<Props> = ({ stack, projectName, onCompletion, installationConf
   }, [])
 
   useEffect(() => {
-    const features = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
+    const selectedNames = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
+    const features = resolveModeFeatures(stack, installationType ?? 'full', selectedNames)
 
     const run = async () => {
       handleProgress('Creating env files')

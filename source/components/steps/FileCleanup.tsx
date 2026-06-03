@@ -4,7 +4,7 @@ import type { FeatureName, Stack } from '../../constants/config.js'
 import { cleanupFiles } from '../../operations/index.js'
 import { completeInstall } from '../../operations/installGuard.js'
 import type { InstallationType, MultiSelectItem } from '../../types/types.js'
-import { deriveStepDisplay, getProjectFolder } from '../../utils/utils.js'
+import { deriveStepDisplay, getProjectFolder, resolveModeFeatures } from '../../utils/utils.js'
 import Divider from '../Divider.js'
 
 interface Props {
@@ -29,7 +29,8 @@ const FileCleanup: FC<Props> = ({ stack, onCompletion, installationConfig, proje
   }, [])
 
   useEffect(() => {
-    const features = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
+    const selectedNames = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
+    const features = resolveModeFeatures(stack, installationType ?? 'full', selectedNames)
 
     cleanupFiles(stack, projectFolder, installationType ?? 'full', features, handleProgress)
       .then(() => {

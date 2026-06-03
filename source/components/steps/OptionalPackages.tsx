@@ -23,6 +23,15 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
     }))
   }, [stack])
 
+  // Pre-check only default:true features (e.g. Canton's github/precommit start unchecked).
+  const defaultSelected: Array<MultiSelectItem> = useMemo(
+    () =>
+      customPackages.filter(
+        (pkg) => getStackConfig(stack).features[pkg.value as FeatureName]?.default,
+      ),
+    [stack, customPackages],
+  )
+
   // Keep the selection dependency-consistent as the user toggles (e.g. e2e requires counter).
   const transformSelection = useCallback(
     (
@@ -79,7 +88,7 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
     <>
       <Text color={'whiteBright'}>Choose optional packages</Text>
       <MultiSelect
-        defaultSelected={customPackages}
+        defaultSelected={defaultSelected}
         focus
         items={customPackages}
         onSubmit={onHandleSubmit}
