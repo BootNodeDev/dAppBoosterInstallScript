@@ -39,9 +39,7 @@
     "lint": "pnpm biome check",
     "lint:fix": "pnpm biome check --write"
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "dependencies": {
     "figures": "^6.1.0",
     "ink": "^5.2.1",
