@@ -295,6 +295,24 @@ describe('nonInteractive — canton execution', () => {
     const postInstall = output.postInstall as string[]
     expect(postInstall.some((msg) => msg.includes('canton:up'))).toBe(true)
   })
+
+  it('canton post-install leads with the dev-stack.sh one-command bring-up before the manual canton:up fallback', async () => {
+    await runNonInteractive({
+      stack: 'canton',
+      name: 'my_app',
+      mode: 'custom',
+      features: 'llm',
+    })
+
+    const output = getLastJsonOutput()
+    const postInstall = output.postInstall as string[]
+    const devStackIndex = postInstall.findIndex((msg) => msg.includes('dev-stack.sh'))
+    const cantonUpIndex = postInstall.findIndex((msg) => msg.includes('canton:up'))
+
+    expect(devStackIndex).toBeGreaterThanOrEqual(0)
+    expect(cantonUpIndex).toBeGreaterThanOrEqual(0)
+    expect(devStackIndex).toBeLessThan(cantonUpIndex)
+  })
 })
 
 describe('nonInteractive — default mode', () => {

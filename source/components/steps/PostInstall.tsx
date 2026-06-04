@@ -106,11 +106,10 @@ const CantonPostInstallMessage: FC<{
           created from the example — review it.
         </Text>
         <Text>
-          3- Start the local Canton stack with <Text color={'gray'}>npm run canton:up</Text>
-        </Text>
-        <Text>
-          4- In a separate terminal, run the dapp frontend:{' '}
-          <Text color={'gray'}>npm run app:dev</Text>
+          3- Bring up the whole local stack with one command:{' '}
+          <Text color={'gray'}>./scripts/dev-stack.sh up</Text> (Docker must be running). Run{' '}
+          <Text color={'gray'}>./scripts/dev-stack.sh</Text> with no arguments for an interactive
+          menu.
         </Text>
       </Box>
       {carpinchoEnabled && (
@@ -123,13 +122,29 @@ const CantonPostInstallMessage: FC<{
           padding={1}
         >
           <Text color={'yellow'}>
-            {figures.info} <Text bold>Carpincho Wallet</Text>: build it with{' '}
-            <Text color={'gray'}>npm run carpincho:build:extension</Text> and load{' '}
-            <Text color={'gray'}>carpincho-wallet/dist-extension</Text> as an unpacked browser
-            extension {figures.info}
+            {figures.info} <Text bold>Carpincho Wallet</Text>:{' '}
+            <Text color={'gray'}>./scripts/dev-stack.sh up</Text> also builds the extension and
+            copies it to <Text color={'gray'}>~/Desktop/dist-extension</Text> — load it via{' '}
+            <Text color={'gray'}>chrome://extensions</Text> (Developer mode, Load unpacked){' '}
+            {figures.info}
           </Text>
         </Box>
       )}
+      <Box flexDirection={'column'}>
+        <Text color={'whiteBright'}>Prefer to run the pieces by hand?</Text>
+        <Text>
+          - Start the Canton stack with <Text color={'gray'}>npm run canton:up</Text>, then run the
+          dapp frontend with <Text color={'gray'}>npm run app:dev</Text>.
+        </Text>
+        {carpinchoEnabled && (
+          <Text>
+            - Build the Carpincho extension with{' '}
+            <Text color={'gray'}>npm run carpincho:build:extension</Text> and load{' '}
+            <Text color={'gray'}>carpincho-wallet/dist-extension</Text> as an unpacked browser
+            extension.
+          </Text>
+        )}
+      </Box>
       <Text>See the Canton stack README inside the project for full instructions.</Text>
     </Box>
   )
