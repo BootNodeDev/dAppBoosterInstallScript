@@ -7,7 +7,7 @@ agents.
 
 - **EVM** — the original [dAppBooster](https://dappbooster.dev/) for Ethereum, Polygon, Base, and
   other EVM chains.
-- **Canton** — [dAppBooster for Canton](https://dappbooster-canton-landing.vercel.app/): Daml
+- **Canton** — [dAppBooster for Canton](https://www.dappbooster.cc/): Daml
   ledger, Carpincho wallet, off-chain services.
 
 ## Choose your stack
