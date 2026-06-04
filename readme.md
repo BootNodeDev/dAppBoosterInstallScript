@@ -7,7 +7,7 @@ agents.
 
 - **EVM** — the original [dAppBooster](https://dappbooster.dev/) for Ethereum, Polygon, Base, and
   other EVM chains.
-- **Canton** — [dAppBooster for Canton](https://dappbooster-canton-landing.vercel.app/): Daml
+- **Canton** — [dAppBooster for Canton](https://www.dappbooster.cc/): Daml
   ledger, Carpincho wallet, off-chain services.
 
 ## Choose your stack
@@ -150,10 +150,19 @@ the "Removing a feature" guide in the generated `dapp/frontend/README.md` — th
 deletes demo source itself.
 
 The Canton scaffold uses **npm** (a property of the generated project, not this installer). After
-install: review `canton-barebones/.env`, run `npm run canton:up` to start the local Canton stack,
-and `npm run app:dev` to run the dapp frontend. When `carpincho` is included, build the extension
-with `npm run carpincho:build:extension` and load `carpincho-wallet/dist-extension` as an unpacked
-browser extension.
+install, review `canton-barebones/.env`, then bring the whole local stack up with a single command:
+`./scripts/dev-stack.sh up` (Docker must be running). It starts the Canton + Postgres +
+wallet-service containers, runs the health checks, builds and deploys the quickstart-counter DAR,
+launches the dapp frontend (`:3012`), and — when `carpincho` is included — builds the Carpincho
+extension and copies it to `~/Desktop/dist-extension` (load it via `chrome://extensions`, Developer
+mode → Load unpacked). Run `./scripts/dev-stack.sh` with no arguments for an interactive arrow-key
+menu; `mock-up` brings up a Docker-free mocked wallet-service + Carpincho web app, and `down` tears
+everything back down.
+
+Prefer to run the pieces by hand? The underlying npm scripts still work: `npm run canton:up` to
+start the local Canton stack and `npm run app:dev` for the dapp frontend, and when `carpincho` is
+included build the extension with `npm run carpincho:build:extension` and load
+`carpincho-wallet/dist-extension` as an unpacked browser extension.
 
 **What gets stripped:**
 
@@ -176,10 +185,10 @@ browser extension.
   "path": "/absolute/path/to/my_canton_dapp",
   "postInstall": [
     "Review canton-barebones/.env (created from the example)",
-    "Run npm run canton:up to start the local Canton stack",
-    "Run npm run app:dev to start the dapp frontend",
-    "Build the Carpincho extension with npm run carpincho:build:extension",
-    "Load carpincho-wallet/dist-extension as an unpacked browser extension"
+    "Run ./scripts/dev-stack.sh up to bring up the whole local stack in one command — Docker must be running (run ./scripts/dev-stack.sh with no arguments for an interactive menu)",
+    "Fallback — start each piece manually: npm run canton:up for the Canton stack, then npm run app:dev for the dapp frontend",
+    "./scripts/dev-stack.sh up also builds the Carpincho extension and copies it to ~/Desktop/dist-extension (load it via chrome://extensions, Developer mode -> Load unpacked)",
+    "Fallback — build it manually with npm run carpincho:build:extension, then load carpincho-wallet/dist-extension as an unpacked browser extension"
   ]
 }
 ```

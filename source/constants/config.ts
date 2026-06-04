@@ -111,8 +111,8 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
     removeAfterClone: [],
     postInstall: [
       'Review canton-barebones/.env (created from the example)',
-      'Run npm run canton:up to start the local Canton stack',
-      'Run npm run app:dev to start the dapp frontend',
+      'Run ./scripts/dev-stack.sh up to bring up the whole local stack in one command — Docker must be running (run ./scripts/dev-stack.sh with no arguments for an interactive menu)',
+      'Fallback — start each piece manually: npm run canton:up for the Canton stack, then npm run app:dev for the dapp frontend',
     ],
     envFiles: [
       { from: 'canton-barebones/.env.example', to: 'canton-barebones/.env' },
@@ -145,8 +145,8 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
         default: true,
         paths: ['carpincho-wallet'],
         postInstall: [
-          'Build the Carpincho extension with npm run carpincho:build:extension',
-          'Load carpincho-wallet/dist-extension as an unpacked browser extension',
+          './scripts/dev-stack.sh up also builds the Carpincho extension and copies it to ~/Desktop/dist-extension (load it via chrome://extensions, Developer mode -> Load unpacked)',
+          'Fallback — build it manually with npm run carpincho:build:extension, then load carpincho-wallet/dist-extension as an unpacked browser extension',
         ],
       },
       llm: {
