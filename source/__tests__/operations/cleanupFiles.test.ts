@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { FeatureName } from '../../constants/config.js'
+import { type FeatureName, getStackConfig } from '../../constants/config.js'
 
 vi.mock('node:fs/promises', () => ({
   rm: vi.fn().mockResolvedValue(undefined),
@@ -58,6 +58,30 @@ function getWrittenPackageJson(): Record<string, unknown> {
   return JSON.parse(lastCall[1] as string)
 }
 
+// Reads the workspaces field in either form (string[] or { packages }).
+function getWorkspacePackages(pkg: Record<string, unknown>): string[] {
+  const workspaces = pkg.workspaces
+
+  if (Array.isArray(workspaces)) {
+    return workspaces as string[]
+  }
+
+  const packages = (workspaces as { packages?: unknown } | undefined)?.packages
+  return Array.isArray(packages) ? (packages as string[]) : []
+}
+
+// Dirs removed for a selection, derived from config — keeps the invariant config-driven instead of
+// hardcoding carpincho-wallet.
+function removedCantonDirs(selected: FeatureName[]): string[] {
+  return Object.entries(getStackConfig('canton').features)
+    .filter(([name, definition]) => !selected.includes(name) && (definition.paths?.length ?? 0) > 0)
+    .flatMap(([, definition]) => definition.paths as string[])
+}
+
+function entryTargetsRemovedDir(entry: string, removedDirs: string[]): boolean {
+  return removedDirs.some((dir) => entry === dir || entry.startsWith(`${dir}/`))
+}
+
 function mockEvmPackageJson() {
   vi.mocked(readFileSync).mockReturnValue(
     JSON.stringify({
@@ -75,31 +99,53 @@ function mockEvmPackageJson() {
   )
 }
 
-// Mirrors the real root package.json on BootNodeDev/cn-dappbooster@main.
-function mockCantonPackageJson() {
+// Mirrors cn-dappbooster@main's root package.json, including the workspaces array — carpincho-wallet
+// is a workspace, so deselecting carpincho must prune it.
+const CANTON_WORKSPACES = [
+  'canton-connect-kit',
+  'carpincho-wallet',
+  'canton-barebones',
+  'canton-barebones/wallet-service',
+  'dapp/daml',
+  'dapp/e2e',
+  'dapp/frontend',
+]
+
+const CANTON_SCRIPTS = {
+  'canton:up': 'npm --prefix canton-barebones run up',
+  'canton:down': 'npm --prefix canton-barebones run down',
+  'canton:health': 'npm --prefix canton-barebones run health',
+  'canton:token': 'npm --prefix canton-barebones run token',
+  'build-dar': 'bash scripts/build-dar.sh',
+  'deploy-dar': 'bash canton-barebones/scripts/deploy-dar.sh',
+  'wallet:dev': 'npm --prefix carpincho-wallet run dev',
+  'wallet-service:dev': 'npm --prefix canton-barebones/wallet-service run dev',
+  'wallet-service:health': 'curl -fsS http://localhost:3010/health',
+  'carpincho:build:extension': 'npm --prefix carpincho-wallet run build:extension',
+  'app:dev': 'npm --prefix dapp/frontend run dev -- --host localhost --port 3012 --strictPort',
+  lint: 'biome check',
+  'lint:fix': 'biome check --write',
+  format: 'biome format --write',
+  e2e: 'npm --prefix dapp/e2e test',
+  'e2e:headed': 'npm --prefix dapp/e2e run test:headed',
+  'e2e:ui': 'npm --prefix dapp/e2e run test:ui',
+  prepare: 'husky',
+}
+
+const CANTON_DEV_DEPS = {
+  husky: '^9.1.7',
+  'lint-staged': '^17.0.4',
+  '@commitlint/cli': '^21.0.1',
+  '@commitlint/config-conventional': '^21.0.1',
+}
+
+// Pass { packages } to exercise the object form; defaults to the string[] form.
+function mockCantonPackageJson(workspaces: unknown = CANTON_WORKSPACES) {
   vi.mocked(readFileSync).mockReturnValue(
     JSON.stringify({
-      scripts: {
-        'canton:up': 'npm --prefix canton-barebones run up',
-        'canton:down': 'npm --prefix canton-barebones run down',
-        'build-dar': 'bash scripts/build-dar.sh',
-        'deploy-dar': 'bash canton-barebones/scripts/deploy-dar.sh',
-        'wallet:dev': 'npm --prefix carpincho-wallet run dev',
-        'wallet-service:dev': 'npm --prefix canton-barebones/wallet-service run dev',
-        'carpincho:build:extension': 'npm --prefix carpincho-wallet run build:extension',
-        'app:dev':
-          'npm --prefix dapp/frontend run dev -- --host localhost --port 3012 --strictPort',
-        lint: 'biome check',
-        e2e: 'npm --prefix dapp/e2e test',
-        'e2e:headed': 'npm --prefix dapp/e2e run test:headed',
-        prepare: 'husky',
-      },
-      devDependencies: {
-        husky: '^9.1.7',
-        'lint-staged': '^17.0.4',
-        '@commitlint/cli': '^21.0.1',
-        '@commitlint/config-conventional': '^21.0.1',
-      },
+      workspaces,
+      scripts: CANTON_SCRIPTS,
+      devDependencies: CANTON_DEV_DEPS,
     }),
   )
 }
@@ -411,6 +457,12 @@ describe('cleanupFiles — canton', () => {
       expect(execFile).toHaveBeenCalledWith('git', ['add', '.'], { cwd: '/project/my_app' })
     })
 
+    it('keeps the full workspaces array (nothing removed)', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'full')
+
+      expect(getWorkspacePackages(getWrittenPackageJson())).toEqual(CANTON_WORKSPACES)
+    })
+
     it('makes the initial commit with --no-verify so kept project hooks cannot block it', async () => {
       await cleanupFiles('canton', '/project/my_app', 'full')
 
@@ -496,6 +548,41 @@ describe('cleanupFiles — canton', () => {
       expect(scripts['wallet:dev']).toBeUndefined()
       expect(scripts['carpincho:build:extension']).toBeUndefined()
     })
+
+    it('prunes carpincho-wallet from the workspaces array but keeps the rest', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['github', 'precommit', 'llm'])
+
+      const workspaces = getWorkspacePackages(getWrittenPackageJson())
+      expect(workspaces).not.toContain('carpincho-wallet')
+      expect(workspaces).toContain('canton-barebones')
+      expect(workspaces).toContain('dapp/frontend')
+    })
+
+    // The invariant the bug violated — asserted generally, not just for carpincho-wallet.
+    it('leaves no workspace entry pointing at a removed directory', async () => {
+      const selected: FeatureName[] = ['github', 'precommit', 'llm']
+      await cleanupFiles('canton', '/project/my_app', 'custom', selected)
+
+      const removedDirs = removedCantonDirs(selected)
+      const workspaces = getWorkspacePackages(getWrittenPackageJson())
+      for (const entry of workspaces) {
+        expect(entryTargetsRemovedDir(entry, removedDirs)).toBe(false)
+      }
+      // Guard against the array being emptied wholesale.
+      expect(workspaces.length).toBeGreaterThan(0)
+    })
+
+    it('prunes the { packages } object form and preserves sibling keys', async () => {
+      mockCantonPackageJson({ packages: CANTON_WORKSPACES, nohoist: ['**/react'] })
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['github', 'precommit', 'llm'])
+
+      const written = getWrittenPackageJson()
+      expect(Array.isArray(written.workspaces)).toBe(false)
+      const workspaces = written.workspaces as { packages: string[]; nohoist: string[] }
+      expect(workspaces.packages).not.toContain('carpincho-wallet')
+      expect(workspaces.packages).toContain('dapp/frontend')
+      expect(workspaces.nohoist).toEqual(['**/react'])
+    })
   })
 
   describe('custom mode — llm deselected', () => {
@@ -511,6 +598,17 @@ describe('cleanupFiles — canton', () => {
       expect(paths).toContain(resolve('/project/my_app', 'AGENTS.md'))
       expect(paths).toContain(resolve('/project/my_app', 'architecture.md'))
       expect(paths).toContain(resolve('/project/my_app', 'llms.txt'))
+    })
+
+    // llm's paths aren't workspaces — removing it must not touch the array.
+    it('leaves the workspaces array intact (its paths are not workspaces)', async () => {
+      await cleanupFiles('canton', '/project/my_app', 'custom', [
+        'github',
+        'precommit',
+        'carpincho',
+      ])
+
+      expect(getWorkspacePackages(getWrittenPackageJson())).toEqual(CANTON_WORKSPACES)
     })
   })
 

@@ -164,6 +164,30 @@ function scriptTargetsRemovedDir(command: string, removedDirs: string[]): boolea
   )
 }
 
+function workspaceEntryRemoved(entry: string, removedDirs: string[]): boolean {
+  return removedDirs.some((dir) => entry === dir || entry.startsWith(`${dir}/`))
+}
+
+// Drop workspaces entries pointing at a removed dir. Handles both the string[] and { packages }
+// forms (other object keys preserved); mutates in place.
+function pruneRemovedWorkspaces(
+  packageJson: { workspaces?: string[] | { packages?: string[] } },
+  removedDirs: string[],
+): void {
+  if (removedDirs.length === 0) {
+    return
+  }
+
+  const { workspaces } = packageJson
+  const keep = (entry: string): boolean => !workspaceEntryRemoved(entry, removedDirs)
+
+  if (Array.isArray(workspaces)) {
+    packageJson.workspaces = workspaces.filter(keep)
+  } else if (workspaces && Array.isArray(workspaces.packages)) {
+    workspaces.packages = workspaces.packages.filter(keep)
+  }
+}
+
 function patchPackageJsonCanton(
   projectFolder: string,
   removedDirs: string[],
@@ -180,6 +204,9 @@ function patchPackageJsonCanton(
       }
     }
   }
+
+  // Removed dirs also drop out of the workspaces array, else the manifest lists a missing dir.
+  pruneRemovedWorkspaces(packageJson, removedDirs)
 
   // The husky tooling (prepare/commitlint scripts + husky/lint-staged/commitlint deps) only leaves
   // with the pre-commit feature.
