@@ -1,40 +1,175 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, statSync, writeFileSync } from 'node:fs'
 import { copyFile, mkdir, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { type FeatureName, getStackConfig, type Stack } from '../constants/config.js'
+import {
+  type FeatureName,
+  getStackConfig,
+  type PackageManager,
+  type Stack,
+} from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
 import { isFeatureSelected } from '../utils/utils.js'
 import { execFile } from './exec.js'
 
-// CI config is hygiene for both stacks. EVM additionally always strips its agent/LLM metadata;
-// Canton keeps that metadata under the optional `llm` feature instead.
-const CI_PATHS = ['.github']
+const EVM_HYGIENE_PATHS = ['.claude', 'AGENTS.md', 'CLAUDE.md', 'architecture.md', '.github']
 
-const EVM_METADATA_PATHS = ['.claude', 'AGENTS.md', 'CLAUDE.md', 'architecture.md']
+const HOME_FOLDER = 'src/components/pageComponents/home'
 
-const AUTOMATION_PATHS = ['.husky', '.lintstagedrc.mjs', 'commitlint.config.js']
+const lockfileOnlyFlag: Record<PackageManager, string> = {
+  npm: '--package-lock-only',
+  pnpm: '--lockfile-only',
+}
 
-const TOOLING_PACKAGES_TO_REMOVE = [
-  'husky',
-  'lint-staged',
-  '@commitlint/cli',
-  '@commitlint/config-conventional',
-]
+type DependencyGroup = Record<string, unknown> | undefined
 
-const TOOLING_SCRIPTS_TO_REMOVE = ['prepare', 'commitlint', 'commitlint:check', 'commitlint:ci']
+type PackageJson = {
+  scripts?: Record<string, string | undefined>
+  workspaces?: string[] | { packages?: string[] }
+  dependencies?: DependencyGroup
+  devDependencies?: DependencyGroup
+  optionalDependencies?: DependencyGroup
+  peerDependencies?: DependencyGroup
+}
 
-function removePackageKeys(
-  packageBlock: Record<string, unknown> | undefined,
-  keys: string[],
-): boolean {
-  if (!packageBlock) {
+/**
+ * What the deselected features leave for the package.json pass to apply.
+ *
+ * @property removedDirs - Directories that were deleted. Scripts that run one of them, and
+ * workspaces entries that point at one, go with them.
+ */
+type CleanupPlan = {
+  scripts: string[]
+  dependencies: string[]
+  removedDirs: string[]
+}
+
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+/** Deletes paths relative to the project folder. Returns the ones that were directories. */
+async function removePaths(projectFolder: string, relativePaths: string[]): Promise<string[]> {
+  const removedDirs: string[] = []
+
+  for (const relativePath of relativePaths) {
+    const target = resolve(projectFolder, relativePath)
+
+    if (isDirectory(target)) {
+      removedDirs.push(relativePath)
+    }
+
+    await rm(target, { recursive: true, force: true })
+  }
+
+  return removedDirs
+}
+
+/**
+ * Deletes the files of every feature the user left out and collects what the package.json pass
+ * still has to remove. `full` mode keeps everything.
+ */
+async function removeDeselectedFeatures(
+  stack: Stack,
+  projectFolder: string,
+  mode: InstallationType,
+  features: FeatureName[],
+  onProgress?: (step: string) => void,
+): Promise<CleanupPlan> {
+  const plan: CleanupPlan = { scripts: [], dependencies: [], removedDirs: [] }
+
+  if (mode === 'full') {
+    return plan
+  }
+
+  for (const [name, definition] of Object.entries(getStackConfig(stack).features)) {
+    const { paths = [], scripts = [], dependencies = [] } = definition
+
+    if (isFeatureSelected(name, features)) {
+      continue
+    }
+
+    if (paths.length === 0 && scripts.length === 0 && dependencies.length === 0) {
+      continue
+    }
+
+    onProgress?.(definition.label)
+    plan.removedDirs.push(...(await removePaths(projectFolder, paths)))
+    plan.scripts.push(...scripts)
+    plan.dependencies.push(...dependencies)
+  }
+
+  return plan
+}
+
+/** Replaces the EVM home page with the demo-free copy the template keeps in `.install-files`. */
+async function restoreHomePage(projectFolder: string): Promise<void> {
+  const homeFolder = resolve(projectFolder, HOME_FOLDER)
+
+  await rm(homeFolder, { recursive: true, force: true })
+  await mkdir(homeFolder, { recursive: true })
+  await copyFile(
+    resolve(projectFolder, '.install-files/home/index.tsx'),
+    resolve(homeFolder, 'index.tsx'),
+  )
+}
+
+/** Drops the subgraph demos from an EVM home page the user chose to keep. */
+async function restoreExamplesIndex(projectFolder: string): Promise<void> {
+  const homeFolder = resolve(projectFolder, HOME_FOLDER)
+
+  await rm(resolve(homeFolder, 'Examples/demos/subgraphs'), { recursive: true, force: true })
+  await rm(resolve(homeFolder, 'Examples/index.tsx'), { force: true })
+  await copyFile(
+    resolve(projectFolder, '.install-files/home/Examples/index.tsx'),
+    resolve(homeFolder, 'Examples/index.tsx'),
+  )
+}
+
+/**
+ * EVM cleanup. The CI and agent metadata always go, since they belong to the template's own repo;
+ * everything else follows the feature selection. Canton models both as optional features instead.
+ */
+async function cleanupEvmFiles(
+  projectFolder: string,
+  mode: InstallationType,
+  features: FeatureName[],
+  onProgress?: (step: string) => void,
+): Promise<CleanupPlan> {
+  onProgress?.('Repository metadata')
+  await removePaths(projectFolder, EVM_HYGIENE_PATHS)
+
+  if (mode === 'custom') {
+    if (!isFeatureSelected('demo', features)) {
+      onProgress?.('Component demos')
+      await restoreHomePage(projectFolder)
+    } else if (!isFeatureSelected('subgraph', features)) {
+      onProgress?.('Subgraph demos')
+      await restoreExamplesIndex(projectFolder)
+    }
+  }
+
+  const plan = await removeDeselectedFeatures('evm', projectFolder, mode, features, onProgress)
+
+  onProgress?.('Install script')
+  await removePaths(projectFolder, ['.install-files'])
+
+  return plan
+}
+
+function removeKeys(block: Record<string, unknown> | undefined, keys: string[]): boolean {
+  if (!block) {
     return false
   }
 
   let changed = false
+
   for (const key of keys) {
-    if (key in packageBlock) {
-      delete packageBlock[key]
+    if (key in block) {
+      delete block[key]
       changed = true
     }
   }
@@ -42,32 +177,81 @@ function removePackageKeys(
   return changed
 }
 
-type DependencyGroup = Record<string, unknown> | undefined
+function runsRemovedDir(command: string, removedDirs: string[]): boolean {
+  const tokens = command.split(/\s+/)
 
-type PackageJsonShape = {
-  scripts?: Record<string, string | undefined>
-  dependencies?: DependencyGroup
-  devDependencies?: DependencyGroup
-  optionalDependencies?: DependencyGroup
-  peerDependencies?: DependencyGroup
+  return removedDirs.some((dir) =>
+    tokens.some((token) => token === dir || token.startsWith(`${dir}/`)),
+  )
 }
 
-// Strip the husky/lint-staged/commitlint tooling scripts and dependencies from a parsed
-// package.json (mutates in place). Returns whether anything was removed.
-function stripToolingEntries(
-  packageJson: PackageJsonShape,
+/**
+ * Names the scripts that run a removed directory, so cleanup tracks the removal even when the
+ * template renames its scripts.
+ */
+function scriptsRunningRemovedDirs(
   scripts: Record<string, string | undefined> | undefined,
-): boolean {
-  let changed = false
-
-  if (scripts) {
-    for (const scriptName of TOOLING_SCRIPTS_TO_REMOVE) {
-      if (scripts[scriptName] !== undefined) {
-        scripts[scriptName] = undefined
-        changed = true
-      }
-    }
+  removedDirs: string[],
+): string[] {
+  if (!scripts || removedDirs.length === 0) {
+    return []
   }
+
+  return Object.entries(scripts)
+    .filter(([, command]) => command !== undefined && runsRemovedDir(command, removedDirs))
+    .map(([name]) => name)
+}
+
+/** Drops workspaces entries pointing at a removed directory. Mutates in place. */
+function pruneWorkspaces(packageJson: PackageJson, removedDirs: string[]): boolean {
+  const { workspaces } = packageJson
+  const keep = (entry: string): boolean =>
+    !removedDirs.some((dir) => entry === dir || entry.startsWith(`${dir}/`))
+
+  if (Array.isArray(workspaces)) {
+    const kept = workspaces.filter(keep)
+
+    if (kept.length === workspaces.length) {
+      return false
+    }
+
+    packageJson.workspaces = kept
+    return true
+  }
+
+  if (workspaces && Array.isArray(workspaces.packages)) {
+    const kept = workspaces.packages.filter(keep)
+
+    if (kept.length === workspaces.packages.length) {
+      return false
+    }
+
+    workspaces.packages = kept
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Applies the plan to the project's package.json in a single pass, writing only when something
+ * changed. Returns whether the lockfile no longer matches the manifest.
+ */
+function patchPackageJson(projectFolder: string, plan: CleanupPlan): boolean {
+  const packageJsonPath = resolve(projectFolder, 'package.json')
+
+  let packageJson: PackageJson
+
+  try {
+    packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as PackageJson
+  } catch {
+    return false
+  }
+
+  const scriptsRemoved = removeKeys(packageJson.scripts, [
+    ...plan.scripts,
+    ...scriptsRunningRemovedDirs(packageJson.scripts, plan.removedDirs),
+  ])
 
   const dependencyGroups: DependencyGroup[] = [
     packageJson.dependencies,
@@ -76,153 +260,47 @@ function stripToolingEntries(
     packageJson.peerDependencies,
   ]
 
+  let dependenciesRemoved = false
+
   for (const group of dependencyGroups) {
-    if (removePackageKeys(group, TOOLING_PACKAGES_TO_REMOVE)) {
-      changed = true
+    if (removeKeys(group, plan.dependencies)) {
+      dependenciesRemoved = true
     }
   }
 
-  return changed
-}
+  const workspacesPruned = pruneWorkspaces(packageJson, plan.removedDirs)
 
-function sanitizeRepositoryPackageJson(projectFolder: string): void {
-  const packageJsonPath = resolve(projectFolder, 'package.json')
-
-  try {
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
-    const scripts = packageJson.scripts as Record<string, string | undefined> | undefined
-
-    if (stripToolingEntries(packageJson, scripts)) {
-      writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
-    }
-  } catch {
-    // Some templates may not include a package.json at this level.
+  if (scriptsRemoved || dependenciesRemoved || workspacesPruned) {
+    writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
   }
+
+  return dependenciesRemoved || workspacesPruned
 }
 
-async function removePaths(projectFolder: string, relativePaths: string[]): Promise<void> {
-  for (const relativePath of relativePaths) {
-    await rm(resolve(projectFolder, relativePath), { recursive: true, force: true })
-  }
-}
-
-// EVM-only hygiene: always strip CI metadata, agent metadata, and git automation. Canton models
-// .github and pre-commit hooks as optional features instead (see cleanupCantonFiles).
-async function cleanupRepositoryHygiene(
+/**
+ * Rewrites the lockfile from the patched package.json, without installing anything. A failure here
+ * leaves a project that still installs, so it is reported and not thrown.
+ */
+async function refreshLockfile(
+  stack: Stack,
   projectFolder: string,
   onProgress?: (step: string) => void,
 ): Promise<void> {
-  onProgress?.('Repository metadata')
-  await removePaths(projectFolder, [...EVM_METADATA_PATHS, ...CI_PATHS])
+  const { packageManager } = getStackConfig(stack)
 
-  onProgress?.('Git hooks and commit linting')
-  await removePaths(projectFolder, AUTOMATION_PATHS)
+  onProgress?.('Updating the lockfile')
 
-  sanitizeRepositoryPackageJson(projectFolder)
-}
-
-function patchPackageJsonEvm(projectFolder: string, features: FeatureName[]): void {
-  const packageJsonPath = resolve(projectFolder, 'package.json')
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
-  const scripts = packageJson.scripts as Record<string, string | undefined> | undefined
-
-  if (!scripts) {
-    writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
-    return
+  try {
+    await execFile(packageManager, ['install', lockfileOnlyFlag[packageManager]], {
+      cwd: projectFolder,
+    })
+  } catch {
+    onProgress?.('Lockfile refresh skipped')
   }
-
-  if (!isFeatureSelected('subgraph', features)) {
-    scripts['subgraph-codegen'] = undefined
-  }
-
-  if (!isFeatureSelected('typedoc', features)) {
-    scripts['typedoc:build'] = undefined
-  }
-
-  if (!isFeatureSelected('vocs', features)) {
-    scripts['docs:build'] = undefined
-    scripts['docs:dev'] = undefined
-    scripts['docs:preview'] = undefined
-  }
-
-  // biome-ignore lint/complexity/useLiteralKeys: TS index-signature compatibility in strict mode
-  scripts['prepare'] = undefined
-  // biome-ignore lint/complexity/useLiteralKeys: TS index-signature compatibility in strict mode
-  scripts['commitlint'] = undefined
-  scripts['commitlint:check'] = undefined
-  scripts['commitlint:ci'] = undefined
-
-  writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
-}
-
-// Strip scripts by what they run (e.g. `npm --prefix carpincho-wallet ...`)
-// rather than by name, so cleanup tracks directory removal even as scripts change.
-function scriptTargetsRemovedDir(command: string, removedDirs: string[]): boolean {
-  const tokens = command.split(/\s+/)
-  return removedDirs.some((dir) =>
-    tokens.some((token) => token === dir || token.startsWith(`${dir}/`)),
-  )
-}
-
-function workspaceEntryRemoved(entry: string, removedDirs: string[]): boolean {
-  return removedDirs.some((dir) => entry === dir || entry.startsWith(`${dir}/`))
-}
-
-// Drop workspaces entries pointing at a removed dir. Handles both the string[] and { packages }
-// forms (other object keys preserved); mutates in place.
-function pruneRemovedWorkspaces(
-  packageJson: { workspaces?: string[] | { packages?: string[] } },
-  removedDirs: string[],
-): void {
-  if (removedDirs.length === 0) {
-    return
-  }
-
-  const { workspaces } = packageJson
-  const keep = (entry: string): boolean => !workspaceEntryRemoved(entry, removedDirs)
-
-  if (Array.isArray(workspaces)) {
-    packageJson.workspaces = workspaces.filter(keep)
-  } else if (workspaces && Array.isArray(workspaces.packages)) {
-    workspaces.packages = workspaces.packages.filter(keep)
-  }
-}
-
-function patchPackageJsonCanton(
-  projectFolder: string,
-  removedDirs: string[],
-  precommitRemoved: boolean,
-): void {
-  const packageJsonPath = resolve(projectFolder, 'package.json')
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
-  const scripts = packageJson.scripts as Record<string, string | undefined> | undefined
-
-  if (scripts) {
-    for (const [name, command] of Object.entries(scripts)) {
-      if (command !== undefined && scriptTargetsRemovedDir(command, removedDirs)) {
-        scripts[name] = undefined
-      }
-    }
-  }
-
-  // Removed dirs also drop out of the workspaces array, else the manifest lists a missing dir.
-  pruneRemovedWorkspaces(packageJson, removedDirs)
-
-  // The husky tooling (prepare/commitlint scripts + husky/lint-staged/commitlint deps) only leaves
-  // with the pre-commit feature.
-  if (precommitRemoved) {
-    stripToolingEntries(packageJson, scripts)
-  }
-
-  writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
 }
 
 async function createInitialCommit(projectFolder: string): Promise<void> {
   await execFile('git', ['add', '.'], { cwd: projectFolder })
-  // --no-verify: the scaffold's baseline commit must not run the project's own git hooks. When the
-  // `precommit` feature is kept, husky's pre-commit/commit-msg hooks are present and would lint and
-  // test the freshly-cloned tree (and fail), blocking the install. The user's later commits still
-  // run hooks normally.
   await execFile(
     'git',
     [
@@ -241,103 +319,11 @@ async function createInitialCommit(projectFolder: string): Promise<void> {
   )
 }
 
-async function cleanupDemo(projectFolder: string): Promise<void> {
-  const homeFolder = resolve(projectFolder, 'src/components/pageComponents/home')
-  await rm(homeFolder, { recursive: true, force: true })
-  await mkdir(homeFolder, { recursive: true })
-  await copyFile(
-    resolve(projectFolder, '.install-files/home/index.tsx'),
-    resolve(homeFolder, 'index.tsx'),
-  )
-}
-
-async function cleanupSubgraph(projectFolder: string, features: FeatureName[]): Promise<void> {
-  await rm(resolve(projectFolder, 'src/subgraphs'), { recursive: true, force: true })
-
-  if (isFeatureSelected('demo', features)) {
-    const homeFolder = resolve(projectFolder, 'src/components/pageComponents/home')
-
-    await rm(resolve(homeFolder, 'Examples/demos/subgraphs'), { recursive: true, force: true })
-    await rm(resolve(homeFolder, 'Examples/index.tsx'), { force: true })
-    await copyFile(
-      resolve(projectFolder, '.install-files/home/Examples/index.tsx'),
-      resolve(homeFolder, 'Examples/index.tsx'),
-    )
-  }
-}
-
-async function cleanupTypedoc(projectFolder: string): Promise<void> {
-  await rm(resolve(projectFolder, 'typedoc.json'), { force: true })
-}
-
-async function cleanupVocs(projectFolder: string): Promise<void> {
-  await rm(resolve(projectFolder, 'vocs.config.ts'), { force: true })
-  await rm(resolve(projectFolder, 'docs'), { recursive: true, force: true })
-}
-
-async function cleanupEvmFiles(
-  projectFolder: string,
-  mode: InstallationType,
-  features: FeatureName[],
-  onProgress?: (step: string) => void,
-): Promise<void> {
-  if (mode === 'custom') {
-    if (!isFeatureSelected('demo', features)) {
-      onProgress?.('Component demos')
-      await cleanupDemo(projectFolder)
-    }
-
-    if (!isFeatureSelected('subgraph', features)) {
-      onProgress?.('Subgraph')
-      await cleanupSubgraph(projectFolder, features)
-    }
-
-    if (!isFeatureSelected('typedoc', features)) {
-      onProgress?.('Typedoc')
-      await cleanupTypedoc(projectFolder)
-    }
-
-    if (!isFeatureSelected('vocs', features)) {
-      onProgress?.('Vocs')
-      await cleanupVocs(projectFolder)
-    }
-
-    patchPackageJsonEvm(projectFolder, features)
-  }
-
-  onProgress?.('Install script')
-  await rm(resolve(projectFolder, '.install-files'), { recursive: true, force: true })
-}
-
-async function cleanupCantonFiles(
-  projectFolder: string,
-  mode: InstallationType,
-  features: FeatureName[],
-  onProgress?: (step: string) => void,
-): Promise<void> {
-  const cantonFeatures = getStackConfig('canton').features
-
-  // Each deselected feature contributes its paths to removal. `default` and `custom` remove;
-  // `full` keeps everything. Directory paths also feed script stripping, so a removed feature's
-  // package.json scripts disappear with it.
-  const removedDirs: string[] = []
-
-  if (mode !== 'full') {
-    for (const [name, definition] of Object.entries(cantonFeatures)) {
-      if (isFeatureSelected(name, features) || !definition.paths || definition.paths.length === 0) {
-        continue
-      }
-
-      onProgress?.(definition.label)
-      await removePaths(projectFolder, definition.paths)
-      removedDirs.push(...definition.paths)
-    }
-  }
-
-  const precommitRemoved = mode !== 'full' && !isFeatureSelected('precommit', features)
-  patchPackageJsonCanton(projectFolder, removedDirs, precommitRemoved)
-}
-
+/**
+ * Removes what the chosen features leave out, then reconciles the project's package.json and
+ * lockfile. Canton finishes with a baseline commit; `--no-verify` keeps the project's own hooks
+ * from linting a tree the user has not touched yet.
+ */
 export async function cleanupFiles(
   stack: Stack,
   projectFolder: string,
@@ -345,13 +331,17 @@ export async function cleanupFiles(
   features: FeatureName[] = [],
   onProgress?: (step: string) => void,
 ): Promise<void> {
-  if (stack === 'canton') {
-    await cleanupCantonFiles(projectFolder, mode, features, onProgress)
-    onProgress?.('Initial commit')
-    await createInitialCommit(projectFolder)
-    return
+  const plan =
+    stack === 'canton'
+      ? await removeDeselectedFeatures(stack, projectFolder, mode, features, onProgress)
+      : await cleanupEvmFiles(projectFolder, mode, features, onProgress)
+
+  if (patchPackageJson(projectFolder, plan)) {
+    await refreshLockfile(stack, projectFolder, onProgress)
   }
 
-  await cleanupRepositoryHygiene(projectFolder, onProgress)
-  await cleanupEvmFiles(projectFolder, mode, features, onProgress)
+  if (stack === 'canton') {
+    onProgress?.('Initial commit')
+    await createInitialCommit(projectFolder)
+  }
 }

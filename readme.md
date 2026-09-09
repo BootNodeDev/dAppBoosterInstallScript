@@ -166,12 +166,17 @@ included build the extension with `npm run carpincho:build:extension` and load
 
 **What gets stripped:**
 
-- **EVM** always removes CI config (`.github`) and the husky/commitlint automation as hygiene.
+- **EVM** always removes the CI config (`.github`) and the agent docs (`.claude`, `AGENTS.md`,
+  `CLAUDE.md`, `architecture.md`), which belong to the template's own repository. Everything else
+  follows your feature selection: deselecting `husky` removes `.husky`, `.lintstagedrc.mjs`,
+  `commitlint.config.js`, the `prepare` and `commitlint` scripts, and the matching dependencies.
 - **Canton** treats `.github` and pre-commit hooks as optional features: `default` mode removes
   both; `full` keeps both; `custom` removes whichever you uncheck. Deselecting `carpincho` removes
   `carpincho-wallet/` and its scripts (`wallet:dev`, `carpincho:build:extension`); deselecting `llm`
   removes the agent docs. Removing `precommit` also strips the `prepare` script and the
   husky/lint-staged/commitlint dev-dependencies from the root `package.json`.
+- Whenever cleanup edits the dependencies or the workspaces list, the installer rewrites the
+  lockfile from the new `package.json`, so the generated project passes `npm ci`.
 - The Canton installer never deletes demo source (the `counter`/`sign-message` features) — that is
   user-controlled via the template's `dapp/frontend/README.md`.
 

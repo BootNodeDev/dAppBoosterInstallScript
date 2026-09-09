@@ -6,7 +6,7 @@ everything.
 
 | Doc | Read it when you're… | Covers |
 |---|---|---|
-| [abstractions](./docs/architecture/abstractions.md) | touching the config model, operations, or shell exec | `Stack`/`StackConfig`, `FeatureDefinition` (`paths`, `requires`), operations layer, `exec`/`execFile`, security |
+| [abstractions](./docs/architecture/abstractions.md) | touching the config model, operations, or shell exec | `Stack`/`StackConfig`, `FeatureDefinition` (`paths`, `scripts`, `dependencies`, `requires`), operations layer, `exec`/`execFile`, security |
 | [data-flow](./docs/architecture/data-flow.md) | changing CLI routing or the step sequence | non-interactive validation/execution order, JSON output, interactive step flow |
 | [extending](./docs/architecture/extending.md) | adding a stack, feature, or operation | step-by-step checklists for each |
 
@@ -38,13 +38,13 @@ source/
     cloneRepo.ts              Clone (tag-latest OR branch), apply stack.removeAfterClone, rm .git, git init
     createEnvFile.ts          Copy each stack's envFiles (with optional ifFeature gate)
     installPackages.ts        Stack-aware: uses stack.packageManager (pnpm or npm)
-    cleanupFiles.ts           Dispatches to per-stack cleanup (cleanupEvmFiles / cleanupCantonFiles)
+    cleanupFiles.ts           Removes deselected features, patches package.json, refreshes the lockfile
     installGuard.ts           Removes the partial project dir if interrupted mid-scaffold
     index.ts                  Barrel export
   components/
     steps/                    TUI step components (presentation-only)
-      StackSelection.tsx      First step: pick a stack (skipped if preselectedStack is passed)
-      ProjectName.tsx         Prompt for project name
+      ProjectName.tsx         First step: prompt for the project name
+      StackSelection.tsx      Pick a stack (skipped when preselectedStack is passed)
       CloneRepo/CloneRepo.tsx Clone progress display (receives stack)
       InstallationMode.tsx    Mode selection (Canton: Default/Full/Custom; EVM: Full/Custom)
       OptionalPackages.tsx    Feature multiselect (per-stack; pre-checks default:true features)
