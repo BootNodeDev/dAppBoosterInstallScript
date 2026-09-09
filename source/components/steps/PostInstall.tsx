@@ -3,8 +3,7 @@ import { Box, Text } from 'ink'
 import Link from 'ink-link'
 import type { FC } from 'react'
 import { type FeatureName, getStackConfig, type Stack } from '../../constants/config.js'
-import type { InstallationType, MultiSelectItem } from '../../types/types.js'
-import { isFeatureSelected, resolveModeFeatures } from '../../utils/utils.js'
+import { isFeatureSelected } from '../../utils/utils.js'
 import Divider from '../Divider.js'
 
 const SubgraphWarningMessage: FC = () => (
@@ -152,17 +151,11 @@ const CantonPostInstallMessage: FC<{
 
 interface Props {
   stack: Stack
-  installationConfig: {
-    installationType: InstallationType | undefined
-    selectedFeatures?: Array<MultiSelectItem>
-  }
+  features: FeatureName[]
   projectName: string
 }
 
-const PostInstall: FC<Props> = ({ stack, installationConfig, projectName }) => {
-  const { selectedFeatures, installationType } = installationConfig
-  const selectedNames = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
-  const features = resolveModeFeatures(stack, installationType ?? 'full', selectedNames)
+const PostInstall: FC<Props> = ({ stack, features, projectName }) => {
   const stackLabel = getStackConfig(stack).label
 
   return (
@@ -172,10 +165,7 @@ const PostInstall: FC<Props> = ({ stack, installationConfig, projectName }) => {
         flexDirection={'column'}
         rowGap={2}
       >
-        {stack === 'evm' &&
-          (isFeatureSelected('subgraph', features) || installationType === 'full') && (
-            <SubgraphWarningMessage />
-          )}
+        {stack === 'evm' && isFeatureSelected('subgraph', features) && <SubgraphWarningMessage />}
         {stack === 'evm' && <EvmPostInstallMessage projectName={projectName} />}
         {stack === 'canton' && (
           <CantonPostInstallMessage

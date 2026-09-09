@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { getDefaultFeatureNames, getFeatureNames, stackDefinitions } from '../constants/config.js'
+import {
+  getDefaultFeatureNames,
+  getFeatureNames,
+  stackDefinitions,
+  stackNames,
+} from '../constants/config.js'
 import {
   applyFeatureToggle,
   deriveStepDisplay,
@@ -209,6 +214,14 @@ describe('resolveModeFeatures', () => {
 
   it('returns the default:true set for default mode', () => {
     expect(resolveModeFeatures('canton', 'default')).toEqual(getDefaultFeatureNames('canton'))
+  })
+
+  it('resolves requires for default mode too, not only for custom', () => {
+    for (const stack of stackNames) {
+      expect(resolveModeFeatures(stack, 'default')).toEqual(
+        resolveSelectedFeatures(stack, getDefaultFeatureNames(stack)),
+      )
+    }
   })
 
   it('resolves the custom selection (no requires today, so identity in config order)', () => {

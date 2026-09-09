@@ -145,9 +145,11 @@ export function getPostInstallMessages(
   return [...stackLevel, ...featureMessages]
 }
 
-// Resolves the kept-feature list for a mode: full → all, default → default:true set,
-// custom → the user's selection (transitive requires resolved). Shared by the non-interactive
-// path and the interactive Install/FileCleanup/PostInstall steps.
+/**
+ * The features a mode keeps: full → all of them, default → the ones on by default, custom → the
+ * user's own selection. Both selections come back with their `requires` resolved. Shared by the
+ * non-interactive path and the interactive steps.
+ */
 export function resolveModeFeatures(
   stack: Stack,
   mode: InstallationType,
@@ -158,7 +160,7 @@ export function resolveModeFeatures(
   }
 
   if (mode === 'default') {
-    return getDefaultFeatureNames(stack)
+    return resolveSelectedFeatures(stack, getDefaultFeatureNames(stack))
   }
 
   return resolveSelectedFeatures(stack, customSelection)

@@ -54,13 +54,16 @@ const MultiSelect = <T,>({
 
   const slicedItems = hasLimit ? items.slice(0, limit) : items
 
-  const includesItems = useCallback((item: Item<T>, selectedItems: Item<T>[]) => {
-    return (
-      selectedItems.filter(
-        (selectedItem) => selectedItem.value === item.value && selectedItem.label === item.label,
-      ).length > 0
-    )
-  }, [])
+  const isSameItem = useCallback(
+    (one: Item<T>, other: Item<T>) => one.value === other.value && one.label === other.label,
+    [],
+  )
+
+  const includesItems = useCallback(
+    (item: Item<T>, selectedItems: Item<T>[]) =>
+      selectedItems.some((selectedItem) => isSameItem(selectedItem, item)),
+    [isSameItem],
+  )
 
   const handleSelect = useCallback(
     (item: Item<T>) => {
@@ -68,10 +71,7 @@ const MultiSelect = <T,>({
       const action = isCurrentlySelected ? 'unselect' : 'select'
 
       const naiveSelection = isCurrentlySelected
-        ? selectedItems.filter(
-            (selectedItem) =>
-              selectedItem.value !== item.value && selectedItem.label !== item.label,
-          )
+        ? selectedItems.filter((selectedItem) => !isSameItem(selectedItem, item))
         : [...selectedItems, item]
 
       const nextSelection = transformSelection
@@ -86,7 +86,7 @@ const MultiSelect = <T,>({
         onSelect(item)
       }
     },
-    [selectedItems, onSelect, onUnselect, includesItems, transformSelection],
+    [selectedItems, onSelect, onUnselect, includesItems, isSameItem, transformSelection],
   )
 
   const handleSubmit = useCallback(() => {

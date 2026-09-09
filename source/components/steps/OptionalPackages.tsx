@@ -2,7 +2,7 @@ import { Text } from 'ink'
 import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { type FeatureName, getStackConfig, type Stack } from '../../constants/config.js'
 import type { MultiSelectItem } from '../../types/types.js'
-import { applyFeatureToggle } from '../../utils/utils.js'
+import { applyFeatureToggle, resolveModeFeatures } from '../../utils/utils.js'
 import MultiSelect from '../Multiselect/index.js'
 
 interface Props {
@@ -23,13 +23,11 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
     }))
   }, [stack])
 
-  // Pre-check only default:true features (e.g. Canton's github/precommit start unchecked).
   const defaultSelected: Array<MultiSelectItem> = useMemo(() => {
-    const features = getStackConfig(stack).features
-    return customPackages.filter((pkg) => features[pkg.value as FeatureName]?.default)
+    const defaults = resolveModeFeatures(stack, 'default')
+    return customPackages.filter((pkg) => defaults.includes(pkg.value as FeatureName))
   }, [stack, customPackages])
 
-  // Keep the selection dependency-consistent as the user toggles (resolves any feature `requires`).
   const transformSelection = useCallback(
     (
       nextSelected: Array<MultiSelectItem>,

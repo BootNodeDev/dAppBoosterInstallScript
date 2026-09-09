@@ -2,23 +2,20 @@ import { Text } from 'ink'
 import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import type { FeatureName, Stack } from '../../constants/config.js'
 import { cleanupFiles } from '../../operations/index.js'
-import { completeInstall } from '../../operations/installGuard.js'
-import type { InstallationType, MultiSelectItem } from '../../types/types.js'
-import { deriveStepDisplay, getProjectFolder, resolveModeFeatures } from '../../utils/utils.js'
+import { abortInstall, completeInstall } from '../../operations/installGuard.js'
+import type { InstallationType } from '../../types/types.js'
+import { deriveStepDisplay, getProjectFolder } from '../../utils/utils.js'
 import Divider from '../Divider.js'
 
 interface Props {
   stack: Stack
+  mode: InstallationType
+  features: FeatureName[]
   onCompletion: () => void
   projectName: string
-  installationConfig: {
-    installationType: InstallationType | undefined
-    selectedFeatures?: Array<MultiSelectItem>
-  }
 }
 
-const FileCleanup: FC<Props> = ({ stack, onCompletion, installationConfig, projectName }) => {
-  const { installationType, selectedFeatures } = installationConfig
+const FileCleanup: FC<Props> = ({ stack, mode, features, onCompletion, projectName }) => {
   const projectFolder = useMemo(() => getProjectFolder(projectName), [projectName])
   const [steps, setSteps] = useState<string[]>([])
   const [status, setStatus] = useState<'running' | 'done' | 'error'>('running')
@@ -29,13 +26,8 @@ const FileCleanup: FC<Props> = ({ stack, onCompletion, installationConfig, proje
   }, [])
 
   useEffect(() => {
-    const mode = installationType ?? 'full'
-    const selectedNames = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
-    const features = resolveModeFeatures(stack, mode, selectedNames)
-
     cleanupFiles(stack, projectFolder, mode, features, handleProgress)
       .then(() => {
-        // Scaffold is complete — an interrupt from here on must not delete the finished project.
         completeInstall()
         setStatus('done')
         onCompletion()
@@ -43,8 +35,9 @@ const FileCleanup: FC<Props> = ({ stack, onCompletion, installationConfig, proje
       .catch((error: unknown) => {
         setStatus('error')
         setErrorMessage(error instanceof Error ? error.message : String(error))
+        abortInstall()
       })
-  }, [stack, projectFolder, installationType, selectedFeatures, onCompletion, handleProgress])
+  }, [stack, projectFolder, mode, features, onCompletion, handleProgress])
 
   const { completedSteps, currentStep, failedStep } = deriveStepDisplay(steps, status)
 

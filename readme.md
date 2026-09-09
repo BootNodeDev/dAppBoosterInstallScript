@@ -51,6 +51,9 @@ pnpm dlx dappbooster --info                  # all stacks + features as JSON
 pnpm dlx dappbooster --info --stack canton   # filter to one stack (or --info --canton)
 ```
 
+Each stack in that output carries a `modes` list. Send one of those: `default` is Canton-only, and
+asking for it on EVM is rejected.
+
 | Flag | Purpose |
 |---|---|
 | `--canton` / `--evm` | Pick the stack (mutually exclusive shortcuts) |

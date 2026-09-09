@@ -2,7 +2,7 @@ import { Text } from 'ink'
 import { type FC, useCallback, useEffect, useState } from 'react'
 import type { Stack } from '../../../constants/config.js'
 import { cloneRepo } from '../../../operations/index.js'
-import { beginInstall } from '../../../operations/installGuard.js'
+import { abortInstall, beginInstall } from '../../../operations/installGuard.js'
 import { deriveStepDisplay, getProjectFolder } from '../../../utils/utils.js'
 import Divider from '../../Divider.js'
 
@@ -22,7 +22,6 @@ const CloneRepo: FC<Props> = ({ stack, projectName, onCompletion }) => {
   }, [])
 
   useEffect(() => {
-    // Disk work starts here, so arm the interrupt guard before cloning.
     beginInstall(getProjectFolder(projectName))
 
     cloneRepo(stack, projectName, handleProgress)
@@ -33,6 +32,7 @@ const CloneRepo: FC<Props> = ({ stack, projectName, onCompletion }) => {
       .catch((error: unknown) => {
         setStatus('error')
         setErrorMessage(error instanceof Error ? error.message : String(error))
+        abortInstall()
       })
   }, [stack, projectName, onCompletion, handleProgress])
 

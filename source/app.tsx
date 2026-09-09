@@ -12,7 +12,7 @@ import ProjectName from './components/steps/ProjectName.js'
 import StackSelection from './components/steps/StackSelection.js'
 import type { FeatureName, Stack } from './constants/config.js'
 import type { InstallationSelectItem, MultiSelectItem } from './types/types.js'
-import { canShowStep, describeInstallPlan } from './utils/utils.js'
+import { canShowStep, describeInstallPlan, resolveModeFeatures } from './utils/utils.js'
 
 interface Props {
   preselectedStack?: Stack
@@ -24,8 +24,6 @@ const App: FC<Props> = ({ preselectedStack }) => {
   const [currentStep, setCurrentStep] = useState(1)
   const [setupType, setSetupType] = useState<InstallationSelectItem | undefined>()
   const [selectedFeatures, setSelectedFeatures] = useState<Array<MultiSelectItem> | undefined>()
-  // Bumped when the user cancels at the confirmation step; re-keys every step so they re-mount
-  // fresh for a clean re-run of the wizard.
   const [attempt, setAttempt] = useState(0)
 
   const finishStep = useCallback(() => setCurrentStep((prevStep) => prevStep + 1), [])
@@ -36,8 +34,6 @@ const App: FC<Props> = ({ preselectedStack }) => {
     [],
   )
 
-  // Confirmation "No": discard the answers and return to the first question. No disk work has
-  // happened yet, so this is a clean restart.
   const restart = useCallback(() => {
     setProjectName('')
     setSetupType(undefined)
@@ -50,13 +46,20 @@ const App: FC<Props> = ({ preselectedStack }) => {
   const skipFeatures = setupType?.value === 'full' || setupType?.value === 'default'
 
   const mode = setupType?.value ?? 'full'
-  const planFeatures = selectedFeatures?.map((item) => item.value as FeatureName) ?? []
+
+  const features = useMemo(() => {
+    if (stack === undefined) {
+      return []
+    }
+
+    const selectedNames = selectedFeatures?.map((item) => item.value as FeatureName) ?? []
+    return resolveModeFeatures(stack, mode, selectedNames)
+  }, [stack, mode, selectedFeatures])
+
   const planSummary =
-    stack === undefined ? '' : describeInstallPlan(stack, projectName, mode, planFeatures)
+    stack === undefined ? '' : describeInstallPlan(stack, projectName, mode, features)
 
   const steps: Array<ReactNode> = useMemo(() => {
-    // Questions first (no disk writes), operations last. This way an interrupt while answering
-    // leaves nothing behind, and all cloning/installing happens only after the confirmation.
     const orderedSteps: Array<ReactNode> = [
       <ProjectName
         onCompletion={finishStep}
@@ -79,7 +82,6 @@ const App: FC<Props> = ({ preselectedStack }) => {
       return orderedSteps
     }
 
-    // --- remaining questions (need the stack) ---
     orderedSteps.push(
       <InstallationMode
         stack={stack}
@@ -108,7 +110,6 @@ const App: FC<Props> = ({ preselectedStack }) => {
       />,
     )
 
-    // --- operations (disk writes) ---
     orderedSteps.push(
       <CloneRepo
         stack={stack}
@@ -121,10 +122,8 @@ const App: FC<Props> = ({ preselectedStack }) => {
     orderedSteps.push(
       <Install
         stack={stack}
-        installationConfig={{
-          installationType: setupType?.value,
-          selectedFeatures: selectedFeatures,
-        }}
+        mode={mode}
+        features={features}
         onCompletion={finishStep}
         projectName={projectName}
         key={`install-${attempt}`}
@@ -134,10 +133,8 @@ const App: FC<Props> = ({ preselectedStack }) => {
     orderedSteps.push(
       <FileCleanup
         stack={stack}
-        installationConfig={{
-          installationType: setupType?.value,
-          selectedFeatures: selectedFeatures,
-        }}
+        mode={mode}
+        features={features}
         onCompletion={finishStep}
         projectName={projectName}
         key={`file-cleanup-${attempt}`}
@@ -147,11 +144,8 @@ const App: FC<Props> = ({ preselectedStack }) => {
     orderedSteps.push(
       <PostInstall
         stack={stack}
+        features={features}
         projectName={projectName}
-        installationConfig={{
-          installationType: setupType?.value,
-          selectedFeatures: selectedFeatures,
-        }}
         key={`post-install-${attempt}`}
       />,
     )
@@ -161,9 +155,9 @@ const App: FC<Props> = ({ preselectedStack }) => {
     finishStep,
     onSelectStack,
     onSelectSelectedFeatures,
-    setupType?.value,
-    selectedFeatures,
     onSelectSetupType,
+    mode,
+    features,
     projectName,
     skipFeatures,
     stack,
