@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { stackDefinitions } from '../../constants/config.js'
+import { getFeatureNames, stackDefinitions } from '../../constants/config.js'
 
 vi.mock('../../operations/exec.js', () => ({
   exec: vi.fn().mockResolvedValue(undefined),
@@ -39,7 +39,7 @@ describe('installPackages — evm', () => {
 
   describe('custom mode — all features selected', () => {
     it('runs pnpm install when no packages to remove', async () => {
-      const allFeatures = Object.keys(evmFeatures)
+      const allFeatures = getFeatureNames('evm')
       await installPackages('evm', '/project/my_app', 'custom', allFeatures)
 
       expect(execFile).toHaveBeenCalledTimes(1)
@@ -153,7 +153,7 @@ describe('installPackages — evm', () => {
     })
 
     it('reports one step for custom mode with all features selected', async () => {
-      const allFeatures = Object.keys(evmFeatures)
+      const allFeatures = getFeatureNames('evm')
       const steps: string[] = []
       await installPackages('evm', '/project/my_app', 'custom', allFeatures, (step) =>
         steps.push(step),
@@ -180,7 +180,7 @@ describe('installPackages — canton', () => {
   })
 
   it('uses npm install for canton custom mode (no packages to remove)', async () => {
-    await installPackages('canton', '/project/my_app', 'custom', ['counter', 'e2e'])
+    await installPackages('canton', '/project/my_app', 'custom', ['carpincho', 'llm'])
 
     expect(execFile).toHaveBeenCalledTimes(1)
     expect(execFile).toHaveBeenCalledWith('npm', ['install'], { cwd: '/project/my_app' })

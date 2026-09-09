@@ -3,6 +3,7 @@ import { copyFile, mkdir, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import {
   type FeatureName,
+  getFeatureEntries,
   getStackConfig,
   type PackageManager,
   type Stack,
@@ -85,7 +86,7 @@ async function removeDeselectedFeatures(
     return plan
   }
 
-  for (const [name, definition] of Object.entries(getStackConfig(stack).features)) {
+  for (const [name, definition] of getFeatureEntries(stack)) {
     const { paths = [], scripts = [], dependencies = [] } = definition
 
     if (isFeatureSelected(name, features)) {

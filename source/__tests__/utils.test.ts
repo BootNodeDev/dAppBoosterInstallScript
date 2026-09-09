@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   getDefaultFeatureNames,
+  getFeatureEntries,
   getFeatureNames,
   stackDefinitions,
   stackNames,
@@ -72,7 +73,7 @@ describe('isFeatureSelected', () => {
 
 describe('getPackagesToRemove — evm', () => {
   it('returns empty when all features selected', () => {
-    const allFeatures = Object.keys(evmFeatures)
+    const allFeatures = getFeatureNames('evm')
     expect(getPackagesToRemove('evm', allFeatures)).toEqual([])
   })
 
@@ -103,7 +104,7 @@ describe('getPackagesToRemove — evm', () => {
 
 describe('getPackagesToRemove — canton', () => {
   it('returns empty when all canton features selected', () => {
-    const allFeatures = Object.keys(cantonFeatures)
+    const allFeatures = getFeatureNames('canton')
     expect(getPackagesToRemove('canton', allFeatures)).toEqual([])
   })
 
@@ -116,7 +117,7 @@ describe('getPostInstallMessages', () => {
   it('returns all evm messages for full mode', () => {
     const result = getPostInstallMessages('evm', 'full', [])
 
-    const allMessages = Object.values(evmFeatures).flatMap((def) => def.postInstall ?? [])
+    const allMessages = getFeatureEntries('evm').flatMap(([, def]) => def.postInstall ?? [])
     expect(result).toEqual(allMessages)
   })
 

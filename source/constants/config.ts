@@ -7,8 +7,6 @@ export type RefType = 'tag-latest' | 'branch'
 
 export type PackageManager = 'pnpm' | 'npm'
 
-export type FeatureName = string
-
 /**
  * A single optional feature of a stack.
  *
@@ -32,13 +30,13 @@ export type FeatureDefinition = {
   paths?: string[]
   scripts?: string[]
   dependencies?: string[]
-  requires?: FeatureName[]
+  requires?: string[]
 }
 
 export type EnvFile = {
   from: string
   to: string
-  ifFeature?: FeatureName
+  ifFeature?: string
 }
 
 /**
@@ -56,7 +54,7 @@ export type StackConfig = {
   removeAfterClone: string[]
   postInstall?: string[]
   envFiles: EnvFile[]
-  features: Record<FeatureName, FeatureDefinition>
+  features: Record<string, FeatureDefinition>
 }
 
 const huskyPackages = ['husky', 'lint-staged', '@commitlint/cli', '@commitlint/config-conventional']
@@ -65,7 +63,7 @@ const huskyPaths = ['.husky', '.lintstagedrc.mjs', 'commitlint.config.js']
 
 const huskyScripts = ['prepare', 'commitlint', 'commitlint:check', 'commitlint:ci']
 
-export const stackDefinitions: Record<Stack, StackConfig> = {
+export const stackDefinitions = {
   evm: {
     label: 'EVM',
     description: 'dAppBooster for EVM chains (Ethereum, Polygon, Base, …)',
@@ -202,7 +200,15 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
       },
     },
   },
-}
+} satisfies Record<Stack, StackConfig>
+
+/**
+ * Every feature name either stack defines, read straight off `stackDefinitions`. Renaming a
+ * feature in the map turns every stale reference to it into a compile error.
+ */
+export type FeatureName = {
+  [S in Stack]: keyof (typeof stackDefinitions)[S]['features']
+}[Stack]
 
 export const stackNames = Object.keys(stackDefinitions) as Stack[]
 
@@ -213,17 +219,22 @@ function envOverride(stack: Stack, suffix: 'REPO_URL' | 'REF'): string | undefin
 }
 
 export function getStackConfig(stack: Stack): StackConfig {
-  const base = stackDefinitions[stack]
+  const base: StackConfig = stackDefinitions[stack]
   const repoUrl = envOverride(stack, 'REPO_URL') ?? base.repoUrl
   const ref = envOverride(stack, 'REF') ?? base.ref
   return { ...base, repoUrl, ref }
 }
 
-export function getFeatureNames(stack: Stack): FeatureName[] {
-  return Object.keys(stackDefinitions[stack].features)
+/** A stack's feature map as entries. The keys are feature names by construction. */
+export function getFeatureEntries(stack: Stack): Array<[FeatureName, FeatureDefinition]> {
+  return Object.entries(stackDefinitions[stack].features) as Array<[FeatureName, FeatureDefinition]>
 }
 
-export function isFeatureNameValid(stack: Stack, name: string): boolean {
+export function getFeatureNames(stack: Stack): FeatureName[] {
+  return getFeatureEntries(stack).map(([name]) => name)
+}
+
+export function isFeatureNameValid(stack: Stack, name: string): name is FeatureName {
   return name in stackDefinitions[stack].features
 }
 
@@ -232,7 +243,7 @@ export function isStackName(name: string): name is Stack {
 }
 
 export function getDefaultFeatureNames(stack: Stack): FeatureName[] {
-  return Object.entries(stackDefinitions[stack].features)
+  return getFeatureEntries(stack)
     .filter(([, definition]) => definition.default)
     .map(([name]) => name)
 }

@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { type FeatureName, getStackConfig } from '../../constants/config.js'
+import { type FeatureName, getFeatureEntries } from '../../constants/config.js'
 
 vi.mock('node:fs/promises', () => ({
   rm: vi.fn().mockResolvedValue(undefined),
@@ -82,9 +82,9 @@ function getWorkspacePackages(pkg: Record<string, unknown>): string[] {
  * the feature list changes instead of hardcoding carpincho-wallet.
  */
 function removedCantonDirs(selected: FeatureName[]): string[] {
-  return Object.entries(getStackConfig('canton').features)
+  return getFeatureEntries('canton')
     .filter(([name, definition]) => !selected.includes(name) && (definition.paths?.length ?? 0) > 0)
-    .flatMap(([, definition]) => definition.paths as string[])
+    .flatMap(([, definition]) => definition.paths ?? [])
 }
 
 function entryTargetsRemovedDir(entry: string, removedDirs: string[]): boolean {

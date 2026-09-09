@@ -40,7 +40,7 @@ function fail(error: string): never {
   throw new Error(error)
 }
 
-function parseFeatures(featuresFlag: string | undefined): FeatureName[] {
+function parseFeatures(featuresFlag: string | undefined): string[] {
   if (!featuresFlag) {
     return []
   }
@@ -111,13 +111,14 @@ function validate(flags: { stack?: string; name?: string; mode?: string; feature
     fail('--mode custom requires --features. Use --info to see available features.')
   }
 
-  const features = parseFeatures(flags.features)
+  const requested = parseFeatures(flags.features)
 
-  if (features.length === 0) {
+  if (requested.length === 0) {
     fail('--features value is empty. Use --info to see available features.')
   }
 
-  const invalidFeatures = features.filter((f) => !isFeatureNameValid(stack, f))
+  const features = requested.filter((name) => isFeatureNameValid(stack, name))
+  const invalidFeatures = requested.filter((name) => !isFeatureNameValid(stack, name))
 
   if (invalidFeatures.length > 0) {
     const validNames = getFeatureNames(stack).join(', ')

@@ -26,7 +26,9 @@ Installation modes are stack-aware via `getInstallationModes(stack)` — Canton 
 
 `getStackConfig(stack)` reads the base config and overlays the env-var overrides `DAPPBOOSTER_<STACK>_REPO_URL` and `DAPPBOOSTER_<STACK>_REF` before returning — that's the single hook for retargeting either stack at a fork or pre-release branch without editing code.
 
-`getFeatureNames(stack)` and `isFeatureNameValid(stack, name)` are the per-stack feature accessors. There is no global `featureDefinitions` export — that would imply a single stack.
+`getFeatureNames(stack)`, `getFeatureEntries(stack)` and `isFeatureNameValid(stack, name)` are the per-stack feature accessors. There is no global `featureDefinitions` export — that would imply a single stack.
+
+`FeatureName` is derived from `stackDefinitions` (which is declared with `satisfies`, so the literal keys survive), giving the union of every feature name both stacks define. Renaming a feature in the map turns every stale `'oldName'` string in the codebase into a compile error. `isFeatureNameValid` is a type guard, so validated CLI input narrows from `string` to `FeatureName`. The type is deliberately not per-stack: passing an EVM feature name to a Canton call still compiles, and the runtime check in `nonInteractive.ts` catches it.
 
 ## Feature Definitions
 
@@ -42,7 +44,7 @@ type FeatureDefinition = {
   paths?: string[]       // files/dirs removed when the feature is deselected
   scripts?: string[]     // package.json scripts removed when the feature is deselected
   dependencies?: string[] // deps deleted straight from package.json (the package manager is not asked to uninstall them)
-  requires?: FeatureName[] // features this one depends on (one-directional, transitive)
+  requires?: string[]    // features this one depends on (one-directional, transitive)
 }
 ```
 

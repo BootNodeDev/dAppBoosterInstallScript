@@ -4,8 +4,10 @@ import process from 'node:process'
 import {
   type FeatureName,
   getDefaultFeatureNames,
+  getFeatureEntries,
   getFeatureNames,
   getStackConfig,
+  isFeatureNameValid,
   type Stack,
 } from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
@@ -46,10 +48,12 @@ function collectRequiredFeatures(
   }
 
   for (const required of definition.requires) {
-    if (!accumulator.has(required)) {
-      accumulator.add(required)
-      collectRequiredFeatures(stack, required, accumulator)
+    if (!isFeatureNameValid(stack, required) || accumulator.has(required)) {
+      continue
     }
+
+    accumulator.add(required)
+    collectRequiredFeatures(stack, required, accumulator)
   }
 }
 
@@ -126,10 +130,9 @@ export function describeInstallPlan(
 }
 
 export function getPackagesToRemove(stack: Stack, selectedFeatures: FeatureName[]): string[] {
-  const features = getStackConfig(stack).features
-  return Object.entries(features)
+  return getFeatureEntries(stack)
     .filter(([name]) => !selectedFeatures.includes(name))
-    .flatMap(([, def]) => def.packages)
+    .flatMap(([, definition]) => definition.packages)
 }
 
 export function getPostInstallMessages(

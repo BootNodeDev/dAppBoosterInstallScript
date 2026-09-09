@@ -9,8 +9,10 @@ export async function createEnvFile(
 ): Promise<void> {
   const envFiles = getStackConfig(stack).envFiles
 
+  const selected: string[] = features
+
   for (const file of envFiles) {
-    if (file.ifFeature !== undefined && !features.includes(file.ifFeature)) {
+    if (file.ifFeature !== undefined && !selected.includes(file.ifFeature)) {
       continue
     }
     await copyFile(join(projectFolder, file.from), join(projectFolder, file.to))
