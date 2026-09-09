@@ -1,8 +1,8 @@
 import {
   type FeatureName,
+  getStackConfig,
   type PackageManager,
   type Stack,
-  getStackConfig,
 } from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
 import { getPackagesToRemove } from '../utils/utils.js'

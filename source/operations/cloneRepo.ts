@@ -1,6 +1,6 @@
 import { rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { type Stack, getStackConfig } from '../constants/config.js'
+import { getStackConfig, type Stack } from '../constants/config.js'
 import { getProjectFolder } from '../utils/utils.js'
 import { exec, execFile } from './exec.js'
 

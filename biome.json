@@ -1,20 +1,14 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "organizeImports": {
-    "enabled": true
-  },
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "vcs": {
     "clientKind": "git",
     "enabled": true,
     "useIgnoreFile": true
   },
-  "linter": {
-    "rules": {
-      "correctness": {
-        "noUnusedVariables": "warn",
-        "noUnusedImports": "warn"
-      }
-    }
+  "files": {
+    "ignoreUnknown": true,
+    "includes": ["source/**", "*.json", "*.mjs", "*.js", "*.ts", "!**/*.svg"]
   },
   "formatter": {
     "attributePosition": "multiline",
@@ -28,5 +22,38 @@
       "semicolons": "asNeeded",
       "bracketSpacing": true
     }
-  }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "strictCase": true,
+            "filenameCases": ["camelCase", "PascalCase"]
+          }
+        }
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["*.js", "*.mjs", "*.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": {
+                "strictCase": true,
+                "filenameCases": ["camelCase", "kebab-case"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

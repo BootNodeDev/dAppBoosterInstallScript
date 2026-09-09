@@ -2,7 +2,7 @@ import figures from 'figures'
 import { Text } from 'ink'
 import SelectInput from 'ink-select-input'
 import { type FC, useState } from 'react'
-import { type Stack, getInstallationModes } from '../../constants/config.js'
+import { getInstallationModes, type Stack } from '../../constants/config.js'
 import type { InstallationSelectItem, InstallationType } from '../../types/types.js'
 import Divider from '../Divider.js'
 

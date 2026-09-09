@@ -1,6 +1,6 @@
 import { copyFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { type FeatureName, type Stack, getStackConfig } from '../constants/config.js'
+import { type FeatureName, getStackConfig, type Stack } from '../constants/config.js'
 
 export async function createEnvFile(
   stack: Stack,

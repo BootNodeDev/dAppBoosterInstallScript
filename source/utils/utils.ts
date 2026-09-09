@@ -3,10 +3,10 @@ import { join } from 'node:path'
 import process from 'node:process'
 import {
   type FeatureName,
-  type Stack,
   getDefaultFeatureNames,
   getFeatureNames,
   getStackConfig,
+  type Stack,
 } from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
 

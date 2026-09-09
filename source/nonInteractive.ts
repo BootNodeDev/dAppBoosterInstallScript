@@ -1,10 +1,10 @@
 import process from 'node:process'
 import {
   type FeatureName,
-  type Stack,
   getFeatureNames,
   isFeatureNameValid,
   isStackName,
+  type Stack,
   stackNames,
 } from './constants/config.js'
 import { cleanupFiles, cloneRepo, createEnvFile, installPackages } from './operations/index.js'
@@ -60,12 +60,7 @@ function parseFeatures(featuresFlag: string | undefined): FeatureName[] {
     })
 }
 
-function validate(flags: {
-  stack?: string
-  name?: string
-  mode?: string
-  features?: string
-}): {
+function validate(flags: { stack?: string; name?: string; mode?: string; features?: string }): {
   stack: Stack
   name: string
   mode: InstallationType

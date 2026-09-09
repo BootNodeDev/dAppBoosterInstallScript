@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { copyFile, mkdir, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { type FeatureName, type Stack, getStackConfig } from '../constants/config.js'
+import { type FeatureName, getStackConfig, type Stack } from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
 import { isFeatureSelected } from '../utils/utils.js'
 import { execFile } from './exec.js'

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import process from 'node:process'
 import meow from 'meow'
-import { type Stack, isStackName, stackNames } from './constants/config.js'
+import { isStackName, type Stack, stackNames } from './constants/config.js'
 import { getInfoOutput } from './info.js'
 import { runNonInteractive } from './nonInteractive.js'
 
