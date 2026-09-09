@@ -1,0 +1,2 @@
+echo "Running commitlint"
+pnpm exec commitlint --edit "$1"

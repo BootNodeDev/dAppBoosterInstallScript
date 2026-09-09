@@ -1,5 +1,9 @@
 node_modules
 dist
+
+# gitleaks binary, installed by scripts/install-gitleaks.sh
+/bin/
+
 .idea
 .zed
 .env
