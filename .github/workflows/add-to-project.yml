@@ -10,6 +10,9 @@ jobs:
   add-to-project:
     name: add to project
     runs-on: ubuntu-latest
+    # Skip pull requests from forks: they never receive ADD_TO_PROJECT_PAT, so the step would
+    # fail and put a red check on every external contribution. Issues are unaffected.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       # No label filter: every new issue and PR is added, then triaged on the board.
       # ADD_TO_PROJECT_PAT is used because the built-in GITHUB_TOKEN cannot write org Projects.
