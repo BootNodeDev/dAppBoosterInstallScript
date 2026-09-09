@@ -1,0 +1,26 @@
+name: setup
+description: Enable pnpm, install Node with a warm pnpm cache, then install dependencies.
+
+inputs:
+  node-version:
+    description: Node version to install. Defaults to the version in .nvmrc.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    # corepack first: setup-node's `cache: pnpm` only resolves once pnpm is on PATH.
+    - run: corepack enable
+      shell: bash
+
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        # setup-node uses node-version when both are set, and warns about it. Offer the file
+        # only when the caller passed no version.
+        node-version-file: ${{ inputs.node-version == '' && '.nvmrc' || '' }}
+        cache: pnpm
+
+    - run: pnpm install --frozen-lockfile
+      shell: bash

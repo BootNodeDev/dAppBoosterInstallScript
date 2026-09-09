@@ -28,46 +28,38 @@ if [[ -z "$remote" ]]; then
   exit 1
 fi
 
-# Priority 1: well-known base branches -- pick closest merge-base
 best_branch=""
 best_ts=0
 
-for candidate in main master develop staging; do
-  ref="$remote/$candidate"
-  git rev-parse --verify "$ref" >/dev/null 2>&1 || continue
-  [[ "$candidate" == "$current" ]] && continue
-  mb=$(git merge-base HEAD "$ref" 2>/dev/null) || continue
-  ts=$(git log -1 --format=%ct "$mb" 2>/dev/null) || continue
-  [[ -n "$ts" ]] || continue
-  if (( ts > best_ts )); then
-    best_ts=$ts
-    best_branch=$candidate
-  fi
-done
-
-if [[ -n "$best_branch" ]]; then
-  echo "$best_branch"
-  exit 0
-fi
-
-# Priority 2: any other remote branch, pick closest merge-base
-best_branch=""
-best_ts=0
-
-# Full refnames, not %(refname:short): the short form of <remote>/HEAD is just <remote>, which
-# slips past the HEAD check below and gets reported as if it were a branch.
-while IFS= read -r ref; do
-  branch="${ref#"refs/remotes/$remote/"}"
-  [[ "$branch" == "HEAD" ]] && continue
-  [[ "$branch" == "$current" ]] && continue
-  mb=$(git merge-base HEAD "$ref" 2>/dev/null) || continue
-  ts=$(git log -1 --format=%ct "$mb" 2>/dev/null) || continue
-  [[ -n "$ts" ]] || continue
-  if (( ts > best_ts )); then
+# Keep the candidate whose merge-base with HEAD is the most recent one seen so far. Earlier
+# candidates win ties, so the priority 1 order below decides between equally close branches.
+consider() {
+  local ref=$1 branch=$2 mb ts
+  [[ "$branch" == "HEAD" || "$branch" == "$current" ]] && return 0
+  mb=$(git merge-base HEAD "$ref" 2>/dev/null) || return 0
+  ts=$(git log -1 --format=%ct "$mb" 2>/dev/null) || return 0
+  if [[ -n "$ts" ]] && (( ts > best_ts )); then
     best_ts=$ts
     best_branch=$branch
   fi
-done < <(git for-each-ref --format='%(refname)' "refs/remotes/$remote/")
+  return 0
+}
+
+# Priority 1: well-known base branches
+for candidate in main master develop staging; do
+  ref="$remote/$candidate"
+  git rev-parse --verify "$ref" >/dev/null 2>&1 || continue
+  consider "$ref" "$candidate"
+done
+
+# Priority 2: any other remote branch.
+# Full refnames, not %(refname:short): the short form of <remote>/HEAD is just <remote>, which
+# slips past the HEAD check in consider() and gets reported as if it were a branch.
+if [[ -z "$best_branch" ]]; then
+  while IFS= read -r ref; do
+    consider "$ref" "${ref#"refs/remotes/$remote/"}"
+  done < <(git for-each-ref --format='%(refname)' "refs/remotes/$remote/")
+fi
 
 if [[ -z "$best_branch" ]]; then
   echo "No base branch found" >&2

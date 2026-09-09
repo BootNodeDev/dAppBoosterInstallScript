@@ -96,25 +96,29 @@ const MultiSelect = <T,>({
   useInput(
     useCallback(
       (input, key) => {
+        const highlight = (index: number) => {
+          const item = slicedItems[index]
+          if (item) {
+            onHighlight(item)
+          }
+          return index
+        }
+
         if (key.upArrow) {
-          setHighlightedIndex((prevIndex) => {
-            const index = prevIndex === 0 ? slicedItems.length - 1 : prevIndex - 1
-            // biome-ignore lint/style/noNonNullAssertion: index stays within slicedItems bounds
-            onHighlight(slicedItems[index]!)
-            return index
-          })
+          setHighlightedIndex((prevIndex) =>
+            highlight(prevIndex === 0 ? slicedItems.length - 1 : prevIndex - 1),
+          )
         } else if (key.downArrow) {
-          setHighlightedIndex((prevIndex) => {
-            const index = prevIndex === slicedItems.length - 1 ? 0 : prevIndex + 1
-            // biome-ignore lint/style/noNonNullAssertion: index stays within slicedItems bounds
-            onHighlight(slicedItems[index]!)
-            return index
-          })
+          setHighlightedIndex((prevIndex) =>
+            highlight(prevIndex === slicedItems.length - 1 ? 0 : prevIndex + 1),
+          )
         } else if (key.return) {
           handleSubmit()
         } else if (input === ' ') {
-          // biome-ignore lint/style/noNonNullAssertion: index stays within slicedItems bounds
-          handleSelect(slicedItems[highlightedIndex]!)
+          const item = slicedItems[highlightedIndex]
+          if (item) {
+            handleSelect(item)
+          }
         }
       },
       [onHighlight, handleSelect, handleSubmit, slicedItems, highlightedIndex],

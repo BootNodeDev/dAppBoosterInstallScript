@@ -159,9 +159,7 @@ Do not add labels to the PR. Labels are managed separately.
 
 Conventional commit format: `type(scope): subject` or `type: subject`.
 
-Allowed types: `feat`, `fix`, `docs`, `test`, `ci`, `refactor`, `perf`, `chore`, `revert`, `wip`, `build`, `style`, `release`.
-
-<!-- Standard Conventional Commits prefixes only, matching the types documented in CLAUDE.md. Projects adopting this starter kit can extend this list to suit their conventions. -->
+Allowed types: read the `type-enum` list in `commitlint.config.js`. CI lints the PR title with commitlint, so a type outside that list fails the check.
 
 - Derive from branch name and commit history
 - Scope is optional
