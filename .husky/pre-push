@@ -14,7 +14,10 @@ z=0000000000000000000000000000000000000000
 rc=0
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ "$local_sha" = "$z" ] && continue
-  if [ "$remote_sha" = "$z" ]; then
+  # An unknown remote sha (new branch, or a force-push over commits we never fetched) makes
+  # "$remote_sha..$local_sha" unresolvable, and gitleaks reports that as 0 commits and success.
+  # Fall back to everything not already on a remote-tracking ref so the scan cannot pass empty.
+  if [ "$remote_sha" = "$z" ] || ! git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
     range="$local_sha --not --remotes"
   else
     range="$remote_sha..$local_sha"
