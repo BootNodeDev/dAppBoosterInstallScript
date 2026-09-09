@@ -2,11 +2,14 @@ name: Release to npm
 
 on:
   release:
-    types: [ published ]
+    types: [published]
 
 permissions:
   id-token: write
   contents: read
+
+env:
+  HUSKY: 0
 
 jobs:
   release:
@@ -14,23 +17,26 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Enable pnpm
+        run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '24'
+          node-version-file: .nvmrc
+          cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install pnpm
-        run: npm install -g pnpm
-
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm build
 
+      # npm publish, not pnpm publish: npm is what supports OIDC trusted publishers,
+      # which is why this job asks for id-token: write instead of an NPM_TOKEN.
       - name: Dry run publish (pre-release only)
         if: ${{ github.event.release.prerelease == true }}
         run: npm publish --dry-run
