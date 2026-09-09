@@ -30,8 +30,8 @@ const SubgraphWarningMessage: FC = () => (
     <Box flexDirection={'column'}>
       <Text>
         1- Provide your own API key for <Text color={'gray'}>PUBLIC_SUBGRAPHS_API_KEY</Text> in{' '}
-        <Text color={'gray'}>.env.local</Text> You can get one{' '}
-        <Link url="https://thegraph.com/studio/apikeys">here</Link>
+        <Text color={'gray'}>.env.local</Text> You can get one from{' '}
+        <Link url="https://thegraph.com/studio/apikeys">The Graph Studio</Link>
       </Text>
       <Text>
         2- After the API key is correctly configured, run{' '}
@@ -39,8 +39,11 @@ const SubgraphWarningMessage: FC = () => (
       </Text>
     </Box>
     <Text>
-      More configuration info in{' '}
-      <Link url={'https://docs.dappbooster.dev/introduction/getting-started'}>the docs</Link>.
+      More configuration info in the{' '}
+      <Link url={'https://docs.dappbooster.dev/introduction/getting-started'}>
+        dAppBooster getting-started guide
+      </Link>
+      .
     </Text>
     <Text
       color={'yellow'}
@@ -72,12 +75,14 @@ const EvmPostInstallMessage: FC<{ projectName: string }> = ({ projectName }) => 
         - Check out <Text color={'gray'}>.env.local</Text> for more configurations.
       </Text>
       <Text>
-        - Read <Link url="https://docs.dappbooster.dev">the docs</Link> to know more about{' '}
-        <Text color={'gray'}>dAppBooster</Text>!
+        - Read the <Link url="https://docs.dappbooster.dev">dAppBooster documentation</Link> to know
+        more.
       </Text>
       <Text>
-        - Report issues with this installer{' '}
-        <Link url="https://github.com/BootNodeDev/dAppBoosterInstallScript/issues">here</Link>
+        - Report issues with this installer on{' '}
+        <Link url="https://github.com/BootNodeDev/dAppBoosterInstallScript/issues">
+          the installer issue tracker
+        </Link>
       </Text>
     </Box>
   </Box>

@@ -27,7 +27,7 @@ Omit the flag to be prompted for the stack in the wizard. Jump to the [EVM stack
 
 ## Quick start (interactive)
 
-<img src="./demo.svg" width="600">
+<img src="./demo.svg" width="600" height="355" alt="Terminal recording of the dAppBooster wizard: choosing a stack, naming the project, picking an installation mode, then cloning and installing.">
 
 ```shell
 pnpm dlx dappbooster

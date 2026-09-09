@@ -2,3 +2,12 @@
 # needs its install script allowed; everything else stays blocked by default.
 allowBuilds:
   '@biomejs/biome': true
+
+# Patched versions of transitive dependencies flagged by `pnpm audit`. Each one is a patch or
+# minor bump inside the major its parent already asks for, so nothing changes but the fix.
+# ws reaches the published package through ink; the other three are test-tooling only.
+overrides:
+  ws: '^8.20.1'
+  vite: '^8.0.5'
+  postcss: '^8.5.10'
+  nanoid: '^3.3.16'
