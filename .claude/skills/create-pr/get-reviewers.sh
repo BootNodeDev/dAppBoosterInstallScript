@@ -12,7 +12,7 @@ reviewers=$(
       ]
       | sort_by(.ts) | reverse
       | map(.login)
-      | map(select(. != \"$me\"))
+      | map(select(. != null and . != \"$me\"))
       | reduce .[] as \$x (
           { seen: {}, out: [] };
           if .seen[\$x] then . else { seen: (.seen | .[\$x] = true), out: (.out + [\$x]) } end

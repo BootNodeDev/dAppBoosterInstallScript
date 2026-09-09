@@ -13,12 +13,27 @@ set -euo pipefail
 
 current=$(git rev-parse --abbrev-ref HEAD)
 
+# The remote is not always called "origin". Prefer the current branch's own remote, then origin,
+# then whatever single remote exists.
+remote=$(git config --get "branch.$current.remote" 2>/dev/null || true)
+if [[ -z "$remote" ]]; then
+  if git remote get-url origin >/dev/null 2>&1; then
+    remote=origin
+  else
+    remote=$(git remote | head -1)
+  fi
+fi
+if [[ -z "$remote" ]]; then
+  echo "No git remote found" >&2
+  exit 1
+fi
+
 # Priority 1: well-known base branches -- pick closest merge-base
 best_branch=""
 best_ts=0
 
 for candidate in main master develop staging; do
-  ref="origin/$candidate"
+  ref="$remote/$candidate"
   git rev-parse --verify "$ref" >/dev/null 2>&1 || continue
   [[ "$candidate" == "$current" ]] && continue
   mb=$(git merge-base HEAD "$ref" 2>/dev/null) || continue
@@ -39,8 +54,10 @@ fi
 best_branch=""
 best_ts=0
 
+# Full refnames, not %(refname:short): the short form of <remote>/HEAD is just <remote>, which
+# slips past the HEAD check below and gets reported as if it were a branch.
 while IFS= read -r ref; do
-  branch="${ref#origin/}"
+  branch="${ref#"refs/remotes/$remote/"}"
   [[ "$branch" == "HEAD" ]] && continue
   [[ "$branch" == "$current" ]] && continue
   mb=$(git merge-base HEAD "$ref" 2>/dev/null) || continue
@@ -50,7 +67,7 @@ while IFS= read -r ref; do
     best_ts=$ts
     best_branch=$branch
   fi
-done < <(git for-each-ref --format='%(refname:short)' refs/remotes/origin/)
+done < <(git for-each-ref --format='%(refname)' "refs/remotes/$remote/")
 
 if [[ -z "$best_branch" ]]; then
   echo "No base branch found" >&2
