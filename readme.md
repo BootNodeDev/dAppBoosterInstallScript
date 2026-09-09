@@ -22,7 +22,7 @@ Omit the flag to be prompted for the stack in the wizard. Jump to the [EVM stack
 
 ## Requirements
 
-- Node >= 20
+- Node >= 22
 - pnpm (used by the installer itself; the scaffolded project uses pnpm or npm depending on the stack)
 
 ## Quick start (interactive)
@@ -219,10 +219,64 @@ release tags yet, so it tracks `main`; once a release is tagged, switch the defa
 ```shell
 git clone git@github.com:BootNodeDev/dAppBoosterInstallScript.git
 cd dAppBoosterInstallScript
+nvm use
+corepack enable
 pnpm i
+pnpm build
 node dist/cli.js
 ```
 
+Run it from a scratch directory: the wizard scaffolds the new project into whatever folder you start
+it from. `pnpm i` also installs the Git hooks.
+
+| Command | Purpose |
+|---|---|
+| `pnpm build` | Compile `source/` to `dist/` |
+| `pnpm dev` | The same, in watch mode |
+| `pnpm typecheck` | Types only, no output |
+| `pnpm test` | Run the vitest suite |
+| `pnpm test:coverage` | The same, with a coverage report |
+| `pnpm lint` | Biome check, warnings included |
+| `pnpm lint:fix` | Biome check with `--write` |
+| `pnpm knip` | Report unused files, exports, and dependencies |
+
+### Git hooks
+
+[husky](https://typicode.github.io/husky/) installs three hooks on `pnpm i`:
+
+- **commit-msg** runs [commitlint](https://commitlint.js.org/). Messages follow
+  [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): subject`.
+- **pre-commit** runs [lint-staged](https://github.com/lint-staged/lint-staged): Biome writes the
+  staged files, then typecheck, tests and knip read them. It also scans the staged changes for
+  secrets.
+- **pre-push** runs lint, typecheck and tests, then scans the outgoing commits for secrets.
+
+Secret scanning uses [gitleaks](https://github.com/gitleaks/gitleaks), pinned in
+[`.gitleaks-version`](.gitleaks-version). The hooks install it into `bin/` on first use through
+[`scripts/install-gitleaks.sh`](scripts/install-gitleaks.sh), so local runs and CI apply the same
+version and the same rules. To scan the whole history yourself:
+
+```shell
+./scripts/install-gitleaks.sh
+./bin/gitleaks git --redact --verbose --exit-code 1 .
+```
+
+### Continuous integration
+
+[`.github/workflows/pr.yml`](.github/workflows/pr.yml) runs on every pull request: Biome, then
+typecheck and build and knip, then the test suite on the `.nvmrc` version and again on the Node 22
+floor declared in `engines`, then commitlint over both the commit range and the PR title, then
+gitleaks over the full history. Two smaller workflows assign the author to their own pull request
+and add new issues and pull requests to the project board.
+
+### Contributing
+
+[`AGENTS.md`](AGENTS.md) holds the conventions and [`architecture.md`](architecture.md) indexes the
+architecture docs. Both are worth reading before a first change.
+
 ## Releasing new versions to NPM
 
-New releases are automatically uploaded to NPM via GitHub Actions.
+New releases are automatically uploaded to NPM via GitHub Actions. Publishing a GitHub Release runs
+[`.github/workflows/release.yml`](.github/workflows/release.yml), which builds and publishes.
+Marking the release as a pre-release runs `npm publish --dry-run` instead, so a release can be
+rehearsed without shipping.

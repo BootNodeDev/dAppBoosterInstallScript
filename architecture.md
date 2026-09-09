@@ -19,7 +19,9 @@ everything.
 | Arg parsing | meow | CLI flag parsing, non-interactive mode |
 | Styling | Ink primitives | `<Box>`, `<Text>`, ink-gradient, ink-big-text |
 | Testing | Vitest + @vitest/coverage-v8 | |
-| Node | v20+ | See `.nvmrc` |
+| Lint + format | Biome 2 | `biome.json`; one tool for both |
+| Dead code | knip | `knip.json`; entry points are `cli.tsx` and the test files |
+| Node | v22+ published, 24 for development | `engines.node` is the floor; `.nvmrc` is what CI uses |
 
 ## Project Structure
 
