@@ -178,8 +178,9 @@ included build the extension with `npm run carpincho:build:extension` and load
   `carpincho-wallet/` and its scripts (`wallet:dev`, `carpincho:build:extension`); deselecting `llm`
   removes the agent docs. Removing `precommit` also strips the `prepare` script and the
   husky/lint-staged/commitlint dev-dependencies from the root `package.json`.
-- Whenever cleanup edits the dependencies or the workspaces list, the installer rewrites the
-  lockfile from the new `package.json`, so the generated project passes `npm ci`.
+- Cleanup runs before the install, so the package manager sees the pruned `package.json` and the
+  lockfile it writes matches it. The generated project passes `npm ci` / `pnpm install
+  --frozen-lockfile` from the first commit.
 - The Canton installer never deletes demo source (the `counter`/`sign-message` features) — that is
   user-controlled via the template's `dapp/frontend/README.md`.
 

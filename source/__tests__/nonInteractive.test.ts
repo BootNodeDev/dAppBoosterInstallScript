@@ -4,6 +4,7 @@ import { getDefaultFeatureNames, getFeatureNames } from '../constants/config.js'
 vi.mock('../operations/index.js', () => ({
   cloneRepo: vi.fn().mockResolvedValue(undefined),
   createEnvFile: vi.fn().mockResolvedValue(undefined),
+  createInitialCommit: vi.fn().mockResolvedValue(undefined),
   installPackages: vi.fn().mockResolvedValue(undefined),
   cleanupFiles: vi.fn().mockResolvedValue(undefined),
 }))
@@ -19,9 +20,8 @@ vi.mock('../utils/utils.js', async (importOriginal) => {
 const mockLog = vi.spyOn(console, 'log').mockImplementation(() => {})
 
 const { runNonInteractive } = await import('../nonInteractive.js')
-const { cloneRepo, createEnvFile, installPackages, cleanupFiles } = await import(
-  '../operations/index.js'
-)
+const { cloneRepo, createEnvFile, createInitialCommit, installPackages, cleanupFiles } =
+  await import('../operations/index.js')
 const { projectDirectoryExists } = await import('../utils/utils.js')
 
 const evmFeatureNames = getFeatureNames('evm')
@@ -168,7 +168,7 @@ describe('nonInteractive — evm full mode execution', () => {
     process.exitCode = undefined
   })
 
-  it('runs operations in correct order', async () => {
+  it('cleans up before installing, so the lockfile matches the pruned manifest', async () => {
     const callOrder: string[] = []
     vi.mocked(cloneRepo).mockImplementation(async () => {
       callOrder.push('cloneRepo')
@@ -185,7 +185,8 @@ describe('nonInteractive — evm full mode execution', () => {
 
     await runNonInteractive({ name: 'my_app', mode: 'full' })
 
-    expect(callOrder).toEqual(['cloneRepo', 'createEnvFile', 'installPackages', 'cleanupFiles'])
+    expect(callOrder).toEqual(['cloneRepo', 'cleanupFiles', 'createEnvFile', 'installPackages'])
+    expect(createInitialCommit).not.toHaveBeenCalled()
   })
 
   it('passes stack as first arg to all operations', async () => {
@@ -261,6 +262,21 @@ describe('nonInteractive — canton execution', () => {
     const output = getLastJsonOutput()
     expect(output.stack).toBe('canton')
     expect(output.features).toEqual(cantonFeatureNames)
+  })
+
+  it('commits the finished canton scaffold, after the install wrote the lockfile', async () => {
+    const callOrder: string[] = []
+    vi.mocked(installPackages).mockImplementation(async () => {
+      callOrder.push('installPackages')
+    })
+    vi.mocked(createInitialCommit).mockImplementation(async () => {
+      callOrder.push('createInitialCommit')
+    })
+
+    await runNonInteractive({ stack: 'canton', name: 'my_app', mode: 'full' })
+
+    expect(callOrder).toEqual(['installPackages', 'createInitialCommit'])
+    expect(createInitialCommit).toHaveBeenCalledWith(expect.stringContaining('my_app'))
   })
 
   it('canton custom mode threads only selected features through', async () => {
@@ -347,7 +363,7 @@ describe('nonInteractive — default mode', () => {
     await expect(runNonInteractive({ name: 'my_app', mode: 'default' })).rejects.toThrow()
     const output = getLastJsonOutput()
     expect(output.success).toBe(false)
-    expect(output.error).toMatch(/'default' is only available for the canton stack/)
+    expect(output.error).toMatch(/'default' is not available for the evm stack/)
   })
 })
 

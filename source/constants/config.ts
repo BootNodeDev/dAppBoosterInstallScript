@@ -7,6 +7,18 @@ export type RefType = 'tag-latest' | 'branch'
 
 export type PackageManager = 'pnpm' | 'npm'
 
+const featureNamesByStack = {
+  evm: ['demo', 'subgraph', 'typedoc', 'vocs', 'husky'],
+  canton: ['github', 'precommit', 'carpincho', 'llm'],
+} as const satisfies Record<Stack, readonly string[]>
+
+/**
+ * Every feature name the stacks define. Listing the names here lets the config refer to them by
+ * type (`requires`, `ifFeature`) without a circular reference; the `satisfies` clause on
+ * `stackDefinitions` fails to compile if this list and the feature maps disagree.
+ */
+export type FeatureName = (typeof featureNamesByStack)[Stack][number]
+
 /**
  * A single optional feature of a stack.
  *
@@ -15,9 +27,6 @@ export type PackageManager = 'pnpm' | 'npm'
  * @property paths - Relative files and directories deleted when the feature is deselected.
  * Removed directories also drive script stripping in cleanupFiles.
  * @property scripts - package.json script names deleted when the feature is deselected.
- * @property dependencies - Dependencies deleted straight from package.json when the feature is
- * deselected. For features the package manager is not asked to uninstall; cleanupFiles refreshes
- * the lockfile afterwards.
  * @property requires - Other features this one depends on. Selecting it pulls these in;
  * deselecting one of these cascades this feature out. Resolved transitively (see utils.ts).
  */
@@ -29,20 +38,30 @@ export type FeatureDefinition = {
   postInstall?: string[]
   paths?: string[]
   scripts?: string[]
-  dependencies?: string[]
-  requires?: string[]
+  requires?: FeatureName[]
 }
 
 export type EnvFile = {
   from: string
   to: string
-  ifFeature?: string
+  ifFeature?: FeatureName
+}
+
+/** A labelled group of paths cleanup removes whatever the user picked. */
+export type CleanupGroup = {
+  label: string
+  paths: string[]
 }
 
 /**
  * A stack the installer can scaffold.
  *
  * @property postInstall - Guidance shown for every scaffold of this stack, in any mode.
+ * @property hygiene - Paths that belong to the template's own repository, removed from every
+ * scaffold before the per-feature cleanup runs.
+ * @property staging - The template's staging directory, holding the replacement files a
+ * deselected feature restores. Removed once cleanup is finished with it.
+ * @property initialCommit - Whether to commit the finished scaffold as the project's baseline.
  */
 export type StackConfig = {
   label: string
@@ -53,6 +72,9 @@ export type StackConfig = {
   packageManager: PackageManager
   removeAfterClone: string[]
   postInstall?: string[]
+  hygiene?: CleanupGroup
+  staging?: CleanupGroup
+  initialCommit?: boolean
   envFiles: EnvFile[]
   features: Record<string, FeatureDefinition>
 }
@@ -71,6 +93,14 @@ export const stackDefinitions = {
     refType: 'tag-latest',
     packageManager: 'pnpm',
     removeAfterClone: [],
+    hygiene: {
+      label: 'Repository metadata',
+      paths: ['.claude', 'AGENTS.md', 'CLAUDE.md', 'architecture.md', '.github'],
+    },
+    staging: {
+      label: 'Install script',
+      paths: ['.install-files'],
+    },
     envFiles: [{ from: '.env.example', to: '.env.local' }],
     features: {
       demo: {
@@ -78,6 +108,7 @@ export const stackDefinitions = {
         label: 'Component Demos',
         packages: [],
         default: true,
+        paths: ['src/components/pageComponents/home'],
       },
       subgraph: {
         description: 'TheGraph subgraph integration',
@@ -137,6 +168,7 @@ export const stackDefinitions = {
     ref: 'main',
     packageManager: 'npm',
     removeAfterClone: [],
+    initialCommit: true,
     postInstall: [
       'Review canton-barebones/.env (created from the example)',
       'Run ./scripts/dev-stack.sh up to bring up the whole local stack in one command — Docker must be running (run ./scripts/dev-stack.sh with no arguments for an interactive menu)',
@@ -162,11 +194,10 @@ export const stackDefinitions = {
       precommit: {
         description: 'Pre-commit hooks (Husky, lint-staged, commitlint)',
         label: 'Pre-commit hooks',
-        packages: [],
+        packages: huskyPackages,
         default: false,
         paths: huskyPaths,
         scripts: huskyScripts,
-        dependencies: huskyPackages,
       },
       carpincho: {
         description: 'Carpincho browser-extension wallet (frontend + build tooling)',
@@ -200,15 +231,11 @@ export const stackDefinitions = {
       },
     },
   },
-} satisfies Record<Stack, StackConfig>
-
-/**
- * Every feature name either stack defines, read straight off `stackDefinitions`. Renaming a
- * feature in the map turns every stale reference to it into a compile error.
- */
-export type FeatureName = {
-  [S in Stack]: keyof (typeof stackDefinitions)[S]['features']
-}[Stack]
+} satisfies {
+  [S in Stack]: StackConfig & {
+    features: Record<(typeof featureNamesByStack)[S][number], FeatureDefinition>
+  }
+}
 
 export const stackNames = Object.keys(stackDefinitions) as Stack[]
 

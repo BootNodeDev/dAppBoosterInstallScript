@@ -1,6 +1,6 @@
-export type SelectItem = { label: string; value: string }
+import type { FeatureName } from '../constants/config.js'
 
-export type MultiSelectItem = SelectItem
+export type MultiSelectItem = { label: string; value: FeatureName }
 
 export type InstallationType = 'full' | 'default' | 'custom'
 

@@ -1,25 +1,16 @@
 import { readFileSync, statSync, writeFileSync } from 'node:fs'
 import { copyFile, mkdir, rm } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import {
   type FeatureName,
   getFeatureEntries,
   getStackConfig,
-  type PackageManager,
   type Stack,
 } from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
 import { isFeatureSelected } from '../utils/utils.js'
-import { execFile } from './exec.js'
-
-const EVM_HYGIENE_PATHS = ['.claude', 'AGENTS.md', 'CLAUDE.md', 'architecture.md', '.github']
 
 const HOME_FOLDER = 'src/components/pageComponents/home'
-
-const lockfileOnlyFlag: Record<PackageManager, string> = {
-  npm: '--package-lock-only',
-  pnpm: '--lockfile-only',
-}
 
 type DependencyGroup = Record<string, unknown> | undefined
 
@@ -28,8 +19,6 @@ type PackageJson = {
   workspaces?: string[] | { packages?: string[] }
   dependencies?: DependencyGroup
   devDependencies?: DependencyGroup
-  optionalDependencies?: DependencyGroup
-  peerDependencies?: DependencyGroup
 }
 
 /**
@@ -40,33 +29,33 @@ type PackageJson = {
  */
 type CleanupPlan = {
   scripts: string[]
-  dependencies: string[]
   removedDirs: string[]
 }
 
 function isDirectory(path: string): boolean {
-  try {
-    return statSync(path).isDirectory()
-  } catch {
-    return false
-  }
+  return statSync(path, { throwIfNoEntry: false })?.isDirectory() ?? false
 }
 
-/** Deletes paths relative to the project folder. Returns the ones that were directories. */
-async function removePaths(projectFolder: string, relativePaths: string[]): Promise<string[]> {
-  const removedDirs: string[] = []
+async function removePaths(projectFolder: string, relativePaths: string[]): Promise<void> {
+  await Promise.all(
+    relativePaths.map((relativePath) =>
+      rm(resolve(projectFolder, relativePath), { recursive: true, force: true }),
+    ),
+  )
+}
 
-  for (const relativePath of relativePaths) {
-    const target = resolve(projectFolder, relativePath)
+/** Removes a feature's paths and reports which of them were directories. */
+async function removeFeaturePaths(
+  projectFolder: string,
+  relativePaths: string[],
+): Promise<string[]> {
+  const directories = relativePaths.filter((relativePath) =>
+    isDirectory(resolve(projectFolder, relativePath)),
+  )
 
-    if (isDirectory(target)) {
-      removedDirs.push(relativePath)
-    }
+  await removePaths(projectFolder, relativePaths)
 
-    await rm(target, { recursive: true, force: true })
-  }
-
-  return removedDirs
+  return directories
 }
 
 /**
@@ -80,85 +69,55 @@ async function removeDeselectedFeatures(
   features: FeatureName[],
   onProgress?: (step: string) => void,
 ): Promise<CleanupPlan> {
-  const plan: CleanupPlan = { scripts: [], dependencies: [], removedDirs: [] }
+  const plan: CleanupPlan = { scripts: [], removedDirs: [] }
 
   if (mode === 'full') {
     return plan
   }
 
   for (const [name, definition] of getFeatureEntries(stack)) {
-    const { paths = [], scripts = [], dependencies = [] } = definition
+    const { paths = [], scripts = [] } = definition
 
-    if (isFeatureSelected(name, features)) {
-      continue
-    }
-
-    if (paths.length === 0 && scripts.length === 0 && dependencies.length === 0) {
+    if (isFeatureSelected(name, features) || (paths.length === 0 && scripts.length === 0)) {
       continue
     }
 
     onProgress?.(definition.label)
-    plan.removedDirs.push(...(await removePaths(projectFolder, paths)))
+    plan.removedDirs.push(...(await removeFeaturePaths(projectFolder, paths)))
     plan.scripts.push(...scripts)
-    plan.dependencies.push(...dependencies)
   }
 
   return plan
 }
 
-/** Replaces the EVM home page with the demo-free copy the template keeps in `.install-files`. */
-async function restoreHomePage(projectFolder: string): Promise<void> {
-  const homeFolder = resolve(projectFolder, HOME_FOLDER)
+async function restoreFile(projectFolder: string, from: string, to: string): Promise<void> {
+  const target = resolve(projectFolder, to)
 
-  await rm(homeFolder, { recursive: true, force: true })
-  await mkdir(homeFolder, { recursive: true })
-  await copyFile(
-    resolve(projectFolder, '.install-files/home/index.tsx'),
-    resolve(homeFolder, 'index.tsx'),
-  )
-}
-
-/** Drops the subgraph demos from an EVM home page the user chose to keep. */
-async function restoreExamplesIndex(projectFolder: string): Promise<void> {
-  const homeFolder = resolve(projectFolder, HOME_FOLDER)
-
-  await rm(resolve(homeFolder, 'Examples/demos/subgraphs'), { recursive: true, force: true })
-  await rm(resolve(homeFolder, 'Examples/index.tsx'), { force: true })
-  await copyFile(
-    resolve(projectFolder, '.install-files/home/Examples/index.tsx'),
-    resolve(homeFolder, 'Examples/index.tsx'),
-  )
+  await mkdir(dirname(target), { recursive: true })
+  await copyFile(resolve(projectFolder, from), target)
 }
 
 /**
- * EVM cleanup. The CI and agent metadata always go, since they belong to the template's own repo;
- * everything else follows the feature selection. Canton models both as optional features instead.
+ * Puts back the demo-free EVM home page the template stages in `.install-files`. Dropping `demo`
+ * replaces the whole page; dropping only `subgraph` replaces the examples index that listed it.
  */
-async function cleanupEvmFiles(
-  projectFolder: string,
-  mode: InstallationType,
-  features: FeatureName[],
-  onProgress?: (step: string) => void,
-): Promise<CleanupPlan> {
-  onProgress?.('Repository metadata')
-  await removePaths(projectFolder, EVM_HYGIENE_PATHS)
-
-  if (mode === 'custom') {
-    if (!isFeatureSelected('demo', features)) {
-      onProgress?.('Component demos')
-      await restoreHomePage(projectFolder)
-    } else if (!isFeatureSelected('subgraph', features)) {
-      onProgress?.('Subgraph demos')
-      await restoreExamplesIndex(projectFolder)
-    }
+async function restoreEvmHomePage(projectFolder: string, features: FeatureName[]): Promise<void> {
+  if (!isFeatureSelected('demo', features)) {
+    await restoreFile(projectFolder, '.install-files/home/index.tsx', `${HOME_FOLDER}/index.tsx`)
+    return
   }
 
-  const plan = await removeDeselectedFeatures('evm', projectFolder, mode, features, onProgress)
-
-  onProgress?.('Install script')
-  await removePaths(projectFolder, ['.install-files'])
-
-  return plan
+  if (!isFeatureSelected('subgraph', features)) {
+    await removePaths(projectFolder, [
+      `${HOME_FOLDER}/Examples/demos/subgraphs`,
+      `${HOME_FOLDER}/Examples/index.tsx`,
+    ])
+    await restoreFile(
+      projectFolder,
+      '.install-files/home/Examples/index.tsx',
+      `${HOME_FOLDER}/Examples/index.tsx`,
+    )
+  }
 }
 
 function removeKeys(block: Record<string, unknown> | undefined, keys: string[]): boolean {
@@ -178,12 +137,8 @@ function removeKeys(block: Record<string, unknown> | undefined, keys: string[]):
   return changed
 }
 
-function runsRemovedDir(command: string, removedDirs: string[]): boolean {
-  const tokens = command.split(/\s+/)
-
-  return removedDirs.some((dir) =>
-    tokens.some((token) => token === dir || token.startsWith(`${dir}/`)),
-  )
+function isUnderRemovedDir(path: string, removedDirs: string[]): boolean {
+  return removedDirs.some((dir) => path === dir || path.startsWith(`${dir}/`))
 }
 
 /**
@@ -194,51 +149,51 @@ function scriptsRunningRemovedDirs(
   scripts: Record<string, string | undefined> | undefined,
   removedDirs: string[],
 ): string[] {
-  if (!scripts || removedDirs.length === 0) {
+  if (!scripts) {
     return []
   }
 
   return Object.entries(scripts)
-    .filter(([, command]) => command !== undefined && runsRemovedDir(command, removedDirs))
+    .filter(([, command]) =>
+      command?.split(/\s+/).some((token) => isUnderRemovedDir(token, removedDirs)),
+    )
     .map(([name]) => name)
 }
 
 /** Drops workspaces entries pointing at a removed directory. Mutates in place. */
 function pruneWorkspaces(packageJson: PackageJson, removedDirs: string[]): boolean {
   const { workspaces } = packageJson
-  const keep = (entry: string): boolean =>
-    !removedDirs.some((dir) => entry === dir || entry.startsWith(`${dir}/`))
+  const entries = Array.isArray(workspaces) ? workspaces : workspaces?.packages
+
+  if (!entries) {
+    return false
+  }
+
+  const kept = entries.filter((entry) => !isUnderRemovedDir(entry, removedDirs))
+
+  if (kept.length === entries.length) {
+    return false
+  }
 
   if (Array.isArray(workspaces)) {
-    const kept = workspaces.filter(keep)
-
-    if (kept.length === workspaces.length) {
-      return false
-    }
-
     packageJson.workspaces = kept
-    return true
-  }
-
-  if (workspaces && Array.isArray(workspaces.packages)) {
-    const kept = workspaces.packages.filter(keep)
-
-    if (kept.length === workspaces.packages.length) {
-      return false
-    }
-
+  } else if (workspaces) {
     workspaces.packages = kept
-    return true
   }
 
-  return false
+  return true
 }
 
 /**
  * Applies the plan to the project's package.json in a single pass, writing only when something
- * changed. Returns whether the lockfile no longer matches the manifest.
+ * changed. The dependencies themselves are left to the package manager, which runs next and
+ * writes a lockfile matching whatever is left here.
  */
-function patchPackageJson(projectFolder: string, plan: CleanupPlan): boolean {
+function patchPackageJson(projectFolder: string, plan: CleanupPlan): void {
+  if (plan.scripts.length === 0 && plan.removedDirs.length === 0) {
+    return
+  }
+
   const packageJsonPath = resolve(projectFolder, 'package.json')
 
   let packageJson: PackageJson
@@ -246,7 +201,7 @@ function patchPackageJson(projectFolder: string, plan: CleanupPlan): boolean {
   try {
     packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as PackageJson
   } catch {
-    return false
+    return
   }
 
   const scriptsRemoved = removeKeys(packageJson.scripts, [
@@ -254,76 +209,17 @@ function patchPackageJson(projectFolder: string, plan: CleanupPlan): boolean {
     ...scriptsRunningRemovedDirs(packageJson.scripts, plan.removedDirs),
   ])
 
-  const dependencyGroups: DependencyGroup[] = [
-    packageJson.dependencies,
-    packageJson.devDependencies,
-    packageJson.optionalDependencies,
-    packageJson.peerDependencies,
-  ]
-
-  let dependenciesRemoved = false
-
-  for (const group of dependencyGroups) {
-    if (removeKeys(group, plan.dependencies)) {
-      dependenciesRemoved = true
-    }
-  }
-
   const workspacesPruned = pruneWorkspaces(packageJson, plan.removedDirs)
 
-  if (scriptsRemoved || dependenciesRemoved || workspacesPruned) {
+  if (scriptsRemoved || workspacesPruned) {
     writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
   }
-
-  return dependenciesRemoved || workspacesPruned
 }
 
 /**
- * Rewrites the lockfile from the patched package.json, without installing anything. A failure here
- * leaves a project that still installs, so it is reported and not thrown.
- */
-async function refreshLockfile(
-  stack: Stack,
-  projectFolder: string,
-  onProgress?: (step: string) => void,
-): Promise<void> {
-  const { packageManager } = getStackConfig(stack)
-
-  onProgress?.('Updating the lockfile')
-
-  try {
-    await execFile(packageManager, ['install', lockfileOnlyFlag[packageManager]], {
-      cwd: projectFolder,
-    })
-  } catch {
-    onProgress?.('Lockfile refresh skipped')
-  }
-}
-
-async function createInitialCommit(projectFolder: string): Promise<void> {
-  await execFile('git', ['add', '.'], { cwd: projectFolder })
-  await execFile(
-    'git',
-    [
-      '-c',
-      'user.name=dAppBooster',
-      '-c',
-      'user.email=no-reply@dappbooster.dev',
-      '-c',
-      'commit.gpgsign=false',
-      'commit',
-      '--no-verify',
-      '-m',
-      'chore: initial commit',
-    ],
-    { cwd: projectFolder },
-  )
-}
-
-/**
- * Removes what the chosen features leave out, then reconciles the project's package.json and
- * lockfile. Canton finishes with a baseline commit; `--no-verify` keeps the project's own hooks
- * from linting a tree the user has not touched yet.
+ * Removes what the chosen features leave out and patches the project's package.json to match.
+ * Runs before the install, so the package manager resolves the pruned manifest once and the
+ * lockfile it writes needs no repair.
  */
 export async function cleanupFiles(
   stack: Stack,
@@ -332,17 +228,23 @@ export async function cleanupFiles(
   features: FeatureName[] = [],
   onProgress?: (step: string) => void,
 ): Promise<void> {
-  const plan =
-    stack === 'canton'
-      ? await removeDeselectedFeatures(stack, projectFolder, mode, features, onProgress)
-      : await cleanupEvmFiles(projectFolder, mode, features, onProgress)
+  const { hygiene, staging } = getStackConfig(stack)
 
-  if (patchPackageJson(projectFolder, plan)) {
-    await refreshLockfile(stack, projectFolder, onProgress)
+  if (hygiene) {
+    onProgress?.(hygiene.label)
+    await removePaths(projectFolder, hygiene.paths)
   }
 
-  if (stack === 'canton') {
-    onProgress?.('Initial commit')
-    await createInitialCommit(projectFolder)
+  const plan = await removeDeselectedFeatures(stack, projectFolder, mode, features, onProgress)
+
+  if (stack === 'evm' && mode !== 'full') {
+    await restoreEvmHomePage(projectFolder, features)
+  }
+
+  patchPackageJson(projectFolder, plan)
+
+  if (staging) {
+    onProgress?.(staging.label)
+    await removePaths(projectFolder, staging.paths)
   }
 }

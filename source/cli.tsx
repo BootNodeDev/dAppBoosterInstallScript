@@ -3,7 +3,7 @@ import process from 'node:process'
 import meow from 'meow'
 import { isStackName, type Stack, stackNames } from './constants/config.js'
 import { getInfoOutput } from './info.js'
-import { runNonInteractive } from './nonInteractive.js'
+import { ReportedError, reportFailure, runNonInteractive } from './nonInteractive.js'
 
 const cli = meow(
   `
@@ -102,11 +102,6 @@ const cli = meow(
   },
 )
 
-function reportError(error: string): void {
-  console.log(JSON.stringify({ success: false, error }, null, 2))
-  process.exitCode = 1
-}
-
 /** Either the stack the flags name, no stack at all, or the reason the flags make no sense. */
 type StackFlagResult = { stack?: Stack; error?: string }
 
@@ -149,7 +144,7 @@ function resolveStackFlag(flags: {
 const { stack: resolvedStack, error: stackFlagError } = resolveStackFlag(cli.flags)
 
 if (stackFlagError) {
-  reportError(stackFlagError)
+  reportFailure(stackFlagError)
 } else if (cli.flags.info) {
   console.log(getInfoOutput(resolvedStack))
 } else if (cli.flags.nonInteractive || cli.flags.ni || !process.stdout.isTTY) {
@@ -159,10 +154,10 @@ if (stackFlagError) {
     mode: cli.flags.mode,
     features: cli.flags.features,
   }).catch((error: unknown) => {
-    if (process.exitCode === 1) {
+    if (error instanceof ReportedError) {
       return
     }
-    reportError(error instanceof Error ? error.message : String(error))
+    reportFailure(error instanceof Error ? error.message : String(error))
   })
 } else {
   const run = async () => {

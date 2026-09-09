@@ -7,7 +7,6 @@ import {
   getFeatureEntries,
   getFeatureNames,
   getStackConfig,
-  isFeatureNameValid,
   type Stack,
 } from '../constants/config.js'
 import type { InstallationType } from '../types/types.js'
@@ -48,7 +47,7 @@ function collectRequiredFeatures(
   }
 
   for (const required of definition.requires) {
-    if (!isFeatureNameValid(stack, required) || accumulator.has(required)) {
+    if (accumulator.has(required)) {
       continue
     }
 
@@ -135,18 +134,14 @@ export function getPackagesToRemove(stack: Stack, selectedFeatures: FeatureName[
     .flatMap(([, definition]) => definition.packages)
 }
 
-export function getPostInstallMessages(
-  stack: Stack,
-  mode: InstallationType,
-  selectedFeatures: FeatureName[],
-): string[] {
+/** Post-install guidance for a scaffold: the stack's own, then that of each feature it kept. */
+export function getPostInstallMessages(stack: Stack, features: FeatureName[]): string[] {
   const config = getStackConfig(stack)
-  const features = config.features
-  const stackLevel = config.postInstall ?? []
 
-  const kept = resolveModeFeatures(stack, mode, selectedFeatures)
-  const featureMessages = kept.flatMap((name) => features[name]?.postInstall ?? [])
-  return [...stackLevel, ...featureMessages]
+  return [
+    ...(config.postInstall ?? []),
+    ...features.flatMap((name) => config.features[name]?.postInstall ?? []),
+  ]
 }
 
 /**

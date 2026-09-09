@@ -120,17 +120,6 @@ const App: FC<Props> = ({ preselectedStack }) => {
     )
 
     orderedSteps.push(
-      <Install
-        stack={stack}
-        mode={mode}
-        features={features}
-        onCompletion={finishStep}
-        projectName={projectName}
-        key={`install-${attempt}`}
-      />,
-    )
-
-    orderedSteps.push(
       <FileCleanup
         stack={stack}
         mode={mode}
@@ -138,6 +127,17 @@ const App: FC<Props> = ({ preselectedStack }) => {
         onCompletion={finishStep}
         projectName={projectName}
         key={`file-cleanup-${attempt}`}
+      />,
+    )
+
+    orderedSteps.push(
+      <Install
+        stack={stack}
+        mode={mode}
+        features={features}
+        onCompletion={finishStep}
+        projectName={projectName}
+        key={`install-${attempt}`}
       />,
     )
 

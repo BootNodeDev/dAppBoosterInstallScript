@@ -6,7 +6,7 @@
 ## How to Add a New Stack
 
 1. **`source/constants/config.ts`** — add a `Stack` union member and a `stackDefinitions` entry: `label`, `description`, `repoUrl`, `refType`, optional `ref`, `packageManager`, `removeAfterClone`, `envFiles`, `features`.
-2. **`source/operations/cleanupFiles.ts`** — add a `cleanupXxxFiles` function and route to it from the top-level `cleanupFiles` dispatcher.
+2. **`source/constants/config.ts`** — declare what the stack always removes (`hygiene`), where it stages replacement files (`staging`), and whether the finished scaffold gets a baseline commit (`initialCommit`). `cleanupFiles` reads all three, so it needs no new branch.
 3. **`source/components/steps/PostInstall.tsx`** — add stack-specific post-install JSX.
 4. **`source/cli.tsx`** — add a shortcut flag (e.g. `--myStack`) and extend `resolveStackFlag`; update `--help` text.
 5. **Tests** — add per-stack assertions to `nonInteractive.test.ts`, `info.test.ts`, `cloneRepo.test.ts`, `installPackages.test.ts`, `cleanupFiles.test.ts`, `createEnvFile.test.ts`.
@@ -14,7 +14,7 @@
 
 ## How to Add a New Feature to an Existing Stack
 
-1. **`source/constants/config.ts`** — add an entry to the stack's `features` map. The `default` flag governs both the custom-mode pre-check and `default`-mode membership: set `default: true` for "kept by the recommended install", `default: false` for "removed by default / opt-in" (Canton's `github` and `precommit`). List the feature's `paths`, its `scripts`, and either its `packages` (removed by the package manager) or its `dependencies` (removed straight from package.json). Cleanup reads all of them, so no cleanup code is needed. If it ships an env file, add an `ifFeature`-gated `envFiles` entry. If it depends on another feature, add `requires` — resolution is automatic in both the interactive and non-interactive paths.
+1. **`source/constants/config.ts`** — add the name to `featureNamesByStack`, then an entry to the stack's `features` map (leave one out and the file will not compile). The `default` flag governs both the custom-mode pre-check and `default`-mode membership: set `default: true` for "kept by the recommended install", `default: false` for "removed by default / opt-in" (Canton's `github` and `precommit`). List the feature's `paths`, `scripts` and `packages`; cleanup and the install read all three, so no new code is needed. If it ships an env file, add an `ifFeature`-gated `envFiles` entry. If it depends on another feature, add `requires` — resolution is automatic in both the interactive and non-interactive paths.
 2. **`source/operations/cleanupFiles.ts`** — only needed when the feature has to put a replacement file back, the way EVM's `demo` and `subgraph` copy from `.install-files`.
 3. **`source/components/steps/PostInstall.tsx`** — extend stack-specific instructions if needed.
 4. **`source/cli.tsx`** — update the `--help` text.

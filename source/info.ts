@@ -1,4 +1,5 @@
 import {
+  getFeatureEntries,
   getInstallationModes,
   type Stack,
   stackDefinitions,
@@ -30,13 +31,13 @@ function buildStackInfo(stack: Stack): StackInfo {
     packageManager: config.packageManager,
     modes: getInstallationModes(stack),
     features: Object.fromEntries(
-      Object.entries(config.features).map(([name, def]) => [
+      getFeatureEntries(stack).map(([name, definition]) => [
         name,
         {
-          description: def.description,
-          default: def.default,
-          ...(def.postInstall ? { postInstall: def.postInstall } : {}),
-          ...(def.requires ? { requires: def.requires } : {}),
+          description: definition.description,
+          default: definition.default,
+          ...(definition.postInstall ? { postInstall: definition.postInstall } : {}),
+          ...(definition.requires ? { requires: definition.requires } : {}),
         },
       ]),
     ),
