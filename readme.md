@@ -233,7 +233,7 @@ it from. `pnpm i` also installs the Git hooks.
 |---|---|
 | `pnpm build` | Compile `source/` to `dist/` |
 | `pnpm dev` | The same, in watch mode |
-| `pnpm typecheck` | Types only, no output |
+| `pnpm typecheck` | Types only, no output. Two passes: `source/` for the build, then the tests |
 | `pnpm test` | Run the vitest suite |
 | `pnpm test:coverage` | The same, with a coverage report |
 | `pnpm lint` | Biome check, warnings included |

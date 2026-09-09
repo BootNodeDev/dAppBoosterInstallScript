@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
+import type { Readable } from 'node:stream'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:child_process', () => ({
@@ -8,11 +9,10 @@ vi.mock('node:child_process', () => ({
 
 const { exec, execFile } = await import('../../operations/exec.js')
 
-type StderrEmitter = EventEmitter & { on: (event: string, cb: (data: Buffer) => void) => void }
-
 function createMockChild(): ChildProcess {
   const child = new EventEmitter() as ChildProcess
-  child.stderr = new EventEmitter() as StderrEmitter
+  // The code under test only listens for 'data', so an EventEmitter stands in for the stream.
+  child.stderr = new EventEmitter() as unknown as Readable
   return child
 }
 

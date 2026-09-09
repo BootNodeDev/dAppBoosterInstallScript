@@ -31,10 +31,11 @@
   "engines": {
     "node": ">=22"
   },
+  "packageManager": "pnpm@11.24.0",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "lint": "biome check --error-on-warnings",

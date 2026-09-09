@@ -1,0 +1,14 @@
+{
+  // tsconfig.json builds dist and so excludes the tests. This config is the second half of
+  // `pnpm typecheck`: same options, but over the test suite and vitest.config.ts as well.
+  // The two index-signature rules are off here only because test fixtures read config maps by
+  // key constantly; every rule that catches a real mismatch stays on.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["source", "vitest.config.ts"],
+  "exclude": []
+}

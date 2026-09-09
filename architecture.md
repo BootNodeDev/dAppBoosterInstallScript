@@ -15,7 +15,7 @@ everything.
 | Category | Technology | Notes |
 |----------|-----------|-------|
 | Framework | React + Ink | Terminal UI for interactive mode |
-| Language | TypeScript (strict mode) | Extends `@sindresorhus/tsconfig` |
+| Language | TypeScript (strict mode) | Extends `@sindresorhus/tsconfig`. `tsconfig.json` builds `source/`; `tsconfig.tests.json` typechecks the tests |
 | Arg parsing | meow | CLI flag parsing, non-interactive mode |
 | Styling | Ink primitives | `<Box>`, `<Text>`, ink-gradient, ink-big-text |
 | Testing | Vitest + @vitest/coverage-v8 | |
