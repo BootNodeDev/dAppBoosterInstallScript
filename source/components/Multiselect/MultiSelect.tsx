@@ -23,8 +23,10 @@ type MultiSelectProps<T> = {
   onUnselect?: (unselectedItem: Item<T>) => void
   onSubmit?: (selectedItems: Item<T>[]) => void
   onHighlight?: (highlightedItem: Item<T>) => void
-  // Optional hook to post-process a toggle (e.g. enforce feature dependencies). Receives the
-  // naive post-toggle selection plus the item that was toggled and the action taken.
+  /**
+   * Post-processes a toggle, for instance to enforce feature dependencies. Receives the plain
+   * post-toggle selection, the item that was toggled, and the action taken.
+   */
   transformSelection?: (
     nextSelected: Item<T>[],
     toggledItem: Item<T>,

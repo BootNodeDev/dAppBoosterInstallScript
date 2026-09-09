@@ -12,8 +12,10 @@ vi.mock('../../operations/exec.js', () => ({
   execFile: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Directories in the two templates. Everything else the installer removes is a file, and only
-// removed directories drive script stripping and workspaces pruning.
+/**
+ * Directories in the two templates. Everything else the installer removes is a file, and only
+ * removed directories drive script stripping and workspaces pruning.
+ */
 const TEMPLATE_DIRECTORIES = [
   '.claude',
   '.github',
@@ -63,7 +65,7 @@ function getWrittenPackageJson(): Record<string, unknown> {
   return JSON.parse(lastCall[1] as string)
 }
 
-// Reads the workspaces field in either form (string[] or { packages }).
+/** Reads the workspaces field in either form: `string[]` or `{ packages }`. */
 function getWorkspacePackages(pkg: Record<string, unknown>): string[] {
   const workspaces = pkg.workspaces
 
@@ -75,8 +77,10 @@ function getWorkspacePackages(pkg: Record<string, unknown>): string[] {
   return Array.isArray(packages) ? (packages as string[]) : []
 }
 
-// Dirs removed for a selection, derived from config — keeps the invariant config-driven instead of
-// hardcoding carpincho-wallet.
+/**
+ * Directories removed for a selection, derived from the config so the assertion stays true when
+ * the feature list changes instead of hardcoding carpincho-wallet.
+ */
 function removedCantonDirs(selected: FeatureName[]): string[] {
   return Object.entries(getStackConfig('canton').features)
     .filter(([name, definition]) => !selected.includes(name) && (definition.paths?.length ?? 0) > 0)
@@ -116,8 +120,10 @@ function mockEvmPackageJson() {
   )
 }
 
-// Mirrors cn-dappbooster@main's root package.json, including the workspaces array — carpincho-wallet
-// is a workspace, so deselecting carpincho must prune it.
+/**
+ * Mirrors cn-dappbooster@main's root package.json. `carpincho-wallet` is a workspace, so
+ * deselecting carpincho has to prune it.
+ */
 const CANTON_WORKSPACES = [
   'canton-connect-kit',
   'carpincho-wallet',
@@ -156,7 +162,7 @@ const CANTON_DEV_DEPS = {
   '@commitlint/config-conventional': '^21.0.1',
 }
 
-// Pass { packages } to exercise the object form; defaults to the string[] form.
+/** Pass `{ packages }` to exercise the object form; defaults to the `string[]` form. */
 function mockCantonPackageJson(workspaces: unknown = CANTON_WORKSPACES) {
   vi.mocked(readFileSync).mockReturnValue(
     JSON.stringify({
@@ -514,7 +520,6 @@ describe('cleanupFiles — canton', () => {
       expect(devDeps.husky).toBeUndefined()
       expect(devDeps['lint-staged']).toBeUndefined()
       expect(devDeps['@commitlint/cli']).toBeUndefined()
-      // Carpincho is kept, so its scripts survive.
       expect(scripts['wallet:dev']).toBe('npm --prefix carpincho-wallet run dev')
     })
 
@@ -570,8 +575,7 @@ describe('cleanupFiles — canton', () => {
       expect(workspaces).toContain('dapp/frontend')
     })
 
-    // The invariant the bug violated — asserted generally, not just for carpincho-wallet.
-    it('leaves no workspace entry pointing at a removed directory', async () => {
+    it('leaves no workspace entry pointing at a removed directory, whichever feature went', async () => {
       const selected: FeatureName[] = ['github', 'precommit', 'llm']
       await cleanupFiles('canton', '/project/my_app', 'custom', selected)
 
@@ -580,7 +584,6 @@ describe('cleanupFiles — canton', () => {
       for (const entry of workspaces) {
         expect(entryTargetsRemovedDir(entry, removedDirs)).toBe(false)
       }
-      // Guard against the array being emptied wholesale.
       expect(workspaces.length).toBeGreaterThan(0)
     })
 

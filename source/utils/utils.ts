@@ -34,7 +34,7 @@ export function isFeatureSelected(feature: FeatureName, selectedFeatures: Featur
 
 type FeatureToggleAction = 'select' | 'unselect'
 
-// Walks a feature's `requires` chain, adding every (transitive) requirement to `accumulator`.
+/** Walks a feature's `requires` chain, adding every transitive requirement to `accumulator`. */
 function collectRequiredFeatures(
   stack: Stack,
   feature: FeatureName,
@@ -53,7 +53,7 @@ function collectRequiredFeatures(
   }
 }
 
-// Features that depend (transitively) on `target` — removing `target` should remove these too.
+/** Features that depend on `target`, directly or through another one. They go when it goes. */
 function getDependentFeatures(stack: Stack, target: FeatureName): Set<FeatureName> {
   const dependents = new Set<FeatureName>()
 
@@ -68,7 +68,7 @@ function getDependentFeatures(stack: Stack, target: FeatureName): Set<FeatureNam
   return dependents
 }
 
-// Expands a selection to include every transitive requirement, returned in config order.
+/** Expands a selection to include every transitive requirement, returned in config order. */
 export function resolveSelectedFeatures(
   stack: Stack,
   selectedFeatures: FeatureName[],
@@ -81,8 +81,10 @@ export function resolveSelectedFeatures(
   return getFeatureNames(stack).filter((name) => resolved.has(name))
 }
 
-// Interactive toggle that keeps the selection dependency-consistent: selecting a feature pulls
-// its requirements in; unselecting one cascades its dependents out. Result is in config order.
+/**
+ * Interactive toggle that keeps the selection consistent: selecting a feature pulls its
+ * requirements in, unselecting one drops its dependents. Result is in config order.
+ */
 export function applyFeatureToggle(
   stack: Stack,
   selectedFeatures: FeatureName[],
@@ -101,8 +103,7 @@ export function applyFeatureToggle(
   )
 }
 
-// One-line summary of an install plan, shown on the interactive confirmation step before any disk
-// work begins.
+/** One-line summary of the plan, shown on the confirmation step before any disk work begins. */
 export function describeInstallPlan(
   stack: Stack,
   projectName: string,

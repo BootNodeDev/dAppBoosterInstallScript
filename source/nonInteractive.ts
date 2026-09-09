@@ -149,7 +149,6 @@ export async function runNonInteractive(flags: {
   const projectFolder = getProjectFolder(name)
 
   try {
-    // From here on a project directory exists on disk; an interrupt removes the partial scaffold.
     beginInstall(projectFolder)
 
     await cloneRepo(stack, name)
