@@ -271,7 +271,7 @@ and add new issues and pull requests to the project board.
 
 ### Contributing
 
-[`AGENTS.md`](AGENTS.md) holds the conventions and [`architecture.md`](architecture.md) indexes the
+[`CLAUDE.md`](CLAUDE.md) holds the conventions and [`architecture.md`](architecture.md) indexes the
 architecture docs. Both are worth reading before a first change.
 
 ## Releasing new versions to NPM
