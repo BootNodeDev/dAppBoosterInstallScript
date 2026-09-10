@@ -1,19 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { stackDefinitions } from '../../constants/config.js'
+import { getFeatureNames, stackDefinitions } from '../../constants/config.js'
 
 vi.mock('../../operations/exec.js', () => ({
   exec: vi.fn().mockResolvedValue(undefined),
   execFile: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('node:fs', () => ({ readFileSync: vi.fn() }))
+
 const { execFile } = await import('../../operations/exec.js')
+const { readFileSync } = await import('node:fs')
 const { installPackages } = await import('../../operations/installPackages.js')
 
+/** The EVM template ships a postinstall script; the Canton one does not. */
+function mockPackageJson(scripts: Record<string, string> = { postinstall: 'wagmi generate' }) {
+  vi.mocked(readFileSync).mockReturnValue(JSON.stringify({ scripts }))
+}
+
 const evmFeatures = stackDefinitions.evm.features
+const cantonFeatures = stackDefinitions.canton.features
 
 describe('installPackages — evm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPackageJson()
   })
 
   describe('full mode', () => {
@@ -39,7 +49,7 @@ describe('installPackages — evm', () => {
 
   describe('custom mode — all features selected', () => {
     it('runs pnpm install when no packages to remove', async () => {
-      const allFeatures = Object.keys(evmFeatures)
+      const allFeatures = getFeatureNames('evm')
       await installPackages('evm', '/project/my_app', 'custom', allFeatures)
 
       expect(execFile).toHaveBeenCalledTimes(1)
@@ -153,7 +163,7 @@ describe('installPackages — evm', () => {
     })
 
     it('reports one step for custom mode with all features selected', async () => {
-      const allFeatures = Object.keys(evmFeatures)
+      const allFeatures = getFeatureNames('evm')
       const steps: string[] = []
       await installPackages('evm', '/project/my_app', 'custom', allFeatures, (step) =>
         steps.push(step),
@@ -171,6 +181,7 @@ describe('installPackages — evm', () => {
 describe('installPackages — canton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPackageJson({})
   })
 
   it('uses npm install for canton full mode', async () => {
@@ -179,10 +190,27 @@ describe('installPackages — canton', () => {
     expect(execFile).toHaveBeenCalledWith('npm', ['install'], { cwd: '/project/my_app' })
   })
 
-  it('uses npm install for canton custom mode (no packages to remove)', async () => {
-    await installPackages('canton', '/project/my_app', 'custom', ['counter', 'e2e'])
+  it('uses npm install for a canton selection that removes no packages', async () => {
+    await installPackages('canton', '/project/my_app', 'custom', getFeatureNames('canton'))
 
     expect(execFile).toHaveBeenCalledTimes(1)
     expect(execFile).toHaveBeenCalledWith('npm', ['install'], { cwd: '/project/my_app' })
+  })
+
+  it('uninstalls the pre-commit packages when that feature is dropped', async () => {
+    await installPackages('canton', '/project/my_app', 'custom', ['carpincho', 'llm'])
+
+    expect(execFile).toHaveBeenCalledWith(
+      'npm',
+      ['uninstall', ...cantonFeatures.precommit.packages],
+      { cwd: '/project/my_app' },
+    )
+  })
+
+  it('skips the postinstall script the canton template does not have', async () => {
+    await installPackages('canton', '/project/my_app', 'custom', ['carpincho', 'llm'])
+
+    expect(execFile).toHaveBeenCalledTimes(1)
+    expect(execFile).not.toHaveBeenCalledWith('npm', ['run', 'postinstall'], expect.anything())
   })
 })

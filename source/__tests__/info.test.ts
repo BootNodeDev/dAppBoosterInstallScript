@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { stackDefinitions, stackNames } from '../constants/config.js'
+import { getInstallationModes, stackDefinitions, stackNames } from '../constants/config.js'
 import { getInfoOutput } from '../info.js'
 
 describe('getInfoOutput — no filter', () => {
@@ -102,6 +102,17 @@ describe('getInfoOutput — no filter', () => {
   it('modes documents the default mode', () => {
     const output = JSON.parse(getInfoOutput())
     expect(output.modes).toHaveProperty('default')
+  })
+
+  it('lists the modes each stack accepts, so agents never send a rejected one', () => {
+    const output = JSON.parse(getInfoOutput())
+
+    for (const stack of stackNames) {
+      expect(output.stacks[stack].modes).toEqual(getInstallationModes(stack))
+    }
+
+    expect(output.stacks.evm.modes).not.toContain('default')
+    expect(output.stacks.canton.modes).toContain('default')
   })
 })
 

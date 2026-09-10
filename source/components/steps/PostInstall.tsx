@@ -3,8 +3,7 @@ import { Box, Text } from 'ink'
 import Link from 'ink-link'
 import type { FC } from 'react'
 import { type FeatureName, getStackConfig, type Stack } from '../../constants/config.js'
-import type { InstallationType, MultiSelectItem } from '../../types/types.js'
-import { isFeatureSelected, resolveModeFeatures } from '../../utils/utils.js'
+import { isFeatureSelected } from '../../utils/utils.js'
 import Divider from '../Divider.js'
 
 const SubgraphWarningMessage: FC = () => (
@@ -31,8 +30,8 @@ const SubgraphWarningMessage: FC = () => (
     <Box flexDirection={'column'}>
       <Text>
         1- Provide your own API key for <Text color={'gray'}>PUBLIC_SUBGRAPHS_API_KEY</Text> in{' '}
-        <Text color={'gray'}>.env.local</Text> You can get one{' '}
-        <Link url="https://thegraph.com/studio/apikeys">here</Link>
+        <Text color={'gray'}>.env.local</Text> You can get one from{' '}
+        <Link url="https://thegraph.com/studio/apikeys">The Graph Studio</Link>
       </Text>
       <Text>
         2- After the API key is correctly configured, run{' '}
@@ -40,8 +39,11 @@ const SubgraphWarningMessage: FC = () => (
       </Text>
     </Box>
     <Text>
-      More configuration info in{' '}
-      <Link url={'https://docs.dappbooster.dev/introduction/getting-started'}>the docs</Link>.
+      More configuration info in the{' '}
+      <Link url={'https://docs.dappbooster.dev/introduction/getting-started'}>
+        dAppBooster getting-started guide
+      </Link>
+      .
     </Text>
     <Text
       color={'yellow'}
@@ -73,12 +75,14 @@ const EvmPostInstallMessage: FC<{ projectName: string }> = ({ projectName }) => 
         - Check out <Text color={'gray'}>.env.local</Text> for more configurations.
       </Text>
       <Text>
-        - Read <Link url="https://docs.dappbooster.dev">the docs</Link> to know more about{' '}
-        <Text color={'gray'}>dAppBooster</Text>!
+        - Read the <Link url="https://docs.dappbooster.dev">dAppBooster documentation</Link> to know
+        more.
       </Text>
       <Text>
-        - Report issues with this installer{' '}
-        <Link url="https://github.com/BootNodeDev/dAppBoosterInstallScript/issues">here</Link>
+        - Report issues with this installer on{' '}
+        <Link url="https://github.com/BootNodeDev/dAppBoosterInstallScript/issues">
+          the installer issue tracker
+        </Link>
       </Text>
     </Box>
   </Box>
@@ -152,17 +156,11 @@ const CantonPostInstallMessage: FC<{
 
 interface Props {
   stack: Stack
-  installationConfig: {
-    installationType: InstallationType | undefined
-    selectedFeatures?: Array<MultiSelectItem>
-  }
+  features: FeatureName[]
   projectName: string
 }
 
-const PostInstall: FC<Props> = ({ stack, installationConfig, projectName }) => {
-  const { selectedFeatures, installationType } = installationConfig
-  const selectedNames = selectedFeatures?.map((f) => f.value as FeatureName) ?? []
-  const features = resolveModeFeatures(stack, installationType ?? 'full', selectedNames)
+const PostInstall: FC<Props> = ({ stack, features, projectName }) => {
   const stackLabel = getStackConfig(stack).label
 
   return (
@@ -172,10 +170,7 @@ const PostInstall: FC<Props> = ({ stack, installationConfig, projectName }) => {
         flexDirection={'column'}
         rowGap={2}
       >
-        {stack === 'evm' &&
-          (isFeatureSelected('subgraph', features) || installationType === 'full') && (
-            <SubgraphWarningMessage />
-          )}
+        {stack === 'evm' && isFeatureSelected('subgraph', features) && <SubgraphWarningMessage />}
         {stack === 'evm' && <EvmPostInstallMessage projectName={projectName} />}
         {stack === 'canton' && (
           <CantonPostInstallMessage

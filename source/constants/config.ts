@@ -7,19 +7,37 @@ export type RefType = 'tag-latest' | 'branch'
 
 export type PackageManager = 'pnpm' | 'npm'
 
-export type FeatureName = string
+const featureNamesByStack = {
+  evm: ['demo', 'subgraph', 'typedoc', 'vocs', 'husky'],
+  canton: ['github', 'precommit', 'carpincho', 'llm'],
+} as const satisfies Record<Stack, readonly string[]>
 
+/**
+ * Every feature name the stacks define. Listing the names here lets the config refer to them by
+ * type (`requires`, `ifFeature`) without a circular reference; the `satisfies` clause on
+ * `stackDefinitions` fails to compile if this list and the feature maps disagree.
+ */
+export type FeatureName = (typeof featureNamesByStack)[Stack][number]
+
+/**
+ * A single optional feature of a stack.
+ *
+ * @property packages - Dependencies the package manager removes (`pnpm remove` / `npm uninstall`)
+ * when the feature is deselected, so package.json and the lockfile stay in step.
+ * @property paths - Relative files and directories deleted when the feature is deselected.
+ * Removed directories also drive script stripping in cleanupFiles.
+ * @property scripts - package.json script names deleted when the feature is deselected.
+ * @property requires - Other features this one depends on. Selecting it pulls these in;
+ * deselecting one of these cascades this feature out. Resolved transitively (see utils.ts).
+ */
 export type FeatureDefinition = {
   description: string
   label: string
   packages: string[]
   default: boolean
   postInstall?: string[]
-  // Relative paths removed when the feature is deselected (custom mode). Directory paths also
-  // drive package.json script stripping via scriptTargetsRemovedDir in cleanupFiles.
   paths?: string[]
-  // Other features this one depends on. Selecting it pulls these in; deselecting one of these
-  // cascades this feature out. One-directional and resolved transitively (see utils.ts).
+  scripts?: string[]
   requires?: FeatureName[]
 }
 
@@ -29,6 +47,22 @@ export type EnvFile = {
   ifFeature?: FeatureName
 }
 
+/** A labelled group of paths cleanup removes whatever the user picked. */
+export type CleanupGroup = {
+  label: string
+  paths: string[]
+}
+
+/**
+ * A stack the installer can scaffold.
+ *
+ * @property postInstall - Guidance shown for every scaffold of this stack, in any mode.
+ * @property hygiene - Paths that belong to the template's own repository, removed from every
+ * scaffold before the per-feature cleanup runs.
+ * @property staging - The template's staging directory, holding the replacement files a
+ * deselected feature restores. Removed once cleanup is finished with it.
+ * @property initialCommit - Whether to commit the finished scaffold as the project's baseline.
+ */
 export type StackConfig = {
   label: string
   description: string
@@ -37,13 +71,21 @@ export type StackConfig = {
   ref?: string
   packageManager: PackageManager
   removeAfterClone: string[]
-  // Stack-level post-install guidance shown for every scaffold of this stack (any mode).
   postInstall?: string[]
+  hygiene?: CleanupGroup
+  staging?: CleanupGroup
+  initialCommit?: boolean
   envFiles: EnvFile[]
-  features: Record<FeatureName, FeatureDefinition>
+  features: Record<string, FeatureDefinition>
 }
 
-export const stackDefinitions: Record<Stack, StackConfig> = {
+const huskyPackages = ['husky', 'lint-staged', '@commitlint/cli', '@commitlint/config-conventional']
+
+const huskyPaths = ['.husky', '.lintstagedrc.mjs', 'commitlint.config.js']
+
+const huskyScripts = ['prepare', 'commitlint', 'commitlint:check', 'commitlint:ci']
+
+export const stackDefinitions = {
   evm: {
     label: 'EVM',
     description: 'dAppBooster for EVM chains (Ethereum, Polygon, Base, …)',
@@ -51,6 +93,14 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
     refType: 'tag-latest',
     packageManager: 'pnpm',
     removeAfterClone: [],
+    hygiene: {
+      label: 'Repository metadata',
+      paths: ['.claude', 'AGENTS.md', 'CLAUDE.md', 'architecture.md', '.github'],
+    },
+    staging: {
+      label: 'Install script',
+      paths: ['.install-files'],
+    },
     envFiles: [{ from: '.env.example', to: '.env.local' }],
     features: {
       demo: {
@@ -58,6 +108,7 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
         label: 'Component Demos',
         packages: [],
         default: true,
+        paths: ['src/components/pageComponents/home'],
       },
       subgraph: {
         description: 'TheGraph subgraph integration',
@@ -70,6 +121,8 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
           '@graphql-typed-document-node/core',
         ],
         default: true,
+        paths: ['src/subgraphs'],
+        scripts: ['subgraph-codegen'],
         postInstall: [
           'Provide your own API key for PUBLIC_SUBGRAPHS_API_KEY in .env.local',
           'Run pnpm subgraph-codegen from the project folder',
@@ -86,18 +139,24 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
           'typedoc-plugin-rename-defaults',
         ],
         default: true,
+        paths: ['typedoc.json'],
+        scripts: ['typedoc:build'],
       },
       vocs: {
         description: 'Vocs documentation site',
         label: 'Vocs documentation support',
         packages: ['vocs'],
         default: true,
+        paths: ['vocs.config.ts', 'docs'],
+        scripts: ['docs:build', 'docs:dev', 'docs:preview'],
       },
       husky: {
         description: 'Git hooks with Husky, lint-staged, and commitlint',
         label: 'Husky Git hooks support',
-        packages: ['husky', 'lint-staged', '@commitlint/cli', '@commitlint/config-conventional'],
+        packages: huskyPackages,
         default: true,
+        paths: huskyPaths,
+        scripts: huskyScripts,
       },
     },
   },
@@ -109,6 +168,7 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
     ref: 'main',
     packageManager: 'npm',
     removeAfterClone: [],
+    initialCommit: true,
     postInstall: [
       'Review canton-barebones/.env (created from the example)',
       'Run ./scripts/dev-stack.sh up to bring up the whole local stack in one command — Docker must be running (run ./scripts/dev-stack.sh with no arguments for an interactive menu)',
@@ -134,9 +194,10 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
       precommit: {
         description: 'Pre-commit hooks (Husky, lint-staged, commitlint)',
         label: 'Pre-commit hooks',
-        packages: [],
+        packages: huskyPackages,
         default: false,
-        paths: ['.husky', '.lintstagedrc.mjs', 'commitlint.config.js'],
+        paths: huskyPaths,
+        scripts: huskyScripts,
       },
       carpincho: {
         description: 'Carpincho browser-extension wallet (frontend + build tooling)',
@@ -170,6 +231,10 @@ export const stackDefinitions: Record<Stack, StackConfig> = {
       },
     },
   },
+} satisfies {
+  [S in Stack]: StackConfig & {
+    features: Record<(typeof featureNamesByStack)[S][number], FeatureDefinition>
+  }
 }
 
 export const stackNames = Object.keys(stackDefinitions) as Stack[]
@@ -181,17 +246,22 @@ function envOverride(stack: Stack, suffix: 'REPO_URL' | 'REF'): string | undefin
 }
 
 export function getStackConfig(stack: Stack): StackConfig {
-  const base = stackDefinitions[stack]
+  const base: StackConfig = stackDefinitions[stack]
   const repoUrl = envOverride(stack, 'REPO_URL') ?? base.repoUrl
   const ref = envOverride(stack, 'REF') ?? base.ref
   return { ...base, repoUrl, ref }
 }
 
-export function getFeatureNames(stack: Stack): FeatureName[] {
-  return Object.keys(stackDefinitions[stack].features)
+/** A stack's feature map as entries. The keys are feature names by construction. */
+export function getFeatureEntries(stack: Stack): Array<[FeatureName, FeatureDefinition]> {
+  return Object.entries(stackDefinitions[stack].features) as Array<[FeatureName, FeatureDefinition]>
 }
 
-export function isFeatureNameValid(stack: Stack, name: string): boolean {
+export function getFeatureNames(stack: Stack): FeatureName[] {
+  return getFeatureEntries(stack).map(([name]) => name)
+}
+
+export function isFeatureNameValid(stack: Stack, name: string): name is FeatureName {
   return name in stackDefinitions[stack].features
 }
 
@@ -200,14 +270,16 @@ export function isStackName(name: string): name is Stack {
 }
 
 export function getDefaultFeatureNames(stack: Stack): FeatureName[] {
-  return Object.entries(stackDefinitions[stack].features)
+  return getFeatureEntries(stack)
     .filter(([, definition]) => definition.default)
     .map(([name]) => name)
 }
 
-// Available installation modes per stack. `default` (keep only default:true features) is offered
-// only when the stack has at least one opt-out (default:false) feature; otherwise it would be
-// identical to `full`. Today that means Canton only (EVM's features are all default:true).
+/**
+ * Installation modes a stack offers. `default` (keep only the `default: true` features) is offered
+ * only when the stack has at least one opt-out feature; otherwise it would be identical to `full`.
+ * Today that means Canton only, since every EVM feature is on by default.
+ */
 export function getInstallationModes(stack: Stack): InstallationType[] {
   const hasOptOutFeature = getDefaultFeatureNames(stack).length < getFeatureNames(stack).length
   return hasOptOutFeature ? ['default', 'full', 'custom'] : ['full', 'custom']

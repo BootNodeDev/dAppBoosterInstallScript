@@ -2,12 +2,20 @@ import process from 'node:process'
 import {
   type FeatureName,
   getFeatureNames,
+  getInstallationModes,
+  getStackConfig,
   isFeatureNameValid,
   isStackName,
   type Stack,
   stackNames,
 } from './constants/config.js'
-import { cleanupFiles, cloneRepo, createEnvFile, installPackages } from './operations/index.js'
+import {
+  cleanupFiles,
+  cloneRepo,
+  createEnvFile,
+  createInitialCommit,
+  installPackages,
+} from './operations/index.js'
 import { beginInstall, completeInstall } from './operations/installGuard.js'
 import type { InstallationType } from './types/types.js'
 import {
@@ -28,19 +36,26 @@ type SuccessResult = {
   postInstall: string[]
 }
 
-type ErrorResult = {
-  success: false
-  error: string
+/** An error already written to stdout as JSON, so the caller must not report it a second time. */
+export class ReportedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ReportedError'
+  }
+}
+
+/** Writes the failure envelope agents and CI parse, then stops the run. */
+export function reportFailure(error: string): ReportedError {
+  console.log(JSON.stringify({ success: false, error }, null, 2))
+  process.exitCode = 1
+  return new ReportedError(error)
 }
 
 function fail(error: string): never {
-  const result: ErrorResult = { success: false, error }
-  console.log(JSON.stringify(result, null, 2))
-  process.exitCode = 1
-  throw new Error(error)
+  throw reportFailure(error)
 }
 
-function parseFeatures(featuresFlag: string | undefined): FeatureName[] {
+function parseFeatures(featuresFlag: string | undefined): string[] {
   if (!featuresFlag) {
     return []
   }
@@ -90,8 +105,12 @@ function validate(flags: { stack?: string; name?: string; mode?: string; feature
     fail("Invalid mode: must be 'full', 'default', or 'custom'")
   }
 
-  if (flags.mode === 'default' && stack === 'evm') {
-    fail("Invalid mode: 'default' is only available for the canton stack")
+  const modes = getInstallationModes(stack)
+
+  if (!modes.includes(flags.mode)) {
+    fail(
+      `Invalid mode: '${flags.mode}' is not available for the ${stack} stack. Valid modes: ${modes.join(', ')}`,
+    )
   }
 
   if (flags.mode === 'full' || flags.mode === 'default') {
@@ -111,13 +130,22 @@ function validate(flags: { stack?: string; name?: string; mode?: string; feature
     fail('--mode custom requires --features. Use --info to see available features.')
   }
 
-  const features = parseFeatures(flags.features)
+  const requested = parseFeatures(flags.features)
 
-  if (features.length === 0) {
+  if (requested.length === 0) {
     fail('--features value is empty. Use --info to see available features.')
   }
 
-  const invalidFeatures = features.filter((f) => !isFeatureNameValid(stack, f))
+  const features: FeatureName[] = []
+  const invalidFeatures: string[] = []
+
+  for (const name of requested) {
+    if (isFeatureNameValid(stack, name)) {
+      features.push(name)
+    } else {
+      invalidFeatures.push(name)
+    }
+  }
 
   if (invalidFeatures.length > 0) {
     const validNames = getFeatureNames(stack).join(', ')
@@ -149,13 +177,16 @@ export async function runNonInteractive(flags: {
   const projectFolder = getProjectFolder(name)
 
   try {
-    // From here on a project directory exists on disk; an interrupt removes the partial scaffold.
     beginInstall(projectFolder)
 
     await cloneRepo(stack, name)
+    await cleanupFiles(stack, projectFolder, mode, features)
     await createEnvFile(stack, projectFolder, features)
     await installPackages(stack, projectFolder, mode, features)
-    await cleanupFiles(stack, projectFolder, mode, features)
+
+    if (getStackConfig(stack).initialCommit) {
+      await createInitialCommit(projectFolder)
+    }
 
     completeInstall()
 
@@ -166,7 +197,7 @@ export async function runNonInteractive(flags: {
       mode,
       features,
       path: projectFolder,
-      postInstall: getPostInstallMessages(stack, mode, features),
+      postInstall: getPostInstallMessages(stack, features),
     }
 
     console.log(JSON.stringify(result, null, 2))

@@ -23,8 +23,10 @@ type MultiSelectProps<T> = {
   onUnselect?: (unselectedItem: Item<T>) => void
   onSubmit?: (selectedItems: Item<T>[]) => void
   onHighlight?: (highlightedItem: Item<T>) => void
-  // Optional hook to post-process a toggle (e.g. enforce feature dependencies). Receives the
-  // naive post-toggle selection plus the item that was toggled and the action taken.
+  /**
+   * Post-processes a toggle, for instance to enforce feature dependencies. Receives the plain
+   * post-toggle selection, the item that was toggled, and the action taken.
+   */
   transformSelection?: (
     nextSelected: Item<T>[],
     toggledItem: Item<T>,
@@ -54,13 +56,16 @@ const MultiSelect = <T,>({
 
   const slicedItems = hasLimit ? items.slice(0, limit) : items
 
-  const includesItems = useCallback((item: Item<T>, selectedItems: Item<T>[]) => {
-    return (
-      selectedItems.filter(
-        (selectedItem) => selectedItem.value === item.value && selectedItem.label === item.label,
-      ).length > 0
-    )
-  }, [])
+  const isSameItem = useCallback(
+    (one: Item<T>, other: Item<T>) => one.value === other.value && one.label === other.label,
+    [],
+  )
+
+  const includesItems = useCallback(
+    (item: Item<T>, selectedItems: Item<T>[]) =>
+      selectedItems.some((selectedItem) => isSameItem(selectedItem, item)),
+    [isSameItem],
+  )
 
   const handleSelect = useCallback(
     (item: Item<T>) => {
@@ -68,10 +73,7 @@ const MultiSelect = <T,>({
       const action = isCurrentlySelected ? 'unselect' : 'select'
 
       const naiveSelection = isCurrentlySelected
-        ? selectedItems.filter(
-            (selectedItem) =>
-              selectedItem.value !== item.value && selectedItem.label !== item.label,
-          )
+        ? selectedItems.filter((selectedItem) => !isSameItem(selectedItem, item))
         : [...selectedItems, item]
 
       const nextSelection = transformSelection
@@ -86,7 +88,7 @@ const MultiSelect = <T,>({
         onSelect(item)
       }
     },
-    [selectedItems, onSelect, onUnselect, includesItems, transformSelection],
+    [selectedItems, onSelect, onUnselect, includesItems, isSameItem, transformSelection],
   )
 
   const handleSubmit = useCallback(() => {

@@ -1,10 +1,9 @@
-import { Text } from 'ink'
-import { type FC, useCallback, useEffect, useState } from 'react'
+import { type FC, useCallback } from 'react'
 import type { Stack } from '../../../constants/config.js'
 import { cloneRepo } from '../../../operations/index.js'
 import { beginInstall } from '../../../operations/installGuard.js'
-import { deriveStepDisplay, getProjectFolder } from '../../../utils/utils.js'
-import Divider from '../../Divider.js'
+import { getProjectFolder } from '../../../utils/utils.js'
+import StepProgress from '../StepProgress.js'
 
 interface Props {
   stack: Stack
@@ -13,51 +12,21 @@ interface Props {
 }
 
 const CloneRepo: FC<Props> = ({ stack, projectName, onCompletion }) => {
-  const [steps, setSteps] = useState<string[]>([])
-  const [status, setStatus] = useState<'running' | 'done' | 'error'>('running')
-  const [errorMessage, setErrorMessage] = useState('')
-
-  const handleProgress = useCallback((step: string) => {
-    setSteps((prev) => [...prev, step])
-  }, [])
-
-  useEffect(() => {
-    // Disk work starts here, so arm the interrupt guard before cloning.
-    beginInstall(getProjectFolder(projectName))
-
-    cloneRepo(stack, projectName, handleProgress)
-      .then(() => {
-        setStatus('done')
-        onCompletion()
-      })
-      .catch((error: unknown) => {
-        setStatus('error')
-        setErrorMessage(error instanceof Error ? error.message : String(error))
-      })
-  }, [stack, projectName, onCompletion, handleProgress])
-
-  const { completedSteps, currentStep, failedStep } = deriveStepDisplay(steps, status)
+  const run = useCallback(
+    async (onProgress: (step: string) => void) => {
+      beginInstall(getProjectFolder(projectName))
+      await cloneRepo(stack, projectName, onProgress)
+    },
+    [stack, projectName],
+  )
 
   return (
-    <>
-      <Divider title={'Git tasks'} />
-      {completedSteps.map((step) => (
-        <Text key={step}>
-          <Text color={'green'}>{'✔'}</Text> {step}
-        </Text>
-      ))}
-      {currentStep && (
-        <Text>
-          <Text dimColor>{'○'}</Text> {currentStep} <Text dimColor>Working...</Text>
-        </Text>
-      )}
-      {failedStep && (
-        <Text>
-          <Text color={'red'}>{'✗'}</Text> {failedStep} <Text color={'red'}>Error</Text>
-        </Text>
-      )}
-      {status === 'error' && <Text color={'red'}>Failed to clone: {errorMessage}</Text>}
-    </>
+    <StepProgress
+      title={'Git tasks'}
+      errorLabel={'Failed to clone'}
+      run={run}
+      onCompletion={onCompletion}
+    />
   )
 }
 

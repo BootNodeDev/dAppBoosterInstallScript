@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { getDefaultFeatureNames, getFeatureNames, stackDefinitions } from '../constants/config.js'
+import {
+  getDefaultFeatureNames,
+  getFeatureEntries,
+  getFeatureNames,
+  stackDefinitions,
+  stackNames,
+} from '../constants/config.js'
 import {
   applyFeatureToggle,
   deriveStepDisplay,
@@ -67,7 +73,7 @@ describe('isFeatureSelected', () => {
 
 describe('getPackagesToRemove — evm', () => {
   it('returns empty when all features selected', () => {
-    const allFeatures = Object.keys(evmFeatures)
+    const allFeatures = getFeatureNames('evm')
     expect(getPackagesToRemove('evm', allFeatures)).toEqual([])
   })
 
@@ -98,43 +104,43 @@ describe('getPackagesToRemove — evm', () => {
 
 describe('getPackagesToRemove — canton', () => {
   it('returns empty when all canton features selected', () => {
-    const allFeatures = Object.keys(cantonFeatures)
+    const allFeatures = getFeatureNames('canton')
     expect(getPackagesToRemove('canton', allFeatures)).toEqual([])
   })
 
-  it('returns empty even with none selected (canton features carry no packages)', () => {
-    expect(getPackagesToRemove('canton', [])).toEqual([])
+  it('returns the pre-commit packages when that feature is dropped', () => {
+    expect(getPackagesToRemove('canton', [])).toEqual(cantonFeatures.precommit.packages)
   })
 })
 
 describe('getPostInstallMessages', () => {
-  it('returns all evm messages for full mode', () => {
-    const result = getPostInstallMessages('evm', 'full', [])
+  it('returns every evm message for a scaffold that kept every feature', () => {
+    const result = getPostInstallMessages('evm', getFeatureNames('evm'))
 
-    const allMessages = Object.values(evmFeatures).flatMap((def) => def.postInstall ?? [])
+    const allMessages = getFeatureEntries('evm').flatMap(([, def]) => def.postInstall ?? [])
     expect(result).toEqual(allMessages)
   })
 
-  it('returns only selected feature messages for custom mode', () => {
-    const result = getPostInstallMessages('evm', 'custom', ['subgraph'])
+  it('returns only the kept features messages', () => {
+    const result = getPostInstallMessages('evm', ['subgraph'])
 
     expect(result).toEqual(evmFeatures.subgraph.postInstall)
   })
 
-  it('returns empty for custom mode with no postInstall features', () => {
-    const result = getPostInstallMessages('evm', 'custom', ['demo'])
+  it('returns empty when the kept features carry no guidance', () => {
+    const result = getPostInstallMessages('evm', ['demo'])
 
     expect(result).toEqual([])
   })
 
-  it('returns empty for custom mode with no features', () => {
-    const result = getPostInstallMessages('evm', 'custom', [])
+  it('returns empty when nothing was kept', () => {
+    const result = getPostInstallMessages('evm', [])
 
     expect(result).toEqual([])
   })
 
-  it('returns canton stack-level guidance plus carpincho messages for full mode', () => {
-    const result = getPostInstallMessages('canton', 'full', [])
+  it('leads canton guidance with the stack-level steps, then the kept features', () => {
+    const result = getPostInstallMessages('canton', getFeatureNames('canton'))
 
     expect(result).toEqual([
       ...(stackDefinitions.canton.postInstall ?? []),
@@ -142,8 +148,8 @@ describe('getPostInstallMessages', () => {
     ])
   })
 
-  it('returns canton stack-level guidance plus carpincho messages for default mode', () => {
-    const result = getPostInstallMessages('canton', 'default', [])
+  it('returns the stack-level guidance for the recommended canton plan', () => {
+    const result = getPostInstallMessages('canton', resolveModeFeatures('canton', 'default'))
 
     expect(result).toEqual([
       ...(stackDefinitions.canton.postInstall ?? []),
@@ -151,8 +157,8 @@ describe('getPostInstallMessages', () => {
     ])
   })
 
-  it('returns only stack-level guidance for a custom plan without carpincho', () => {
-    const result = getPostInstallMessages('canton', 'custom', ['llm'])
+  it('returns only stack-level guidance for a plan without carpincho', () => {
+    const result = getPostInstallMessages('canton', ['llm'])
 
     expect(result).toEqual(stackDefinitions.canton.postInstall ?? [])
   })
@@ -209,6 +215,14 @@ describe('resolveModeFeatures', () => {
 
   it('returns the default:true set for default mode', () => {
     expect(resolveModeFeatures('canton', 'default')).toEqual(getDefaultFeatureNames('canton'))
+  })
+
+  it('resolves requires for default mode too, not only for custom', () => {
+    for (const stack of stackNames) {
+      expect(resolveModeFeatures(stack, 'default')).toEqual(
+        resolveSelectedFeatures(stack, getDefaultFeatureNames(stack)),
+      )
+    }
   })
 
   it('resolves the custom selection (no requires today, so identity in config order)', () => {

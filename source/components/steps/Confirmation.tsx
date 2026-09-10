@@ -17,8 +17,10 @@ const confirmItems: Array<ConfirmItem> = [
   { label: 'No, start over', value: 'no' },
 ]
 
-// Last side-effect-free step: nothing has touched the disk yet. Confirming starts the operations;
-// cancelling loops back to re-answer the questions.
+/**
+ * Last step before anything touches the disk. Confirming starts the operations; cancelling loops
+ * back to the questions.
+ */
 const Confirmation: FC<Props> = ({ summary, onConfirm, onCancel }) => {
   const [confirmed, setConfirmed] = useState(false)
 

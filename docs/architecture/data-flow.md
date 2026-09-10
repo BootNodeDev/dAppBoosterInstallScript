@@ -29,7 +29,7 @@ default  →  dynamic import ink + App (preselectedStack passed if resolved) →
 3. `--mode` required
 4. `--name` matches `/^[a-zA-Z0-9_]+$/`
 5. `--mode` is `full`, `default`, or `custom`
-6. `default` mode is rejected for the `evm` stack (Canton-only)
+6. `--mode` is one of the modes the stack offers, per `getInstallationModes(stack)` — the same list `--info` reports (so `default` is rejected for `evm`)
 7. Full / default mode: skip to step 11 (features come from the mode, `--features` ignored — `full` = all, `default` = the `default: true` set)
 8. `--features` required for custom mode
 9. Parsed features list is non-empty (rejects trailing commas, whitespace-only entries)
@@ -42,9 +42,11 @@ with `resolveSelectedFeatures` so any feature dependencies are pulled in before 
 and before the result is reported.
 
 **Non-interactive execution order:**
-`cloneRepo` → `createEnvFile` → `installPackages` → `cleanupFiles` → success JSON
+`cloneRepo` → `cleanupFiles` → `createEnvFile` → `installPackages` → `createInitialCommit` (stacks whose config sets `initialCommit`) → success JSON
 
-Any error produces `{ "success": false, "error": "..." }` and exit code 1. Errors set `process.exitCode = 1` and throw rather than calling `process.exit()` directly, ensuring stdout flushes before the process terminates when piped.
+Cleanup runs **before** the install on purpose: it prunes package.json, so the package manager resolves the pruned manifest once and the lockfile it writes matches. The reverse order left the generated project with a lockfile listing packages its package.json no longer had, which fails `npm ci`. The baseline commit runs last, so it captures that lockfile.
+
+Any error produces `{ "success": false, "error": "..." }` and exit code 1. `reportFailure` is the only place that prints it: it sets `process.exitCode = 1` and returns a `ReportedError`, which `fail()` throws. `cli.tsx` ignores that error type and reports anything else. Nothing calls `process.exit()` directly, so stdout flushes before the process terminates when piped.
 
 **Success output:**
 ```json
@@ -76,8 +78,10 @@ All questions come **before** any disk work, mirroring the non-interactive path 
 
 ```
 Questions (no disk):  ProjectName → [StackSelection] → InstallationMode → OptionalPackages (custom only) → Confirmation
-Operations (disk):    CloneRepo → Install → FileCleanup → PostInstall
+Operations (disk):    CloneRepo → FileCleanup → Install → PostInstall
 ```
+
+Each operation step renders through the shared `StepProgress` component, which owns the step list, the running/done/error display and the failure path (`abortInstall`), so every step reports a failure the same way. `Install` covers env files, the package install and the baseline commit, and calls `completeInstall` when the scaffold is finished.
 
 `Confirmation` shows a one-line plan summary (`describeInstallPlan`) and is the last side-effect-free step. **Yes** starts the operations; **No** loops back to the first question (state is reset and the question steps are re-keyed so they re-mount fresh). When `cli.tsx` resolves a stack flag, it passes `preselectedStack` to `<App>`, which skips the `StackSelection` step.
 

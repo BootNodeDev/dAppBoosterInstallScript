@@ -1,13 +1,21 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import process from 'node:process'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { beginInstall, completeInstall, removeActiveProject } = await import(
+vi.mock('node:fs', () => ({ rmSync: vi.fn() }))
+
+const { rmSync } = await import('node:fs')
+const { abortInstall, beginInstall, completeInstall, removeActiveProject } = await import(
   '../../operations/installGuard.js'
 )
 
 describe('installGuard', () => {
-  // Clear any active state left over from a previous test (module-level singleton).
   beforeEach(() => {
+    vi.clearAllMocks()
     completeInstall()
+  })
+
+  afterEach(() => {
+    process.exitCode = undefined
   })
 
   it('removes the active project folder when an install is in progress', () => {
@@ -55,5 +63,26 @@ describe('installGuard', () => {
     removeActiveProject(rm)
 
     expect(rm).toHaveBeenCalledWith('/tmp/b', { recursive: true, force: true })
+  })
+
+  describe('abortInstall', () => {
+    it('removes the partial project and reports failure to the shell', () => {
+      beginInstall('/tmp/proj')
+
+      abortInstall()
+
+      expect(rmSync).toHaveBeenCalledWith('/tmp/proj', { recursive: true, force: true })
+      expect(process.exitCode).toBe(1)
+    })
+
+    it('still reports failure once the scaffold is complete', () => {
+      beginInstall('/tmp/proj')
+      completeInstall()
+
+      abortInstall()
+
+      expect(rmSync).not.toHaveBeenCalled()
+      expect(process.exitCode).toBe(1)
+    })
   })
 })

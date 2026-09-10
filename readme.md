@@ -27,7 +27,7 @@ Omit the flag to be prompted for the stack in the wizard. Jump to the [EVM stack
 
 ## Quick start (interactive)
 
-<img src="./demo.svg" width="600">
+<img src="./demo.svg" width="600" height="355" alt="Terminal recording of the dAppBooster wizard: choosing a stack, naming the project, picking an installation mode, then cloning and installing.">
 
 ```shell
 pnpm dlx dappbooster
@@ -50,6 +50,9 @@ Discover stacks and features first, then install:
 pnpm dlx dappbooster --info                  # all stacks + features as JSON
 pnpm dlx dappbooster --info --stack canton   # filter to one stack (or --info --canton)
 ```
+
+Each stack in that output carries a `modes` list. Send one of those: `default` is Canton-only, and
+asking for it on EVM is rejected.
 
 | Flag | Purpose |
 |---|---|
@@ -166,12 +169,18 @@ included build the extension with `npm run carpincho:build:extension` and load
 
 **What gets stripped:**
 
-- **EVM** always removes CI config (`.github`) and the husky/commitlint automation as hygiene.
+- **EVM** always removes the CI config (`.github`) and the agent docs (`.claude`, `AGENTS.md`,
+  `CLAUDE.md`, `architecture.md`), which belong to the template's own repository. Everything else
+  follows your feature selection: deselecting `husky` removes `.husky`, `.lintstagedrc.mjs`,
+  `commitlint.config.js`, the `prepare` and `commitlint` scripts, and the matching dependencies.
 - **Canton** treats `.github` and pre-commit hooks as optional features: `default` mode removes
   both; `full` keeps both; `custom` removes whichever you uncheck. Deselecting `carpincho` removes
   `carpincho-wallet/` and its scripts (`wallet:dev`, `carpincho:build:extension`); deselecting `llm`
   removes the agent docs. Removing `precommit` also strips the `prepare` script and the
   husky/lint-staged/commitlint dev-dependencies from the root `package.json`.
+- Cleanup runs before the install, so the package manager sees the pruned `package.json` and the
+  lockfile it writes matches it. The generated project passes `npm ci` / `pnpm install
+  --frozen-lockfile` from the first commit.
 - The Canton installer never deletes demo source (the `counter`/`sign-message` features) — that is
   user-controlled via the template's `dapp/frontend/README.md`.
 

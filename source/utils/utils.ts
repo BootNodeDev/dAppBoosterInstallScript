@@ -4,6 +4,7 @@ import process from 'node:process'
 import {
   type FeatureName,
   getDefaultFeatureNames,
+  getFeatureEntries,
   getFeatureNames,
   getStackConfig,
   type Stack,
@@ -34,7 +35,7 @@ export function isFeatureSelected(feature: FeatureName, selectedFeatures: Featur
 
 type FeatureToggleAction = 'select' | 'unselect'
 
-// Walks a feature's `requires` chain, adding every (transitive) requirement to `accumulator`.
+/** Walks a feature's `requires` chain, adding every transitive requirement to `accumulator`. */
 function collectRequiredFeatures(
   stack: Stack,
   feature: FeatureName,
@@ -46,14 +47,16 @@ function collectRequiredFeatures(
   }
 
   for (const required of definition.requires) {
-    if (!accumulator.has(required)) {
-      accumulator.add(required)
-      collectRequiredFeatures(stack, required, accumulator)
+    if (accumulator.has(required)) {
+      continue
     }
+
+    accumulator.add(required)
+    collectRequiredFeatures(stack, required, accumulator)
   }
 }
 
-// Features that depend (transitively) on `target` — removing `target` should remove these too.
+/** Features that depend on `target`, directly or through another one. They go when it goes. */
 function getDependentFeatures(stack: Stack, target: FeatureName): Set<FeatureName> {
   const dependents = new Set<FeatureName>()
 
@@ -68,7 +71,7 @@ function getDependentFeatures(stack: Stack, target: FeatureName): Set<FeatureNam
   return dependents
 }
 
-// Expands a selection to include every transitive requirement, returned in config order.
+/** Expands a selection to include every transitive requirement, returned in config order. */
 export function resolveSelectedFeatures(
   stack: Stack,
   selectedFeatures: FeatureName[],
@@ -81,8 +84,10 @@ export function resolveSelectedFeatures(
   return getFeatureNames(stack).filter((name) => resolved.has(name))
 }
 
-// Interactive toggle that keeps the selection dependency-consistent: selecting a feature pulls
-// its requirements in; unselecting one cascades its dependents out. Result is in config order.
+/**
+ * Interactive toggle that keeps the selection consistent: selecting a feature pulls its
+ * requirements in, unselecting one drops its dependents. Result is in config order.
+ */
 export function applyFeatureToggle(
   stack: Stack,
   selectedFeatures: FeatureName[],
@@ -101,8 +106,7 @@ export function applyFeatureToggle(
   )
 }
 
-// One-line summary of an install plan, shown on the interactive confirmation step before any disk
-// work begins.
+/** One-line summary of the plan, shown on the confirmation step before any disk work begins. */
 export function describeInstallPlan(
   stack: Stack,
   projectName: string,
@@ -125,29 +129,26 @@ export function describeInstallPlan(
 }
 
 export function getPackagesToRemove(stack: Stack, selectedFeatures: FeatureName[]): string[] {
-  const features = getStackConfig(stack).features
-  return Object.entries(features)
+  return getFeatureEntries(stack)
     .filter(([name]) => !selectedFeatures.includes(name))
-    .flatMap(([, def]) => def.packages)
+    .flatMap(([, definition]) => definition.packages)
 }
 
-export function getPostInstallMessages(
-  stack: Stack,
-  mode: InstallationType,
-  selectedFeatures: FeatureName[],
-): string[] {
+/** Post-install guidance for a scaffold: the stack's own, then that of each feature it kept. */
+export function getPostInstallMessages(stack: Stack, features: FeatureName[]): string[] {
   const config = getStackConfig(stack)
-  const features = config.features
-  const stackLevel = config.postInstall ?? []
 
-  const kept = resolveModeFeatures(stack, mode, selectedFeatures)
-  const featureMessages = kept.flatMap((name) => features[name]?.postInstall ?? [])
-  return [...stackLevel, ...featureMessages]
+  return [
+    ...(config.postInstall ?? []),
+    ...features.flatMap((name) => config.features[name]?.postInstall ?? []),
+  ]
 }
 
-// Resolves the kept-feature list for a mode: full → all, default → default:true set,
-// custom → the user's selection (transitive requires resolved). Shared by the non-interactive
-// path and the interactive Install/FileCleanup/PostInstall steps.
+/**
+ * The features a mode keeps: full → all of them, default → the ones on by default, custom → the
+ * user's own selection. Both selections come back with their `requires` resolved. Shared by the
+ * non-interactive path and the interactive steps.
+ */
 export function resolveModeFeatures(
   stack: Stack,
   mode: InstallationType,
@@ -158,7 +159,7 @@ export function resolveModeFeatures(
   }
 
   if (mode === 'default') {
-    return getDefaultFeatureNames(stack)
+    return resolveSelectedFeatures(stack, getDefaultFeatureNames(stack))
   }
 
   return resolveSelectedFeatures(stack, customSelection)

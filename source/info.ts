@@ -1,4 +1,11 @@
-import { type Stack, stackDefinitions, stackNames } from './constants/config.js'
+import {
+  getFeatureEntries,
+  getInstallationModes,
+  type Stack,
+  stackDefinitions,
+  stackNames,
+} from './constants/config.js'
+import type { InstallationType } from './types/types.js'
 
 type FeatureInfo = {
   description: string
@@ -11,6 +18,7 @@ type StackInfo = {
   label: string
   description: string
   packageManager: string
+  modes: InstallationType[]
   features: Record<string, FeatureInfo>
 }
 
@@ -21,14 +29,15 @@ function buildStackInfo(stack: Stack): StackInfo {
     label: config.label,
     description: config.description,
     packageManager: config.packageManager,
+    modes: getInstallationModes(stack),
     features: Object.fromEntries(
-      Object.entries(config.features).map(([name, def]) => [
+      getFeatureEntries(stack).map(([name, definition]) => [
         name,
         {
-          description: def.description,
-          default: def.default,
-          ...(def.postInstall ? { postInstall: def.postInstall } : {}),
-          ...(def.requires ? { requires: def.requires } : {}),
+          description: definition.description,
+          default: definition.default,
+          ...(definition.postInstall ? { postInstall: definition.postInstall } : {}),
+          ...(definition.requires ? { requires: definition.requires } : {}),
         },
       ]),
     ),
@@ -61,7 +70,8 @@ export function getInfoOutput(stackFilter?: string): string {
       stacks,
       modes: {
         full: 'Install all features',
-        default: 'Install the recommended set (Canton only; for EVM this equals full)',
+        default:
+          'Install the recommended set. Only for stacks that list it in their own "modes" — every other stack rejects it',
         custom: 'Choose features individually',
       },
     },

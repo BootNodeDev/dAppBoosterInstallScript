@@ -4,6 +4,11 @@ import { getStackConfig, type Stack } from '../constants/config.js'
 import { getProjectFolder } from '../utils/utils.js'
 import { exec, execFile } from './exec.js'
 
+/**
+ * Clones the stack's repository into `projectName`, then hands the user a fresh repository: the
+ * template's `.git` goes and `git init` runs in its place. The `tag-latest` path is the one place
+ * a shell is used, because picking the newest tag needs `$()` command substitution.
+ */
 export async function cloneRepo(
   stack: Stack,
   projectName: string,
@@ -37,7 +42,6 @@ export async function cloneRepo(
     await execFile('git', ['fetch', '--tags'], { cwd: projectFolder })
 
     onProgress?.('Checking out latest tag')
-    // Shell required for $() command substitution
     await exec('git checkout $(git describe --tags $(git rev-list --tags --max-count=1))', {
       cwd: projectFolder,
     })

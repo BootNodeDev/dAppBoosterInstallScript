@@ -3,7 +3,7 @@ import process from 'node:process'
 import meow from 'meow'
 import { isStackName, type Stack, stackNames } from './constants/config.js'
 import { getInfoOutput } from './info.js'
-import { runNonInteractive } from './nonInteractive.js'
+import { ReportedError, reportFailure, runNonInteractive } from './nonInteractive.js'
 
 const cli = meow(
   `
@@ -102,16 +102,14 @@ const cli = meow(
   },
 )
 
-function reportFlagError(error: string): void {
-  console.log(JSON.stringify({ success: false, error }, null, 2))
-  process.exitCode = 1
-}
+/** Either the stack the flags name, no stack at all, or the reason the flags make no sense. */
+type StackFlagResult = { stack?: Stack; error?: string }
 
 function resolveStackFlag(flags: {
   stack?: string
   canton: boolean
   evm: boolean
-}): Stack | undefined {
+}): StackFlagResult {
   const explicit: string[] = []
   if (flags.canton) {
     explicit.push('canton')
@@ -126,29 +124,27 @@ function resolveStackFlag(flags: {
   const unique = Array.from(new Set(explicit))
 
   if (unique.length > 1) {
-    reportFlagError(
-      `Conflicting stack flags: ${unique.join(', ')}. Pick exactly one of --canton, --evm, or --stack.`,
-    )
-    return undefined
+    return {
+      error: `Conflicting stack flags: ${unique.join(', ')}. Pick exactly one of --canton, --evm, or --stack.`,
+    }
   }
 
   const candidate = unique[0]
   if (candidate === undefined) {
-    return undefined
+    return {}
   }
 
   if (!isStackName(candidate)) {
-    reportFlagError(`Invalid stack: '${candidate}'. Valid stacks: ${stackNames.join(', ')}`)
-    return undefined
+    return { error: `Invalid stack: '${candidate}'. Valid stacks: ${stackNames.join(', ')}` }
   }
 
-  return candidate
+  return { stack: candidate }
 }
 
-const resolvedStack = resolveStackFlag(cli.flags)
+const { stack: resolvedStack, error: stackFlagError } = resolveStackFlag(cli.flags)
 
-if (process.exitCode === 1) {
-  // Stack-flag error already reported.
+if (stackFlagError) {
+  reportFailure(stackFlagError)
 } else if (cli.flags.info) {
   console.log(getInfoOutput(resolvedStack))
 } else if (cli.flags.nonInteractive || cli.flags.ni || !process.stdout.isTTY) {
@@ -158,12 +154,10 @@ if (process.exitCode === 1) {
     mode: cli.flags.mode,
     features: cli.flags.features,
   }).catch((error: unknown) => {
-    if (process.exitCode === 1) {
+    if (error instanceof ReportedError) {
       return
     }
-    const message = error instanceof Error ? error.message : String(error)
-    console.log(JSON.stringify({ success: false, error: message }, null, 2))
-    process.exitCode = 1
+    reportFailure(error instanceof Error ? error.message : String(error))
   })
 } else {
   const run = async () => {

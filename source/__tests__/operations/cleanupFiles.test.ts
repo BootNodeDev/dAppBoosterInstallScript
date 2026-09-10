@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { type FeatureName, getStackConfig } from '../../constants/config.js'
+import { type FeatureName, getFeatureEntries, getFeatureNames } from '../../constants/config.js'
 
 vi.mock('node:fs/promises', () => ({
   rm: vi.fn().mockResolvedValue(undefined),
@@ -12,22 +12,29 @@ vi.mock('../../operations/exec.js', () => ({
   execFile: vi.fn().mockResolvedValue(undefined),
 }))
 
+/**
+ * Directories in the two templates. Everything else the installer removes is a file, and only
+ * removed directories drive script stripping and workspaces pruning.
+ */
+const TEMPLATE_DIRECTORIES = [
+  '.claude',
+  '.github',
+  '.husky',
+  '.install-files',
+  'carpincho-wallet',
+  'docs',
+  'src/subgraphs',
+  'src/components/pageComponents/home',
+]
+
+function isTemplateDirectory(target: string): boolean {
+  return TEMPLATE_DIRECTORIES.some((dir) => target.endsWith(`/${dir}`))
+}
+
 vi.mock('node:fs', () => ({
-  readFileSync: vi.fn().mockReturnValue(
-    JSON.stringify({
-      scripts: {
-        dev: 'next dev',
-        build: 'next build',
-        'subgraph-codegen': 'graphql-codegen',
-        'typedoc:build': 'typedoc',
-        'docs:build': 'vocs build',
-        'docs:dev': 'vocs dev',
-        'docs:preview': 'vocs preview',
-        prepare: 'husky install',
-      },
-    }),
-  ),
+  readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
+  statSync: vi.fn((target: string) => ({ isDirectory: () => isTemplateDirectory(target) })),
 }))
 
 const { rm, mkdir, copyFile } = await import('node:fs/promises')
@@ -58,7 +65,7 @@ function getWrittenPackageJson(): Record<string, unknown> {
   return JSON.parse(lastCall[1] as string)
 }
 
-// Reads the workspaces field in either form (string[] or { packages }).
+/** Reads the workspaces field in either form: `string[]` or `{ packages }`. */
 function getWorkspacePackages(pkg: Record<string, unknown>): string[] {
   const workspaces = pkg.workspaces
 
@@ -70,16 +77,28 @@ function getWorkspacePackages(pkg: Record<string, unknown>): string[] {
   return Array.isArray(packages) ? (packages as string[]) : []
 }
 
-// Dirs removed for a selection, derived from config — keeps the invariant config-driven instead of
-// hardcoding carpincho-wallet.
+/**
+ * Directories removed for a selection, derived from the config so the assertion stays true when
+ * the feature list changes instead of hardcoding carpincho-wallet.
+ */
 function removedCantonDirs(selected: FeatureName[]): string[] {
-  return Object.entries(getStackConfig('canton').features)
+  return getFeatureEntries('canton')
     .filter(([name, definition]) => !selected.includes(name) && (definition.paths?.length ?? 0) > 0)
-    .flatMap(([, definition]) => definition.paths as string[])
+    .flatMap(([, definition]) => definition.paths ?? [])
 }
 
 function entryTargetsRemovedDir(entry: string, removedDirs: string[]): boolean {
   return removedDirs.some((dir) => entry === dir || entry.startsWith(`${dir}/`))
+}
+
+const ALL_EVM_FEATURES = getFeatureNames('evm')
+
+const EVM_DEV_DEPS = {
+  husky: '^9.1.7',
+  'lint-staged': '^17.0.4',
+  '@commitlint/cli': '^21.0.1',
+  '@commitlint/config-conventional': '^21.0.1',
+  vocs: '^1.0.0',
 }
 
 function mockEvmPackageJson() {
@@ -94,13 +113,17 @@ function mockEvmPackageJson() {
         'docs:dev': 'vocs dev',
         'docs:preview': 'vocs preview',
         prepare: 'husky install',
+        commitlint: 'commitlint --edit',
       },
+      devDependencies: EVM_DEV_DEPS,
     }),
   )
 }
 
-// Mirrors cn-dappbooster@main's root package.json, including the workspaces array — carpincho-wallet
-// is a workspace, so deselecting carpincho must prune it.
+/**
+ * Mirrors cn-dappbooster@main's root package.json. `carpincho-wallet` is a workspace, so
+ * deselecting carpincho has to prune it.
+ */
 const CANTON_WORKSPACES = [
   'canton-connect-kit',
   'carpincho-wallet',
@@ -139,7 +162,7 @@ const CANTON_DEV_DEPS = {
   '@commitlint/config-conventional': '^21.0.1',
 }
 
-// Pass { packages } to exercise the object form; defaults to the string[] form.
+/** Pass `{ packages }` to exercise the object form; defaults to the `string[]` form. */
 function mockCantonPackageJson(workspaces: unknown = CANTON_WORKSPACES) {
   vi.mocked(readFileSync).mockReturnValue(
     JSON.stringify({
@@ -157,47 +180,37 @@ describe('cleanupFiles — evm', () => {
   })
 
   describe('full mode', () => {
-    it('removes repository metadata, git automation files, and .install-files', async () => {
+    it('removes repository metadata and .install-files', async () => {
       await cleanupFiles('evm', '/project/my_app', 'full')
 
       const paths = getRmPaths()
       expect(paths).toContain(resolve('/project/my_app', '.install-files'))
       expect(paths).toContain(resolve('/project/my_app', '.github'))
       expect(paths).toContain(resolve('/project/my_app', '.claude'))
-      expect(paths).toContain(resolve('/project/my_app', '.husky'))
     })
 
-    it('patches package.json to remove tooling scripts', async () => {
+    it('keeps every feature, so package.json is left untouched', async () => {
       await cleanupFiles('evm', '/project/my_app', 'full')
 
-      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
-      expect(scripts.prepare).toBeUndefined()
-      expect(scripts.dev).toBe('next dev')
+      expect(getRmPaths()).not.toContain(resolve('/project/my_app', '.husky'))
+      expect(writeFileSync).not.toHaveBeenCalled()
       expect(execFile).not.toHaveBeenCalled()
     })
   })
 
   describe('custom mode — all features selected', () => {
-    it('removes hygiene files plus .install-files and patches package.json', async () => {
-      const allFeatures: FeatureName[] = ['demo', 'subgraph', 'typedoc', 'vocs', 'husky']
-      await cleanupFiles('evm', '/project/my_app', 'custom', allFeatures)
+    it('removes hygiene files plus .install-files', async () => {
+      await cleanupFiles('evm', '/project/my_app', 'custom', ALL_EVM_FEATURES)
 
       const paths = getRmPaths()
       expect(paths).toContain(resolve('/project/my_app', '.install-files'))
       expect(paths).toContain(resolve('/project/my_app', '.github'))
-      expect(writeFileSync).toHaveBeenCalled()
     })
 
-    it('preserves all scripts when all features selected', async () => {
-      const allFeatures: FeatureName[] = ['demo', 'subgraph', 'typedoc', 'vocs', 'husky']
-      await cleanupFiles('evm', '/project/my_app', 'custom', allFeatures)
+    it('leaves package.json alone when there is nothing to strip', async () => {
+      await cleanupFiles('evm', '/project/my_app', 'custom', ALL_EVM_FEATURES)
 
-      const pkg = getWrittenPackageJson()
-      const scripts = pkg.scripts as Record<string, unknown>
-      expect(scripts['subgraph-codegen']).toBe('graphql-codegen')
-      expect(scripts['typedoc:build']).toBe('typedoc')
-      expect(scripts['docs:build']).toBe('vocs build')
-      expect(scripts.prepare).toBeUndefined()
+      expect(writeFileSync).not.toHaveBeenCalled()
     })
   })
 
@@ -321,7 +334,7 @@ describe('cleanupFiles — evm', () => {
       expect(getRmPaths()).toContain(resolve('/project/my_app', 'commitlint.config.js'))
     })
 
-    it('removes prepare from package.json scripts', async () => {
+    it('removes the tooling scripts from package.json', async () => {
       await cleanupFiles('evm', '/project/my_app', 'custom', [
         'demo',
         'subgraph',
@@ -332,6 +345,32 @@ describe('cleanupFiles — evm', () => {
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
       expect(scripts.prepare).toBeUndefined()
+      expect(scripts.commitlint).toBeUndefined()
+    })
+
+    it('leaves the dependencies to the package manager', async () => {
+      await cleanupFiles('evm', '/project/my_app', 'custom', [
+        'demo',
+        'subgraph',
+        'typedoc',
+        'vocs',
+      ])
+
+      const devDeps = getWrittenPackageJson().devDependencies as Record<string, unknown>
+      expect(devDeps.husky).toBe('^9.1.7')
+      expect(execFile).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('custom mode — husky selected', () => {
+    it('keeps the husky files, scripts, and dependencies', async () => {
+      await cleanupFiles('evm', '/project/my_app', 'custom', ALL_EVM_FEATURES)
+
+      const paths = getRmPaths()
+      expect(paths).not.toContain(resolve('/project/my_app', '.husky'))
+      expect(paths).not.toContain(resolve('/project/my_app', '.lintstagedrc.mjs'))
+      expect(paths).not.toContain(resolve('/project/my_app', 'commitlint.config.js'))
+      expect(writeFileSync).not.toHaveBeenCalled()
     })
   })
 
@@ -381,15 +420,11 @@ describe('cleanupFiles — evm', () => {
   })
 
   describe('onProgress callback', () => {
-    it('reports only Install script for full mode', async () => {
+    it('reports the hygiene and install-script steps for full mode', async () => {
       const steps: string[] = []
       await cleanupFiles('evm', '/project/my_app', 'full', [], (step) => steps.push(step))
 
-      expect(steps).toEqual([
-        'Repository metadata',
-        'Git hooks and commit linting',
-        'Install script',
-      ])
+      expect(steps).toEqual(['Repository metadata', 'Install script'])
     })
 
     it('reports all feature cleanups when no features selected', async () => {
@@ -398,11 +433,11 @@ describe('cleanupFiles — evm', () => {
 
       expect(steps).toEqual([
         'Repository metadata',
-        'Git hooks and commit linting',
-        'Component demos',
-        'Subgraph',
-        'Typedoc',
-        'Vocs',
+        'Component Demos',
+        'Subgraph support',
+        'Typedoc documentation support',
+        'Vocs documentation support',
+        'Husky Git hooks support',
         'Install script',
       ])
     })
@@ -413,9 +448,9 @@ describe('cleanupFiles — evm', () => {
         steps.push(step),
       )
 
-      expect(steps).not.toContain('Component demos')
-      expect(steps).not.toContain('Subgraph')
-      expect(steps).toContain('Typedoc')
+      expect(steps).not.toContain('Component Demos')
+      expect(steps).not.toContain('Subgraph support')
+      expect(steps).toContain('Typedoc documentation support')
       expect(steps).toContain('Install script')
     })
 
@@ -443,35 +478,6 @@ describe('cleanupFiles — canton', () => {
       expect(paths).not.toContain(resolve('/project/my_app', 'carpincho-wallet'))
       expect(paths).not.toContain(resolve('/project/my_app', '.claude'))
     })
-
-    it('keeps the prepare script and husky deps, then makes the initial commit', async () => {
-      await cleanupFiles('canton', '/project/my_app', 'full')
-
-      const pkg = getWrittenPackageJson()
-      const scripts = pkg.scripts as Record<string, unknown>
-      const devDeps = pkg.devDependencies as Record<string, unknown>
-      expect(scripts.prepare).toBe('husky')
-      expect(scripts['canton:up']).toBe('npm --prefix canton-barebones run up')
-      expect(scripts['wallet:dev']).toBe('npm --prefix carpincho-wallet run dev')
-      expect(devDeps.husky).toBe('^9.1.7')
-      expect(execFile).toHaveBeenCalledWith('git', ['add', '.'], { cwd: '/project/my_app' })
-    })
-
-    it('keeps the full workspaces array (nothing removed)', async () => {
-      await cleanupFiles('canton', '/project/my_app', 'full')
-
-      expect(getWorkspacePackages(getWrittenPackageJson())).toEqual(CANTON_WORKSPACES)
-    })
-
-    it('makes the initial commit with --no-verify so kept project hooks cannot block it', async () => {
-      await cleanupFiles('canton', '/project/my_app', 'full')
-
-      const commitCall = vi
-        .mocked(execFile)
-        .mock.calls.find((call) => call[0] === 'git' && (call[1] as string[]).includes('commit'))
-      expect(commitCall).toBeDefined()
-      expect(commitCall?.[1]).toContain('--no-verify')
-    })
   })
 
   describe('default mode (drop github + precommit, keep the rest)', () => {
@@ -487,39 +493,28 @@ describe('cleanupFiles — canton', () => {
       expect(paths).not.toContain(resolve('/project/my_app', '.claude'))
     })
 
-    it('strips the prepare script and husky deps from package.json', async () => {
+    it('strips the prepare script and leaves the dependencies to the package manager', async () => {
       await cleanupFiles('canton', '/project/my_app', 'default', ['carpincho', 'llm'])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
       const devDeps = pkg.devDependencies as Record<string, unknown>
       expect(scripts.prepare).toBeUndefined()
-      expect(devDeps.husky).toBeUndefined()
-      expect(devDeps['lint-staged']).toBeUndefined()
-      expect(devDeps['@commitlint/cli']).toBeUndefined()
-      // Carpincho is kept, so its scripts survive.
+      expect(devDeps.husky).toBe('^9.1.7')
       expect(scripts['wallet:dev']).toBe('npm --prefix carpincho-wallet run dev')
-    })
-
-    it('still makes the initial commit', async () => {
-      await cleanupFiles('canton', '/project/my_app', 'default', ['carpincho', 'llm'])
-      expect(execFile).toHaveBeenCalledWith('git', ['add', '.'], { cwd: '/project/my_app' })
     })
   })
 
   describe('custom mode — keep github, drop precommit', () => {
-    it('keeps .github but removes pre-commit files, prepare, and husky deps', async () => {
+    it('keeps .github but removes the pre-commit files and the prepare script', async () => {
       await cleanupFiles('canton', '/project/my_app', 'custom', ['github', 'carpincho', 'llm'])
 
       const paths = getRmPaths()
       expect(paths).not.toContain(resolve('/project/my_app', '.github'))
       expect(paths).toContain(resolve('/project/my_app', '.husky'))
 
-      const pkg = getWrittenPackageJson()
-      const scripts = pkg.scripts as Record<string, unknown>
-      const devDeps = pkg.devDependencies as Record<string, unknown>
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
       expect(scripts.prepare).toBeUndefined()
-      expect(devDeps.husky).toBeUndefined()
     })
   })
 
@@ -530,12 +525,7 @@ describe('cleanupFiles — canton', () => {
       const paths = getRmPaths()
       expect(paths).not.toContain(resolve('/project/my_app', '.husky'))
       expect(paths).toContain(resolve('/project/my_app', '.github'))
-
-      const pkg = getWrittenPackageJson()
-      const scripts = pkg.scripts as Record<string, unknown>
-      const devDeps = pkg.devDependencies as Record<string, unknown>
-      expect(scripts.prepare).toBe('husky')
-      expect(devDeps.husky).toBe('^9.1.7')
+      expect(writeFileSync).not.toHaveBeenCalled()
     })
   })
 
@@ -558,8 +548,7 @@ describe('cleanupFiles — canton', () => {
       expect(workspaces).toContain('dapp/frontend')
     })
 
-    // The invariant the bug violated — asserted generally, not just for carpincho-wallet.
-    it('leaves no workspace entry pointing at a removed directory', async () => {
+    it('leaves no workspace entry pointing at a removed directory, whichever feature went', async () => {
       const selected: FeatureName[] = ['github', 'precommit', 'llm']
       await cleanupFiles('canton', '/project/my_app', 'custom', selected)
 
@@ -568,7 +557,6 @@ describe('cleanupFiles — canton', () => {
       for (const entry of workspaces) {
         expect(entryTargetsRemovedDir(entry, removedDirs)).toBe(false)
       }
-      // Guard against the array being emptied wholesale.
       expect(workspaces.length).toBeGreaterThan(0)
     })
 
@@ -600,36 +588,35 @@ describe('cleanupFiles — canton', () => {
       expect(paths).toContain(resolve('/project/my_app', 'llms.txt'))
     })
 
-    // llm's paths aren't workspaces — removing it must not touch the array.
-    it('leaves the workspaces array intact (its paths are not workspaces)', async () => {
+    it('leaves package.json untouched, since none of its paths are workspaces or scripts', async () => {
       await cleanupFiles('canton', '/project/my_app', 'custom', [
         'github',
         'precommit',
         'carpincho',
       ])
 
-      expect(getWorkspacePackages(getWrittenPackageJson())).toEqual(CANTON_WORKSPACES)
+      expect(writeFileSync).not.toHaveBeenCalled()
     })
   })
 
   describe('onProgress callback', () => {
-    it('reports only the initial commit for full mode (no forced hygiene)', async () => {
+    it('reports nothing for full mode: canton applies no forced hygiene', async () => {
       const steps: string[] = []
       await cleanupFiles('canton', '/project/my_app', 'full', [], (step) => steps.push(step))
 
-      expect(steps).toEqual(['Initial commit'])
+      expect(steps).toEqual([])
     })
 
-    it('reports github + pre-commit removals then the commit for default mode', async () => {
+    it('reports the github and pre-commit removals for default mode', async () => {
       const steps: string[] = []
       await cleanupFiles('canton', '/project/my_app', 'default', ['carpincho', 'llm'], (step) =>
         steps.push(step),
       )
 
-      expect(steps).toEqual(['GitHub templates & workflows', 'Pre-commit hooks', 'Initial commit'])
+      expect(steps).toEqual(['GitHub templates & workflows', 'Pre-commit hooks'])
     })
 
-    it('reports every feature removal then the commit when nothing is selected', async () => {
+    it('reports every feature removal when nothing is selected', async () => {
       const steps: string[] = []
       await cleanupFiles('canton', '/project/my_app', 'custom', [], (step) => steps.push(step))
 
@@ -638,8 +625,28 @@ describe('cleanupFiles — canton', () => {
         'Pre-commit hooks',
         'Carpincho wallet',
         'LLM & agent artifacts',
-        'Initial commit',
       ])
+    })
+  })
+
+  describe('scripts that only mention a removed file', () => {
+    it('keeps them, because only removed directories strip scripts', async () => {
+      vi.mocked(readFileSync).mockReturnValue(
+        JSON.stringify({
+          scripts: {
+            'lint:docs': 'markdownlint CLAUDE.md',
+            context: 'node scripts/gen.js llms',
+            'wallet:dev': 'npm --prefix carpincho-wallet run dev',
+          },
+        }),
+      )
+
+      await cleanupFiles('canton', '/project/my_app', 'custom', ['github', 'precommit'])
+
+      const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
+      expect(scripts['lint:docs']).toBe('markdownlint CLAUDE.md')
+      expect(scripts.context).toBe('node scripts/gen.js llms')
+      expect(scripts['wallet:dev']).toBeUndefined()
     })
   })
 })

@@ -114,7 +114,6 @@ describe('cloneRepo — canton (branch)', () => {
       'my_app',
     ])
 
-    // no fetch / no shell checkout for canton
     expect(execFile).not.toHaveBeenCalledWith('git', ['fetch', '--tags'], expect.anything())
     expect(exec).not.toHaveBeenCalled()
   })
