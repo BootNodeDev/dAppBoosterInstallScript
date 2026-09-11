@@ -81,6 +81,36 @@ Key directories:
 Run the built CLI from a scratch directory. It scaffolds the new project into the folder it is
 started from, so `node dist/cli.js` in this repo would write into the repo itself.
 
+## Demo recording
+
+`demo.svg` in the readme is an animated SVG of a real wizard run. Regenerate it after any change to
+the terminal UI:
+
+```shell
+pnpm build
+./scripts/record-demo.py
+```
+
+The script scaffolds a real EVM project into a temporary directory, so it needs network and takes a
+few minutes. It cleans up after itself and overwrites `demo.svg`.
+
+Things worth knowing before touching it:
+
+- The conversion is [svg-term-cli](https://github.com/marionebl/svg-term-cli), run through
+  `pnpm dlx`. It is not a dependency. The flags `--window --width 92 --height 23 --padding 10`
+  produce the committed geometry; change them and the readme's `<img>` size needs to change too.
+- `asciinema` cannot be scripted here. It ignores piped stdin, `script` refuses to start unless its
+  own stdin is a tty, and `node-pty` has no prebuilt binary for this machine. The script uses
+  Python's standard-library `pty` instead, which needs nothing installed.
+- It waits for each prompt to appear in the output rather than sleeping a fixed time, so it does not
+  break when a step gets slower.
+- A `pnpm` shim on `PATH` makes `pnpm dlx dappbooster` run `dist/cli.js`. The recorded command line
+  is the real one while the code being demoed is the working tree.
+- The recording is trimmed to 15 seconds so the loop stays short. Beyond that it is the package
+  install, which is a long stretch of near-static output and reads as a frozen image.
+- Output within 150ms is merged into one frame. That cuts the file roughly five-fold, because the
+  spinner redraws every 80ms. It changes when bytes are flushed, never which bytes.
+
 ## Testing
 
 - **Framework:** Vitest + V8 coverage
