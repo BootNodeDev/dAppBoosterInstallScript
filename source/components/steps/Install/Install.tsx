@@ -16,7 +16,6 @@ interface Props {
 
 const Install: FC<Props> = ({ stack, mode, features, projectName, onCompletion }) => {
   const projectFolder = useMemo(() => getProjectFolder(projectName), [projectName])
-  const title = `${mode[0]?.toUpperCase()}${mode.slice(1)} installation`
 
   const run = useCallback(
     async (onProgress: (step: string) => void) => {
@@ -36,7 +35,7 @@ const Install: FC<Props> = ({ stack, mode, features, projectName, onCompletion }
 
   return (
     <StepProgress
-      title={title}
+      title={'Installation'}
       errorLabel={'Installation failed'}
       run={run}
       onCompletion={onCompletion}
