@@ -10,9 +10,9 @@
 
 A CLI installer tool for dAppBooster projects. It supports two **stacks** and two **modes**:
 
-- **Stacks:** `evm` (the original dAppBooster for EVM chains) and `canton` (dAppBooster for Canton: Daml ledger, Carpincho wallet, off-chain services). Each stack declares its own source repository, ref strategy (tag-latest vs branch), package manager, env files, optional `removeAfterClone` paths, and features.
-- **Interactive** (default): React + Ink TUI that prompts for the project name first, then the stack, then the installation mode (Canton offers **default** / full / custom; EVM offers full / custom) → optional packages → install → cleanup → post-install. The stack prompt is skipped when `--canton`, `--evm`, or `--stack` is supplied.
-- **Non-interactive**: Flag-driven (`--ni` or auto-detected when not a TTY) for AI agents and CI. Outputs JSON to stdout. Run `--info` for stack + feature discovery, then `--canton`/`--evm` (or `--stack`) + `--name` + `--mode` [+ `--features`]. Canton supports `--mode default` (the recommended set: keeps `carpincho` + `llm`, removes `github` + `precommit`); `default` is rejected for EVM. Omitting a stack flag in non-interactive mode defaults to `evm` for backward compatibility.
+- **Stacks:** `evm` (the original dAppBooster for EVM chains) and `canton` (dAppBooster for Canton: Daml ledger, off-chain services). Each stack declares its own source repository, ref strategy (tag-latest vs branch), package manager, env files, an optional `prepare` step, and features. Only EVM has features; Canton has none, so it takes neither `--mode` nor `--features`, and the wizard asks it nothing but the project name.
+- **Interactive** (default): React + Ink TUI that prompts for the project name first, then the stack, then — for a stack that has features — the installation mode, the optional packages and a review step, then install → cleanup → post-install. The stack prompt is skipped when `--canton`, `--evm`, or `--stack` is supplied.
+- **Non-interactive**: Flag-driven (`--ni` or auto-detected when not a TTY) for AI agents and CI. Outputs JSON to stdout. Run `--info` for stack + feature discovery, then `--canton`/`--evm` (or `--stack`) + `--name`, plus `--mode` [+ `--features`] when the stack's `modes` list is not empty. Omitting a stack flag in non-interactive mode defaults to `evm` for backward compatibility.
 
 ## Stack & Conventions
 
@@ -41,10 +41,11 @@ A CLI installer tool for dAppBooster projects. It supports two **stacks** and tw
 
 ## Working Rules
 
-- Use **pnpm** only for this installer (never npm or yarn). The Canton stack scaffolds an npm project; that's a property of the generated project, not this installer.
+- Use **pnpm** only (never npm or yarn), for this installer and for both scaffolded projects
 - Treat `dist/` as build output — never edit directly
 - User input (`projectName`) must never be interpolated into shell command strings — use `execFile` (args array) instead
-- `source/constants/config.ts` is the single source of truth for stack and feature metadata — all programmatic consumers read it through `getStackConfig(stack)`. CLI `--help` text maintains its own copy.
+- `source/stacks/` is the single source of truth for stack and feature metadata: one module per stack, with `source/stacks/index.ts` holding the record and the accessors. All programmatic consumers read it through `getStackConfig(stack)`. CLI `--help` text maintains its own copy.
+- No file outside `source/stacks/` and `source/cli.tsx` may test a stack by name. Add a `StackConfig` field instead.
 - Stack overrides come from env vars `DAPPBOOSTER_<STACK>_REPO_URL` and `DAPPBOOSTER_<STACK>_REF` (read inside `getStackConfig`) — useful for forks and pre-release testing.
 - Components are presentation-only — business logic lives in `source/operations/`. Every operation that varies per stack takes `stack` as its first argument.
 

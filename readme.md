@@ -7,8 +7,8 @@ agents.
 
 - **EVM** — the original [dAppBooster](https://dappbooster.dev/) for Ethereum, Polygon, Base, and
   other EVM chains.
-- **Canton** — [dAppBooster for Canton](https://www.dappbooster.cc/): Daml
-  ledger, Carpincho wallet, off-chain services.
+- **Canton** — [dAppBooster for Canton](https://www.dappbooster.cc/): Daml ledger, off-chain
+  services.
 
 ## Choose your stack
 
@@ -22,8 +22,8 @@ Omit the flag to be prompted for the stack in the wizard. Jump to the [EVM stack
 
 ## Requirements
 
-- Node >= 22
-- pnpm (used by the installer itself; the scaffolded project uses pnpm or npm depending on the stack)
+- Node >= 22 for the installer. The Canton scaffold needs Node >= 24.15, checked before the clone
+- pnpm (used by the installer and by both scaffolded projects)
 
 ## Quick start (interactive)
 
@@ -33,9 +33,10 @@ Omit the flag to be prompted for the stack in the wizard. Jump to the [EVM stack
 pnpm dlx dappbooster
 ```
 
-The wizard prompts for stack → project name → mode (Canton offers default / full / custom; EVM
-offers full / custom) → features, then clones, installs, cleans up, and prints next steps. Pass
-`--evm` or `--canton` to skip the stack prompt.
+The wizard prompts for project name → stack → mode → features → review, then clones, installs,
+cleans up, and prints next steps. Everything after the stack is skipped for a stack that has no
+features, so Canton asks for the project name and nothing else. Pass `--evm` or `--canton` to skip
+the stack prompt.
 
 dAppBooster documentation: https://docs.dappbooster.dev/
 
@@ -51,15 +52,15 @@ pnpm dlx dappbooster --info                  # all stacks + features as JSON
 pnpm dlx dappbooster --info --stack canton   # filter to one stack (or --info --canton)
 ```
 
-Each stack in that output carries a `modes` list. Send one of those: `default` is Canton-only, and
-asking for it on EVM is rejected.
+Each stack in that output carries a `modes` list. Send one of those. An empty list means the stack
+has no optional features: send neither `--mode` nor `--features`, and both are rejected if you do.
 
 | Flag | Purpose |
 |---|---|
 | `--canton` / `--evm` | Pick the stack (mutually exclusive shortcuts) |
 | `--stack <evm\|canton>` | Pick the stack by name (useful when scripting) |
 | `--name <name>` | Project directory name (`/^[a-zA-Z0-9_]+$/`) |
-| `--mode <full\|default\|custom>` | `default` (Canton only) keeps the recommended set; `full` installs every feature; `custom` needs `--features` |
+| `--mode <full\|custom>` | `full` installs every feature; `custom` needs `--features`. Only for a stack whose `modes` list is not empty |
 | `--features <a,b,c>` | Comma-separated feature keys (custom mode only) |
 | `--ni` | Force non-interactive mode |
 
@@ -69,7 +70,7 @@ accepts only its own feature keys, and validation errors name the stack:
 ```json
 {
   "success": false,
-  "error": "Unknown features for stack 'canton': subgraph. Valid features: github, precommit, carpincho, llm"
+  "error": "Unknown features for stack 'evm': carpincho. Valid features: demo, subgraph, typedoc, vocs, husky"
 }
 ```
 
@@ -135,37 +136,17 @@ pnpm dlx dappbooster --canton
 Interactive (skips the stack prompt) or non-interactive:
 
 ```shell
-pnpm dlx dappbooster --canton --ni --name my_canton_dapp --mode default
-pnpm dlx dappbooster --canton --ni --name my_canton --mode custom --features carpincho,github
+pnpm dlx dappbooster --canton --ni --name my_canton_dapp
 ```
 
-| Feature | Key | Default | Description |
-|---|---|---|---|
-| GitHub templates & workflows | `github` |  | GitHub issue/PR templates and workflows (`.github`) |
-| Pre-commit hooks | `precommit` |  | Husky, lint-staged, and commitlint |
-| Carpincho wallet | `carpincho` | ✓ | Carpincho browser-extension wallet (frontend + build tooling) |
-| LLM & agent artifacts | `llm` | ✓ | `.claude`, `AGENTS.md`, `CLAUDE.md`, `architecture.md`, `llms.txt`, … |
+The Canton stack has **no optional features**, so the wizard asks for a project name and then
+scaffolds — no mode, no feature list, no review step — and `--mode` and `--features` are rejected
+with a message saying why. `--info --canton` reports an empty `features` map and an empty `modes`
+list.
 
-`default` mode (the recommended Canton install) keeps `carpincho` + `llm` and removes `github` +
-`precommit`; `full` keeps all four; `custom` lets you pick (in the wizard `github` and `precommit`
-start unchecked). To remove the demo features (`counter`, `sign-message`) after scaffolding, follow
-the "Removing a feature" guide in the generated `dapp/frontend/README.md` — the installer never
-deletes demo source itself.
-
-The Canton scaffold uses **npm** (a property of the generated project, not this installer). After
-install, review `canton-barebones/.env`, then bring the whole local stack up with a single command:
-`./scripts/dev-stack.sh up` (Docker must be running). It starts the Canton + Postgres +
-wallet-service containers, runs the health checks, builds and deploys the quickstart-counter DAR,
-launches the dapp frontend (`:3012`), and — when `carpincho` is included — builds the Carpincho
-extension and copies it to `~/Desktop/dist-extension` (load it via `chrome://extensions`, Developer
-mode → Load unpacked). Run `./scripts/dev-stack.sh` with no arguments for an interactive arrow-key
-menu; `mock-up` brings up a Docker-free mocked wallet-service + Carpincho web app, and `down` tears
-everything back down.
-
-Prefer to run the pieces by hand? The underlying npm scripts still work: `npm run canton:up` to
-start the local Canton stack and `npm run app:dev` for the dapp frontend, and when `carpincho` is
-included build the extension with `npm run carpincho:build:extension` and load
-`carpincho-wallet/dist-extension` as an unpacked browser extension.
+The scaffold needs **Node 24.15 or later** (the installer itself still runs on Node 22). The
+version is checked before the clone, so an older Node fails with a plain message instead of a
+confusing install error.
 
 **What gets stripped:**
 
@@ -173,31 +154,35 @@ included build the extension with `npm run carpincho:build:extension` and load
   `CLAUDE.md`, `architecture.md`), which belong to the template's own repository. Everything else
   follows your feature selection: deselecting `husky` removes `.husky`, `.lintstagedrc.mjs`,
   `commitlint.config.js`, the `prepare` and `commitlint` scripts, and the matching dependencies.
-- **Canton** treats `.github` and pre-commit hooks as optional features: `default` mode removes
-  both; `full` keeps both; `custom` removes whichever you uncheck. Deselecting `carpincho` removes
-  `carpincho-wallet/` and its scripts (`wallet:dev`, `carpincho:build:extension`); deselecting `llm`
-  removes the agent docs. Removing `precommit` also strips the `prepare` script and the
-  husky/lint-staged/commitlint dev-dependencies from the root `package.json`.
+- **Canton** is almost pure deletion. The three libraries the template develops in-tree
+  (`canton-connect/`, `canton-dappbooster/`, `canton-theme/`) go, and with them `kit/`, the agent
+  docs, `.github`, `renovate.json`, the root `vercel.json` and `pnpm-lock.yaml`. The scaffold then
+  installs `@bootnodedev/canton-connect`, `@bootnodedev/canton-dappbooster` and
+  `@bootnodedev/canton-theme` from npm: pnpm links a local library folder only while that folder's
+  own version satisfies the declared range, so deleting the folders makes the same `package.json`
+  resolve from the registry. No manifest rewrite, no workspace file edit.
+- **Canton** also drops the `package.json` keys that pointed at `kit/`: the `docs:build`,
+  `docs:check`, `check:anatomy`, `check:versions`, `release`, `release:dry` and `release:version`
+  scripts, plus the `typedoc` and `postcss` dev-dependencies. Biome, knip, commitlint, husky,
+  gitleaks, the README, `scripts/`, `dapp/daml` and `dapp/frontend/vercel.json` stay.
 - Cleanup runs before the install, so the package manager sees the pruned `package.json` and the
-  lockfile it writes matches it. The generated project passes `npm ci` / `pnpm install
-  --frozen-lockfile` from the first commit.
-- The Canton installer never deletes demo source (the `counter`/`sign-message` features) — that is
-  user-controlled via the template's `dapp/frontend/README.md`.
+  lockfile it writes matches it. The generated project passes `pnpm install --frozen-lockfile` from
+  the first commit.
+- The Canton scaffold is committed as one baseline commit, using your own git identity, so you can
+  see what you changed afterwards.
 
 ```json
 {
   "success": true,
   "stack": "canton",
   "projectName": "my_canton_dapp",
-  "mode": "default",
-  "features": ["carpincho", "llm"],
+  "mode": "full",
+  "features": [],
   "path": "/absolute/path/to/my_canton_dapp",
   "postInstall": [
-    "Review canton-barebones/.env (created from the example)",
-    "Run ./scripts/dev-stack.sh up to bring up the whole local stack in one command — Docker must be running (run ./scripts/dev-stack.sh with no arguments for an interactive menu)",
-    "Fallback — start each piece manually: npm run canton:up for the Canton stack, then npm run app:dev for the dapp frontend",
-    "./scripts/dev-stack.sh up also builds the Carpincho extension and copies it to ~/Desktop/dist-extension (load it via chrome://extensions, Developer mode -> Load unpacked)",
-    "Fallback — build it manually with npm run carpincho:build:extension, then load carpincho-wallet/dist-extension as an unpacked browser extension"
+    "Docker must be running",
+    "Run ./scripts/dev-stack.sh — the first run pulls about 10 GB",
+    "Read README.md for the step-by-step and the browser wallet you need"
   ]
 }
 ```
@@ -212,16 +197,16 @@ feature branch before it lands on `main`.
 | `DAPPBOOSTER_EVM_REPO_URL` | Override the EVM stack git URL |
 | `DAPPBOOSTER_EVM_REF` | Override the EVM stack ref (still checks out the latest tag if unset) |
 | `DAPPBOOSTER_CANTON_REPO_URL` | Override the Canton stack git URL |
-| `DAPPBOOSTER_CANTON_REF` | Override the Canton stack branch |
+| `DAPPBOOSTER_CANTON_REF` | Override the Canton stack ref (still checks out the latest tag if unset) |
 
 ```shell
-DAPPBOOSTER_CANTON_REF=some-feature-branch \
-  pnpm dlx dappbooster --canton --ni --name my_canton --mode full
+DAPPBOOSTER_CANTON_REPO_URL=file:///path/to/local/clone \
+  pnpm dlx dappbooster --canton --ni --name my_canton
 ```
 
-The Canton stack defaults to `BootNodeDev/cn-dappbooster` on the `main` branch. The repo has no
-release tags yet, so it tracks `main`; once a release is tagged, switch the default to
-`refType: 'tag-latest'` (or pin a `ref`) in `source/constants/config.ts`.
+Both stacks check out the latest tag of their repository:
+[`BootNodeDev/dAppBooster`](https://github.com/BootNodeDev/dAppBooster) for EVM and
+[`BootNodeDev/canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster) for Canton.
 
 ## Development
 
