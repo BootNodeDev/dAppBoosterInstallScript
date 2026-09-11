@@ -17,7 +17,7 @@ const cli = meow(
     --stack <evm|canton>     Explicit stack name (alternative to --canton/--evm)
 
   Common options
-    --name <string>          Project name (alphanumeric, underscores)
+    --name <string>          Project name (alphanumeric, underscores, dashes)
     --mode <full|custom>     Installation mode (EVM only; Canton takes neither
                              --mode nor --features)
     --features <list>        Comma-separated features (with --mode=custom)

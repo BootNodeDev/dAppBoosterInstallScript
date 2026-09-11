@@ -14,7 +14,7 @@ export function getProjectFolder(projectName: string) {
 }
 
 export function isValidName(name: string) {
-  return /^[a-zA-Z0-9_]+$/.test(name)
+  return /^[a-zA-Z0-9_][a-zA-Z0-9_-]*$/.test(name)
 }
 
 export function isAnswerConfirmed(answer?: string, errorMessage?: string): boolean {

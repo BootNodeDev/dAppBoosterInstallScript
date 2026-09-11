@@ -159,7 +159,9 @@ function validate(flags: { stack?: string; name?: string; mode?: string; feature
   }
 
   if (!isValidName(flags.name)) {
-    fail('Invalid project name: only letters, numbers, and underscores are allowed')
+    fail(
+      'Invalid project name: only letters, numbers, underscores and non-initial dashes are allowed',
+    )
   }
 
   const { mode, features } = resolveModeAndFeatures(stack, flags)

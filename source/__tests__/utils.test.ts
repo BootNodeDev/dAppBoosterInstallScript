@@ -38,8 +38,15 @@ describe('isValidName', () => {
     expect(isValidName('my app')).toBe(false)
   })
 
-  it('rejects hyphens', () => {
-    expect(isValidName('my-app')).toBe(false)
+  it('accepts dashes, except to start', () => {
+    expect(isValidName('my-app')).toBe(true)
+    expect(isValidName('trailing-')).toBe(true)
+    expect(isValidName('-leading')).toBe(false)
+  })
+
+  it('rejects a name git would read as an option', () => {
+    expect(isValidName('--upload-pack=touch_pwned')).toBe(false)
+    expect(isValidName('-rf')).toBe(false)
   })
 
   it('rejects dots', () => {
