@@ -174,7 +174,7 @@ const App: FC<Props> = ({ preselectedStack }) => {
       rowGap={1}
       width={80}
     >
-      <MainTitle />
+      <MainTitle stack={stack} />
       {steps.map((item, index) => canShowStep(currentStep, index + 1) && item)}
     </Box>
   )
