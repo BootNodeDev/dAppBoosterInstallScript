@@ -10,8 +10,8 @@ import OptionalPackages from './components/steps/OptionalPackages.js'
 import PostInstall from './components/steps/PostInstall.js'
 import ProjectName from './components/steps/ProjectName.js'
 import StackSelection from './components/steps/StackSelection.js'
-import type { FeatureName, Stack } from './constants/config.js'
-import type { InstallationSelectItem, MultiSelectItem } from './types/types.js'
+import { getInstallationModes } from './stacks/index.js'
+import type { FeatureName, InstallationSelectItem, MultiSelectItem, Stack } from './types/types.js'
 import { canShowStep, describeInstallPlan, resolveModeFeatures } from './utils/utils.js'
 
 interface Props {
@@ -82,33 +82,31 @@ const App: FC<Props> = ({ preselectedStack }) => {
       return orderedSteps
     }
 
-    orderedSteps.push(
-      <InstallationMode
-        stack={stack}
-        onCompletion={finishStep}
-        onSelect={onSelectSetupType}
-        key={`installation-mode-${attempt}`}
-      />,
-    )
-
-    orderedSteps.push(
-      <OptionalPackages
-        stack={stack}
-        onCompletion={finishStep}
-        onSubmit={onSelectSelectedFeatures}
-        skip={skipFeatures}
-        key={`optional-packages-${attempt}`}
-      />,
-    )
-
-    orderedSteps.push(
-      <Confirmation
-        summary={planSummary}
-        onConfirm={finishStep}
-        onCancel={restart}
-        key={`confirmation-${attempt}`}
-      />,
-    )
+    // A stack with no features has nothing to choose and so nothing to review: the project name
+    // is the whole conversation.
+    if (getInstallationModes(stack).length > 0) {
+      orderedSteps.push(
+        <InstallationMode
+          stack={stack}
+          onCompletion={finishStep}
+          onSelect={onSelectSetupType}
+          key={`installation-mode-${attempt}`}
+        />,
+        <OptionalPackages
+          stack={stack}
+          onCompletion={finishStep}
+          onSubmit={onSelectSelectedFeatures}
+          skip={skipFeatures}
+          key={`optional-packages-${attempt}`}
+        />,
+        <Confirmation
+          summary={planSummary}
+          onConfirm={finishStep}
+          onCancel={restart}
+          key={`confirmation-${attempt}`}
+        />,
+      )
+    }
 
     orderedSteps.push(
       <CloneRepo

@@ -2,14 +2,12 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import {
-  type FeatureName,
   getDefaultFeatureNames,
   getFeatureEntries,
   getFeatureNames,
   getStackConfig,
-  type Stack,
-} from '../constants/config.js'
-import type { InstallationType } from '../types/types.js'
+} from '../stacks/index.js'
+import type { FeatureName, InstallationType, Stack } from '../types/types.js'
 
 export function getProjectFolder(projectName: string) {
   return join(process.cwd(), projectName)
@@ -31,6 +29,22 @@ export function canShowStep(currentStep: number, stepToShow: number) {
 
 export function isFeatureSelected(feature: FeatureName, selectedFeatures: FeatureName[]): boolean {
   return selectedFeatures.includes(feature)
+}
+
+/** Whether the running Node is at least `required`, both written as dotted numbers. */
+export function meetsNodeVersion(required: string, current = process.versions.node): boolean {
+  const numbers = (version: string) => version.split('.').map((part) => Number.parseInt(part, 10))
+  const wanted = numbers(required)
+  const running = numbers(current)
+
+  for (const [index, want] of wanted.entries()) {
+    const have = running[index] ?? 0
+    if (have !== want) {
+      return have > want
+    }
+  }
+
+  return true
 }
 
 type FeatureToggleAction = 'select' | 'unselect'
@@ -106,7 +120,10 @@ export function applyFeatureToggle(
   )
 }
 
-/** One-line summary of the plan, shown on the confirmation step before any disk work begins. */
+/**
+ * One-line summary of the plan, shown on the confirmation step before any disk work begins. Only
+ * stacks that ask a question reach that step.
+ */
 export function describeInstallPlan(
   stack: Stack,
   projectName: string,
