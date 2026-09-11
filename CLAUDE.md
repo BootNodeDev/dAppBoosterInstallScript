@@ -65,6 +65,22 @@ Key directories:
 - `source/components/` — reusable UI components (Ask, Divider, MainTitle, Multiselect)
 - `source/__tests__/` — vitest test suite
 
+## Commands
+
+| Command | Purpose |
+|---------|---------|
+| `pnpm build` | Compile `source/` to `dist/` |
+| `pnpm dev` | The same, in watch mode |
+| `pnpm typecheck` | Types only, no output. Two passes: `source/` for the build, then the tests |
+| `pnpm test` | Run the vitest suite |
+| `pnpm test:coverage` | The same, with a coverage report |
+| `pnpm lint` | Biome check, warnings included |
+| `pnpm lint:fix` | Biome check with `--write` |
+| `pnpm knip` | Report unused files, exports, and dependencies |
+
+Run the built CLI from a scratch directory. It scaffolds the new project into the folder it is
+started from, so `node dist/cli.js` in this repo would write into the repo itself.
+
 ## Testing
 
 - **Framework:** Vitest + V8 coverage
