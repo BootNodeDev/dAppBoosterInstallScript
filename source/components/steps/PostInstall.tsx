@@ -33,7 +33,7 @@ const DefaultMessage: FC<{ projectName: string; lines: string[] }> = ({ projectN
  * the non-interactive path.
  */
 const PostInstall: FC<Props> = ({ stack, features, projectName }) => {
-  const { label, postInstallComponent: loadStackMessage } = getStackConfig(stack)
+  const { postInstallComponent: loadStackMessage } = getStackConfig(stack)
   const [StackMessage, setStackMessage] = useState<FC<PostInstallProps>>()
 
   useEffect(() => {
@@ -56,7 +56,7 @@ const PostInstall: FC<Props> = ({ stack, features, projectName }) => {
 
   return (
     <>
-      <Divider title={`Post-install instructions — ${label}`} />
+      <Divider title={'Post-install instructions'} />
       {StackMessage && (
         <StackMessage
           projectName={projectName}
