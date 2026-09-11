@@ -27,7 +27,7 @@ A CLI installer tool for dAppBooster projects. It supports two **stacks** and tw
 | Dead code | knip | `pnpm knip` fails on unused files, exports, and dependencies |
 | Secret scanning | gitleaks | Pinned in `.gitleaks-version`; the hooks install it into `bin/` |
 | Git hooks | husky + lint-staged + commitlint | Installed by `pnpm i`; see [Git hooks](#git-hooks) |
-| Node | v22+ | `engines.node` is the published floor; `.nvmrc` (24) is what CI and development use |
+| Node | v24.15.0+ | `engines.node` is the published floor, matched to what the scaffolded stacks need; `.nvmrc` (24) is what CI and development use |
 | Naming | camelCase vars/functions, PascalCase components/types | Biome enforces the same two cases for filenames |
 
 ## Code Style
@@ -144,7 +144,7 @@ the history by hand:
 ## Continuous integration
 
 `.github/workflows/pr.yml` runs on every pull request: Biome, then typecheck and build and knip,
-then the test suite on `.nvmrc` and again on the Node 22 floor, then commitlint over both the commit
+then the test suite on `.nvmrc` and again on the Node 24.15.0 floor, then commitlint over both the commit
 range and the PR title, then gitleaks over the full history. A retitle only re-runs commitlint.
 
 `pr-assign.yml` assigns the author to their own pull request. `add-to-project.yml` adds new issues

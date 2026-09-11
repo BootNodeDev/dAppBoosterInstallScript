@@ -13,7 +13,7 @@ Architecture guide for the dAppBooster installer.
 | Testing | Vitest + @vitest/coverage-v8 | |
 | Lint + format | Biome 2 | `biome.json`; one tool for both |
 | Dead code | knip | `knip.json`; entry points are `cli.tsx` and the test files |
-| Node | v22+ published, 24 for development | `engines.node` is the floor; `.nvmrc` is what CI uses. A stack can require more of the scaffold: Canton needs 24.15 |
+| Node | v24.15.0+ published, 24 for development | `engines.node` is the floor, matched to what the scaffolded stacks need; `.nvmrc` is what CI uses. A stack can still ask for more through `minNodeVersion` |
 
 ## Project Structure
 

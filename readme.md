@@ -2,8 +2,10 @@
 
 ## Requirements
 
-- Node >= 22 (dAppBooster stacks might have different base Node requirements).
+- Node >= 24.15.0
 - pnpm
+
+Requirements for each dAppBooster stack might differ, check the [EVM](https://github.com/bootnodedev/dappbooster/) and [Canton](https://github.com/BootNodeDev/canton-dappbooster) repos for more info.
 
 ## Interactive mode
 

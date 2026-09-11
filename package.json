@@ -29,7 +29,7 @@
   "bin": "dist/cli.js",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=24.15.0"
   },
   "packageManager": "pnpm@11.24.0",
   "scripts": {
