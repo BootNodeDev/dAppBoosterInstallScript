@@ -9,7 +9,7 @@ Architecture guide for the dAppBooster installer.
 | Framework | React + Ink | Terminal UI for interactive mode |
 | Language | TypeScript (strict mode) | Extends `@sindresorhus/tsconfig`. `tsconfig.json` builds `source/`; `tsconfig.tests.json` typechecks the tests |
 | Arg parsing | meow | CLI flag parsing, non-interactive mode |
-| Styling | Ink primitives | `<Box>`, `<Text>`, ink-gradient, ink-big-text |
+| Styling | Ink primitives | `<Box>`, `<Text>`, ink-gradient, ink-big-text, ink-spinner |
 | Testing | Vitest + @vitest/coverage-v8 | |
 | Lint + format | Biome 2 | `biome.json`; one tool for both |
 | Dead code | knip | `knip.json`; entry points are `cli.tsx` and the test files |
@@ -29,9 +29,9 @@ source/
     index.ts                  stackDefinitions, stackNames, and the config/feature accessors
   operations/
     exec.ts                   exec (shell) and execFile (no shell) helpers
-    cloneRepo.ts              Check stack.minNodeVersion, clone (tag-latest OR branch), rm .git, git init
+    cloneRepo.ts              Check stack.minNodeVersion, clone at the newest tag or at stack.ref, rm .git, git init
     createEnvFile.ts          Copy each stack's envFiles
-    installPackages.ts        Stack-aware: uses stack.packageManager (pnpm or npm)
+    installPackages.ts        Stack-aware: uses stack.packageManager (pnpm)
     cleanupFiles.ts           Applies stack.prepare, removes deselected features, patches package.json — all before the install
     createInitialCommit.ts    Commits the finished scaffold (stacks that ask for it)
     installGuard.ts           Removes the partial project dir if interrupted mid-scaffold
@@ -48,9 +48,10 @@ source/
       StepProgress.tsx        Shared runner for the operation steps: progress, errors, guard
       PostInstall.tsx         Renders the stack's postInstallComponent, or its postInstall lines
       EvmPostInstall.tsx      The EVM closing screen, including the subgraph warning
+      CantonPostInstall.tsx   The Canton closing screen, including the dev-stack steps
     Ask.tsx                   Text input with validation
     Divider.tsx               Section divider
-    MainTitle.tsx             Gradient title banner
+    MainTitle.tsx             Gradient title banner, with a badge for the chosen stack
     Multiselect/              Checkbox multiselect component
   types/
     types.ts                  Shared TypeScript types
@@ -240,7 +241,7 @@ The last bracketed group is dropped for a stack whose `getInstallationModes` lis
 
 Each operation step renders through the shared `StepProgress` component, which owns the step list, the running/done/error display and the failure path (`abortInstall`), so every step reports a failure the same way. `Install` covers env files, the package install and the baseline commit, and calls `completeInstall` when the scaffold is finished.
 
-`Confirmation` shows a one-line plan summary (`describeInstallPlan`) and is the last side-effect-free step. **Yes** starts the operations; **No** loops back to the first question (state is reset and the question steps are re-keyed so they re-mount fresh). When `cli.tsx` resolves a stack flag, it passes `preselectedStack` to `<App>`, which skips the `StackSelection` step.
+`Confirmation` shows the plan as one line per setting (`describeInstallPlan`), each value highlighted, and is the last side-effect-free step. **Yes** starts the operations; **No** loops back to the first question (state is reset and the question steps are re-keyed so they re-mount fresh). When `cli.tsx` resolves a stack flag, it passes `preselectedStack` to `<App>`, which skips the `StackSelection` step.
 
 Nothing is lost by dropping `Confirmation` for a featureless stack: the project name is validated as it is typed, and an interrupt or a failure during the operations removes the partial directory (see installGuard below).
 
