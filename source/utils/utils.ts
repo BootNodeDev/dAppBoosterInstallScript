@@ -7,7 +7,7 @@ import {
   getFeatureNames,
   getStackConfig,
 } from '../stacks/index.js'
-import type { FeatureName, InstallationType, Stack } from '../types/types.js'
+import type { FeatureName, InstallationType, PlanSummaryItem, Stack } from '../types/types.js'
 
 export function getProjectFolder(projectName: string) {
   return join(process.cwd(), projectName)
@@ -120,29 +120,35 @@ export function applyFeatureToggle(
   )
 }
 
+/** How each mode is named on screen, in the selector and in the review that follows it. */
+export const MODE_LABELS: Record<InstallationType, string> = {
+  default: 'Default (recommended)',
+  full: 'Full',
+  custom: 'Custom',
+}
+
 /**
- * One-line summary of the plan, shown on the confirmation step before any disk work begins. Only
- * stacks that ask a question reach that step.
+ * The plan as one item per setting, shown on the confirmation step before any disk work begins.
+ * Only stacks that ask a question reach that step.
  */
 export function describeInstallPlan(
   stack: Stack,
   projectName: string,
   mode: InstallationType,
   selectedFeatures: FeatureName[],
-): string {
-  const stackLabel = getStackConfig(stack).label
-  const head = `Stack: ${stackLabel} · Project: ${projectName}`
+): PlanSummaryItem[] {
+  const items: PlanSummaryItem[] = [
+    { label: 'Stack', value: getStackConfig(stack).label },
+    { label: 'Project', value: projectName },
+    { label: 'Mode', value: MODE_LABELS[mode] },
+  ]
 
-  if (mode === 'full') {
-    return `${head} · Mode: full (all features)`
-  }
-
-  if (mode === 'default') {
-    return `${head} · Mode: default (recommended)`
+  if (mode !== 'custom') {
+    return items
   }
 
   const features = selectedFeatures.length > 0 ? selectedFeatures.join(', ') : 'none'
-  return `${head} · Mode: custom · Features: ${features}`
+  return [...items, { label: 'Features', value: features }]
 }
 
 export function getPackagesToRemove(stack: Stack, selectedFeatures: FeatureName[]): string[] {

@@ -56,8 +56,11 @@ const App: FC<Props> = ({ preselectedStack }) => {
     return resolveModeFeatures(stack, mode, selectedNames)
   }, [stack, mode, selectedFeatures])
 
-  const planSummary =
-    stack === undefined ? '' : describeInstallPlan(stack, projectName, mode, features)
+  // Memoised because it feeds the step list below, which would otherwise rebuild on every render.
+  const planSummary = useMemo(
+    () => (stack === undefined ? [] : describeInstallPlan(stack, projectName, mode, features)),
+    [stack, projectName, mode, features],
+  )
 
   const steps: Array<ReactNode> = useMemo(() => {
     const orderedSteps: Array<ReactNode> = [

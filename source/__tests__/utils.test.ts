@@ -169,22 +169,38 @@ describe('resolveSelectedFeatures — evm (no requires)', () => {
 })
 
 describe('describeInstallPlan', () => {
-  it('summarises a full-mode plan as all features', () => {
-    expect(describeInstallPlan('evm', 'my_app', 'full', [])).toBe(
-      'Stack: EVM · Project: my_app · Mode: full (all features)',
-    )
+  it('returns one labelled setting per line, naming the mode as the selector did', () => {
+    expect(describeInstallPlan('evm', 'my_app', 'full', [])).toEqual([
+      { label: 'Stack', value: 'EVM' },
+      { label: 'Project', value: 'my_app' },
+      { label: 'Mode', value: 'Full' },
+    ])
+  })
+
+  it('names the default mode as the selector did', () => {
+    expect(describeInstallPlan('evm', 'my_app', 'default', [])).toEqual([
+      { label: 'Stack', value: 'EVM' },
+      { label: 'Project', value: 'my_app' },
+      { label: 'Mode', value: 'Default (recommended)' },
+    ])
   })
 
   it('lists the selected features for a custom-mode plan', () => {
-    expect(describeInstallPlan('evm', 'my_app', 'custom', ['demo', 'subgraph'])).toBe(
-      'Stack: EVM · Project: my_app · Mode: custom · Features: demo, subgraph',
-    )
+    expect(describeInstallPlan('evm', 'my_app', 'custom', ['demo', 'subgraph'])).toEqual([
+      { label: 'Stack', value: 'EVM' },
+      { label: 'Project', value: 'my_app' },
+      { label: 'Mode', value: 'Custom' },
+      { label: 'Features', value: 'demo, subgraph' },
+    ])
   })
 
   it('shows "none" when a custom plan selects no features', () => {
-    expect(describeInstallPlan('evm', 'demo_app', 'custom', [])).toBe(
-      'Stack: EVM · Project: demo_app · Mode: custom · Features: none',
-    )
+    expect(describeInstallPlan('evm', 'demo_app', 'custom', [])).toEqual([
+      { label: 'Stack', value: 'EVM' },
+      { label: 'Project', value: 'demo_app' },
+      { label: 'Mode', value: 'Custom' },
+      { label: 'Features', value: 'none' },
+    ])
   })
 })
 

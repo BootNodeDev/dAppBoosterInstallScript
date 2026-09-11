@@ -16,6 +16,9 @@ export type MultiSelectItem = { label: string; value: FeatureName }
 
 export type InstallationSelectItem = { label: string; value: InstallationType }
 
+/** One setting on the review step. The step prints the label and highlights the value. */
+export type PlanSummaryItem = { label: string; value: string }
+
 /**
  * A single optional feature of a stack.
  *
