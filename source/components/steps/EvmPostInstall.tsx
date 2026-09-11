@@ -79,14 +79,16 @@ const EvmPostInstall: FC<PostInstallProps> = ({ projectName, features }) => (
           - Check out <Text color={'gray'}>.env.local</Text> for more configurations.
         </Text>
         <Text>
-          - Read the <Link url="https://docs.dappbooster.dev">dAppBooster documentation</Link> to
-          know more.
+          - dAppBooster documentation is available{' '}
+          <Link url={'https://docs.dappbooster.dev/'}>here</Link>.
         </Text>
         <Text>
-          - Report issues with this installer on{' '}
-          <Link url="https://github.com/BootNodeDev/dAppBoosterInstallScript/issues">
-            the installer issue tracker
-          </Link>
+          - Components documentation is available{' '}
+          <Link url={'https://components.dappbooster.dev/'}>here</Link>.
+        </Text>
+        <Text>
+          - Report issues with dAppBooster in the repo's{' '}
+          <Link url={'https://github.com/BootNodeDev/dAppBooster/issues'}>issue tracker</Link>.
         </Text>
       </Box>
     </Box>

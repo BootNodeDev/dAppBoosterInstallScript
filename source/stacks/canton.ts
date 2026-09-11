@@ -40,6 +40,7 @@ export const canton = {
     scripts: ['release', 'release:dry'],
     devDependencies: ['typedoc', 'postcss', '@mermaid-js/mermaid-cli'],
   },
+  postInstallComponent: () => import('../components/steps/CantonPostInstall.js'),
   postInstall: [
     'Docker must be running',
     'Run ./scripts/dev-stack.sh — the first run pulls about 10 GB',
