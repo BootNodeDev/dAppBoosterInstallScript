@@ -4,6 +4,30 @@ import meow from 'meow'
 import { getInfoOutput } from './info.js'
 import { ReportedError, reportFailure, runNonInteractive } from './nonInteractive.js'
 
+const flags = {
+  name: {
+    type: 'string',
+  },
+  mode: {
+    type: 'string',
+  },
+  features: {
+    type: 'string',
+  },
+  nonInteractive: {
+    type: 'boolean',
+    default: false,
+  },
+  ni: {
+    type: 'boolean',
+    default: false,
+  },
+  info: {
+    type: 'boolean',
+    default: false,
+  },
+} as const
+
 const cli = meow(
   `
   Usage
@@ -47,34 +71,15 @@ const cli = meow(
 `,
   {
     importMeta: import.meta,
-    allowUnknownFlags: false,
-    flags: {
-      name: {
-        type: 'string',
-      },
-      mode: {
-        type: 'string',
-      },
-      features: {
-        type: 'string',
-      },
-      nonInteractive: {
-        type: 'boolean',
-        default: false,
-      },
-      ni: {
-        type: 'boolean',
-        default: false,
-      },
-      info: {
-        type: 'boolean',
-        default: false,
-      },
-    },
+    flags,
   },
 )
 
-if (cli.flags.info) {
+const unknownFlags = Object.keys(cli.flags).filter((name) => !Object.hasOwn(flags, name))
+
+if (unknownFlags.length > 0) {
+  reportFailure(`Unknown flags: ${unknownFlags.map((name) => `--${name}`).join(', ')}`)
+} else if (cli.flags.info) {
   console.log(getInfoOutput())
 } else if (cli.flags.nonInteractive || cli.flags.ni || !process.stdout.isTTY) {
   runNonInteractive({
