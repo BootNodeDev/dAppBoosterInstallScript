@@ -28,11 +28,8 @@ const OptionalPackages: FC<Props> = ({ onCompletion, onSubmit, skip = false }) =
   }, [])
 
   const onHandleSubmit = (selectedItems: Array<MultiSelectItem>) => {
-    const inConfigOrder = customPackages.filter((pkg) =>
-      selectedItems.some((item) => item.value === pkg.value),
-    )
-    onSubmit(inConfigOrder)
-    setSubmitted(inConfigOrder)
+    onSubmit(selectedItems)
+    setSubmitted(selectedItems)
     onCompletion()
   }
 

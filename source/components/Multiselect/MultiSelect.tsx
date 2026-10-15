@@ -71,8 +71,8 @@ const MultiSelect = <T,>({
   )
 
   const handleSubmit = useCallback(() => {
-    onSubmit(selectedItems)
-  }, [selectedItems, onSubmit])
+    onSubmit(items.filter((item) => includesItems(item, selectedItems)))
+  }, [items, selectedItems, onSubmit, includesItems])
 
   useInput(
     useCallback(
