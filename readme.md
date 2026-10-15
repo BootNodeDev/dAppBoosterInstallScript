@@ -2,8 +2,6 @@
 
 Scaffolds a new project from [dAppBooster](https://dappbooster.dev/), our blockchain boilerplate for EVM projects.
 
-Looking for Canton? It has its own installer: [`create-canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-create).
-
 ## Requirements
 
 - Node >= 24.15.0
