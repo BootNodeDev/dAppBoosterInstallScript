@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { copyFile, mkdir, rm } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import { getFeatureEntries, getStackConfig } from '../stacks/index.js'
-import type { FeatureName, InstallationType, Stack } from '../types/types.js'
+import { featureEntries, prepare, staging } from '../config.js'
+import type { FeatureName, InstallationType } from '../types/types.js'
 import { isFeatureSelected } from '../utils/utils.js'
 
 const HOME_FOLDER = 'src/components/pageComponents/home'
@@ -24,7 +24,6 @@ async function removePaths(projectFolder: string, relativePaths: string[]): Prom
  * leave behind. `full` mode keeps everything.
  */
 async function removeDeselectedFeatures(
-  stack: Stack,
   projectFolder: string,
   mode: InstallationType,
   features: FeatureName[],
@@ -36,7 +35,7 @@ async function removeDeselectedFeatures(
     return scripts
   }
 
-  for (const [name, definition] of getFeatureEntries(stack)) {
+  for (const [name, definition] of featureEntries) {
     const { paths = [], scripts: featureScripts = [] } = definition
 
     if (isFeatureSelected(name, features) || (paths.length === 0 && featureScripts.length === 0)) {
@@ -131,30 +130,22 @@ function patchPackageJson(projectFolder: string, scripts: string[]): void {
  * the pruned manifest once and the lockfile it writes needs no repair.
  */
 export async function cleanupFiles(
-  stack: Stack,
   projectFolder: string,
   mode: InstallationType,
   features: FeatureName[] = [],
   onProgress?: (step: string) => void,
 ): Promise<void> {
-  const { prepare, staging } = getStackConfig(stack)
+  onProgress?.(prepare.label)
+  await removePaths(projectFolder, prepare.paths)
 
-  if (prepare) {
-    onProgress?.(prepare.label)
-    await removePaths(projectFolder, prepare.paths)
-  }
+  const scripts = await removeDeselectedFeatures(projectFolder, mode, features, onProgress)
 
-  const scripts = await removeDeselectedFeatures(stack, projectFolder, mode, features, onProgress)
-
-  // The staged replacements only exist in stacks that ship a staging directory.
-  if (staging && mode !== 'full') {
+  if (mode !== 'full') {
     await restoreStagedHomePage(projectFolder, features)
   }
 
   patchPackageJson(projectFolder, scripts)
 
-  if (staging) {
-    onProgress?.(staging.label)
-    await removePaths(projectFolder, staging.paths)
-  }
+  onProgress?.(staging.label)
+  await removePaths(projectFolder, staging.paths)
 }

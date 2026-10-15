@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
-import { getFeatureEntries, getFeatureNames, getStackConfig } from '../stacks/index.js'
-import type { FeatureName, InstallationType, PlanSummaryItem, Stack } from '../types/types.js'
+import { featureDefinitions, featureEntries, featureNames } from '../config.js'
+import type { FeatureName, InstallationType, PlanSummaryItem } from '../types/types.js'
 
 export function getProjectFolder(projectName: string) {
   return join(process.cwd(), projectName)
@@ -51,16 +51,15 @@ export function describeInstallPlan(
   return [...items, { label: 'Features', value: features }]
 }
 
-export function getPackagesToRemove(stack: Stack, selectedFeatures: FeatureName[]): string[] {
-  return getFeatureEntries(stack)
+export function getPackagesToRemove(selectedFeatures: FeatureName[]): string[] {
+  return featureEntries
     .filter(([name]) => !selectedFeatures.includes(name))
     .flatMap(([, definition]) => definition.packages)
 }
 
 /** Post-install guidance for a scaffold: that of each feature it kept. */
-export function getPostInstallMessages(stack: Stack, features: FeatureName[]): string[] {
-  const config = getStackConfig(stack)
-  return features.flatMap((name) => config.features[name]?.postInstall ?? [])
+export function getPostInstallMessages(features: FeatureName[]): string[] {
+  return features.flatMap((name) => featureDefinitions[name].postInstall ?? [])
 }
 
 /**
@@ -68,12 +67,12 @@ export function getPostInstallMessages(stack: Stack, features: FeatureName[]): s
  * selection. Shared by the non-interactive path and the interactive steps.
  */
 export function resolveModeFeatures(
-  stack: Stack,
   mode: InstallationType,
   customSelection: FeatureName[] = [],
 ): FeatureName[] {
-  const names = getFeatureNames(stack)
-  return mode === 'full' ? names : names.filter((name) => customSelection.includes(name))
+  return mode === 'full'
+    ? featureNames
+    : featureNames.filter((name) => customSelection.includes(name))
 }
 
 export function projectDirectoryExists(projectName: string): boolean {

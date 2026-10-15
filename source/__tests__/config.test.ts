@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { getDefaultFeatureNames, getFeatureNames, stackDefinitions } from '../stacks/index.js'
+import { defaultFeatureNames, featureDefinitions, featureNames } from '../config.js'
 
-describe('getDefaultFeatureNames', () => {
+describe('defaultFeatureNames', () => {
   it('returns only features whose default flag is true, in config order', () => {
-    const expected = Object.entries(stackDefinitions.evm.features)
+    const expected = Object.entries(featureDefinitions)
       .filter(([, def]) => def.default)
       .map(([name]) => name)
-    expect(getDefaultFeatureNames('evm')).toEqual(expected)
+    expect(defaultFeatureNames).toEqual(expected)
   })
 
   it('is a subset of all feature names', () => {
-    const all = new Set(getFeatureNames('evm'))
-    for (const name of getDefaultFeatureNames('evm')) {
+    const all = new Set(featureNames)
+    for (const name of defaultFeatureNames) {
       expect(all.has(name)).toBe(true)
     }
   })

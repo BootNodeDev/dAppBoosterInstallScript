@@ -9,10 +9,8 @@ import InstallationMode from './components/steps/InstallationMode.js'
 import OptionalPackages from './components/steps/OptionalPackages.js'
 import PostInstall from './components/steps/PostInstall.js'
 import ProjectName from './components/steps/ProjectName.js'
-import type { FeatureName, InstallationSelectItem, MultiSelectItem, Stack } from './types/types.js'
+import type { FeatureName, InstallationSelectItem, MultiSelectItem } from './types/types.js'
 import { canShowStep, describeInstallPlan, resolveModeFeatures } from './utils/utils.js'
-
-const stack: Stack = 'evm'
 
 const App: FC = () => {
   const [projectName, setProjectName] = useState<string>('')
@@ -42,7 +40,7 @@ const App: FC = () => {
 
   const features = useMemo(() => {
     const selectedNames = selectedFeatures?.map((item) => item.value as FeatureName) ?? []
-    return resolveModeFeatures(stack, mode, selectedNames)
+    return resolveModeFeatures(mode, selectedNames)
   }, [mode, selectedFeatures])
 
   // Memoised because it feeds the step list below, which would otherwise rebuild on every render.
@@ -64,7 +62,6 @@ const App: FC = () => {
         key={`installation-mode-${attempt}`}
       />,
       <OptionalPackages
-        stack={stack}
         onCompletion={finishStep}
         onSubmit={onSelectSelectedFeatures}
         skip={skipFeatures}
@@ -77,13 +74,11 @@ const App: FC = () => {
         key={`confirmation-${attempt}`}
       />,
       <CloneRepo
-        stack={stack}
         onCompletion={finishStep}
         projectName={projectName}
         key={`clone-repo-${attempt}`}
       />,
       <FileCleanup
-        stack={stack}
         mode={mode}
         features={features}
         onCompletion={finishStep}
@@ -91,7 +86,6 @@ const App: FC = () => {
         key={`file-cleanup-${attempt}`}
       />,
       <Install
-        stack={stack}
         mode={mode}
         features={features}
         onCompletion={finishStep}

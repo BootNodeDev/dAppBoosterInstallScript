@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getFeatureNames } from '../stacks/index.js'
+import { featureNames } from '../config.js'
 
 vi.mock('../operations/index.js', () => ({
   cloneRepo: vi.fn().mockResolvedValue(undefined),
@@ -23,8 +23,6 @@ const { cloneRepo, createEnvFile, installPackages, cleanupFiles } = await import
   '../operations/index.js'
 )
 const { projectDirectoryExists } = await import('../utils/utils.js')
-
-const evmFeatureNames = getFeatureNames('evm')
 
 function getLastJsonOutput(): Record<string, unknown> {
   const lastCall = mockLog.mock.calls.at(-1)
@@ -98,7 +96,7 @@ describe('nonInteractive — validation', () => {
     expect(output.error).toMatch(/--features value is empty/)
   })
 
-  it('rejects unknown feature names for evm', async () => {
+  it('rejects unknown feature names', async () => {
     await expect(
       runNonInteractive({ name: 'my_app', mode: 'custom', features: 'banana,apple' }),
     ).rejects.toThrow()
@@ -161,22 +159,20 @@ describe('nonInteractive — full mode execution', () => {
     expect(callOrder).toEqual(['cloneRepo', 'cleanupFiles', 'createEnvFile', 'installPackages'])
   })
 
-  it('passes stack as first arg to all operations', async () => {
+  it('passes the project to all operations', async () => {
     await runNonInteractive({ name: 'my_app', mode: 'full' })
 
-    expect(cloneRepo).toHaveBeenCalledWith('evm', 'my_app')
-    expect(createEnvFile).toHaveBeenCalledWith('evm', expect.stringContaining('my_app'))
+    expect(cloneRepo).toHaveBeenCalledWith('my_app')
+    expect(createEnvFile).toHaveBeenCalledWith(expect.stringContaining('my_app'))
     expect(installPackages).toHaveBeenCalledWith(
-      'evm',
       expect.stringContaining('my_app'),
       'full',
-      evmFeatureNames,
+      featureNames,
     )
     expect(cleanupFiles).toHaveBeenCalledWith(
-      'evm',
       expect.stringContaining('my_app'),
       'full',
-      evmFeatureNames,
+      featureNames,
     )
   })
 
@@ -187,7 +183,7 @@ describe('nonInteractive — full mode execution', () => {
     expect(output.success).toBe(true)
     expect(output.projectName).toBe('my_app')
     expect(output.mode).toBe('full')
-    expect(output.features).toEqual(evmFeatureNames)
+    expect(output.features).toEqual(featureNames)
     expect(output.path).toEqual(expect.stringContaining('my_app'))
     expect(output.postInstall).toBeInstanceOf(Array)
   })
@@ -205,7 +201,7 @@ describe('nonInteractive — full mode execution', () => {
     await runNonInteractive({ name: 'my_app', mode: 'full', features: 'demo' })
 
     const output = getLastJsonOutput()
-    expect(output.features).toEqual(evmFeatureNames)
+    expect(output.features).toEqual(featureNames)
   })
 })
 
@@ -232,13 +228,11 @@ describe('nonInteractive — custom mode execution', () => {
   it('passes selected features to operations', async () => {
     await runNonInteractive({ name: 'my_app', mode: 'custom', features: 'demo,subgraph' })
 
-    expect(installPackages).toHaveBeenCalledWith(
-      'evm',
-      expect.stringContaining('my_app'),
-      'custom',
-      ['demo', 'subgraph'],
-    )
-    expect(cleanupFiles).toHaveBeenCalledWith('evm', expect.stringContaining('my_app'), 'custom', [
+    expect(installPackages).toHaveBeenCalledWith(expect.stringContaining('my_app'), 'custom', [
+      'demo',
+      'subgraph',
+    ])
+    expect(cleanupFiles).toHaveBeenCalledWith(expect.stringContaining('my_app'), 'custom', [
       'demo',
       'subgraph',
     ])

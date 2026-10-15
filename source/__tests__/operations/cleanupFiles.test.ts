@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getFeatureNames } from '../../stacks/index.js'
+import { featureNames } from '../../config.js'
 
 vi.mock('node:fs/promises', () => ({
   rm: vi.fn().mockResolvedValue(undefined),
@@ -45,9 +45,7 @@ function getWrittenPackageJson(): Record<string, unknown> {
   return JSON.parse(lastCall[1] as string)
 }
 
-const ALL_EVM_FEATURES = getFeatureNames('evm')
-
-const EVM_DEV_DEPS = {
+const DEV_DEPS = {
   husky: '^9.1.7',
   'lint-staged': '^17.0.4',
   '@commitlint/cli': '^21.0.1',
@@ -55,7 +53,7 @@ const EVM_DEV_DEPS = {
   vocs: '^1.0.0',
 }
 
-function mockEvmPackageJson() {
+function mockPackageJson() {
   vi.mocked(readFileSync).mockReturnValue(
     JSON.stringify({
       scripts: {
@@ -69,7 +67,7 @@ function mockEvmPackageJson() {
         prepare: 'husky install',
         commitlint: 'commitlint --edit',
       },
-      devDependencies: EVM_DEV_DEPS,
+      devDependencies: DEV_DEPS,
     }),
   )
 }
@@ -77,12 +75,12 @@ function mockEvmPackageJson() {
 describe('cleanupFiles', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockEvmPackageJson()
+    mockPackageJson()
   })
 
   describe('full mode', () => {
     it('removes repository metadata and .install-files', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'full')
+      await cleanupFiles('/project/my_app', 'full')
 
       const paths = getRmPaths()
       expect(paths).toContain(resolve('/project/my_app', '.install-files'))
@@ -91,7 +89,7 @@ describe('cleanupFiles', () => {
     })
 
     it('keeps every feature, so package.json is left untouched', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'full')
+      await cleanupFiles('/project/my_app', 'full')
 
       expect(getRmPaths()).not.toContain(resolve('/project/my_app', '.husky'))
       expect(writeFileSync).not.toHaveBeenCalled()
@@ -101,7 +99,7 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — all features selected', () => {
     it('removes the repository metadata plus .install-files', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', ALL_EVM_FEATURES)
+      await cleanupFiles('/project/my_app', 'custom', featureNames)
 
       const paths = getRmPaths()
       expect(paths).toContain(resolve('/project/my_app', '.install-files'))
@@ -109,7 +107,7 @@ describe('cleanupFiles', () => {
     })
 
     it('leaves package.json alone when there is nothing to strip', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', ALL_EVM_FEATURES)
+      await cleanupFiles('/project/my_app', 'custom', featureNames)
 
       expect(writeFileSync).not.toHaveBeenCalled()
     })
@@ -117,12 +115,7 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — demo deselected', () => {
     it('removes home folder, recreates it, copies replacement', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', [
-        'subgraph',
-        'typedoc',
-        'vocs',
-        'husky',
-      ])
+      await cleanupFiles('/project/my_app', 'custom', ['subgraph', 'typedoc', 'vocs', 'husky'])
 
       const homeFolder = resolve('/project/my_app', 'src/components/pageComponents/home')
       expect(getRmPaths()).toContain(homeFolder)
@@ -138,13 +131,13 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — subgraph deselected', () => {
     it('removes src/subgraphs', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
 
       expect(getRmPaths()).toContain(resolve('/project/my_app', 'src/subgraphs'))
     })
 
     it('cleans up subgraph demos when demo IS selected', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
 
       const homeFolder = resolve('/project/my_app', 'src/components/pageComponents/home')
       expect(getRmPaths()).toContain(resolve(homeFolder, 'Examples/demos/subgraphs'))
@@ -158,7 +151,7 @@ describe('cleanupFiles', () => {
     })
 
     it('does NOT clean up subgraph demos when demo is also deselected', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', ['typedoc', 'vocs', 'husky'])
+      await cleanupFiles('/project/my_app', 'custom', ['typedoc', 'vocs', 'husky'])
 
       const subgraphDemosPath = resolve(
         '/project/my_app',
@@ -168,7 +161,7 @@ describe('cleanupFiles', () => {
     })
 
     it('removes subgraph-codegen from package.json scripts', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'typedoc', 'vocs', 'husky'])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -178,13 +171,13 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — typedoc deselected', () => {
     it('removes typedoc.json', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'subgraph', 'vocs', 'husky'])
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'vocs', 'husky'])
 
       expect(getRmPaths()).toContain(resolve('/project/my_app', 'typedoc.json'))
     })
 
     it('removes typedoc:build from package.json scripts', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'subgraph', 'vocs', 'husky'])
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'vocs', 'husky'])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -194,24 +187,14 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — vocs deselected', () => {
     it('removes vocs.config.ts and docs folder', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', [
-        'demo',
-        'subgraph',
-        'typedoc',
-        'husky',
-      ])
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'husky'])
 
       expect(getRmPaths()).toContain(resolve('/project/my_app', 'vocs.config.ts'))
       expect(getRmPaths()).toContain(resolve('/project/my_app', 'docs'))
     })
 
     it('removes docs scripts from package.json', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', [
-        'demo',
-        'subgraph',
-        'typedoc',
-        'husky',
-      ])
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'husky'])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -223,12 +206,7 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — husky deselected', () => {
     it('removes husky folder and config files', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', [
-        'demo',
-        'subgraph',
-        'typedoc',
-        'vocs',
-      ])
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'vocs'])
 
       expect(getRmPaths()).toContain(resolve('/project/my_app', '.husky'))
       expect(getRmPaths()).toContain(resolve('/project/my_app', '.lintstagedrc.mjs'))
@@ -236,12 +214,7 @@ describe('cleanupFiles', () => {
     })
 
     it('removes the tooling scripts from package.json', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', [
-        'demo',
-        'subgraph',
-        'typedoc',
-        'vocs',
-      ])
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'vocs'])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -250,12 +223,7 @@ describe('cleanupFiles', () => {
     })
 
     it('leaves the dependencies to the package manager', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', [
-        'demo',
-        'subgraph',
-        'typedoc',
-        'vocs',
-      ])
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph', 'typedoc', 'vocs'])
 
       const devDeps = getWrittenPackageJson().devDependencies as Record<string, unknown>
       expect(devDeps.husky).toBe('^9.1.7')
@@ -265,7 +233,7 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — husky selected', () => {
     it('keeps the husky files, scripts, and dependencies', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', ALL_EVM_FEATURES)
+      await cleanupFiles('/project/my_app', 'custom', featureNames)
 
       const paths = getRmPaths()
       expect(paths).not.toContain(resolve('/project/my_app', '.husky'))
@@ -277,7 +245,7 @@ describe('cleanupFiles', () => {
 
   describe('custom mode — no features selected', () => {
     it('runs all cleanup operations', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', [])
+      await cleanupFiles('/project/my_app', 'custom', [])
 
       const paths = getRmPaths()
       expect(paths).toContain(resolve('/project/my_app', 'src/components/pageComponents/home'))
@@ -289,7 +257,7 @@ describe('cleanupFiles', () => {
     })
 
     it('removes all optional scripts from package.json', async () => {
-      await cleanupFiles('evm', '/project/my_app', 'custom', [])
+      await cleanupFiles('/project/my_app', 'custom', [])
 
       const pkg = getWrittenPackageJson()
       const scripts = pkg.scripts as Record<string, unknown>
@@ -305,14 +273,14 @@ describe('cleanupFiles', () => {
   })
 
   it('always removes .install-files as the last rm call', async () => {
-    await cleanupFiles('evm', '/project/my_app', 'custom', ['demo'])
+    await cleanupFiles('/project/my_app', 'custom', ['demo'])
 
     const paths = getRmPaths()
     expect(paths.at(-1)).toBe(resolve('/project/my_app', '.install-files'))
   })
 
   it('uses force option on all rm calls', async () => {
-    await cleanupFiles('evm', '/project/my_app', 'custom', [])
+    await cleanupFiles('/project/my_app', 'custom', [])
 
     for (const call of vi.mocked(rm).mock.calls) {
       const options = call[1] as { force?: boolean }
@@ -323,14 +291,14 @@ describe('cleanupFiles', () => {
   describe('onProgress callback', () => {
     it('reports the prepare and install-script steps for full mode', async () => {
       const steps: string[] = []
-      await cleanupFiles('evm', '/project/my_app', 'full', [], (step) => steps.push(step))
+      await cleanupFiles('/project/my_app', 'full', [], (step) => steps.push(step))
 
       expect(steps).toEqual(['Repository metadata', 'Install script'])
     })
 
     it('reports all feature cleanups when no features selected', async () => {
       const steps: string[] = []
-      await cleanupFiles('evm', '/project/my_app', 'custom', [], (step) => steps.push(step))
+      await cleanupFiles('/project/my_app', 'custom', [], (step) => steps.push(step))
 
       expect(steps).toEqual([
         'Repository metadata',
@@ -345,7 +313,7 @@ describe('cleanupFiles', () => {
 
     it('skips steps for selected features', async () => {
       const steps: string[] = []
-      await cleanupFiles('evm', '/project/my_app', 'custom', ['demo', 'subgraph'], (step) =>
+      await cleanupFiles('/project/my_app', 'custom', ['demo', 'subgraph'], (step) =>
         steps.push(step),
       )
 
@@ -356,7 +324,7 @@ describe('cleanupFiles', () => {
     })
 
     it('works without a callback', async () => {
-      await expect(cleanupFiles('evm', '/project/my_app', 'full')).resolves.toBeUndefined()
+      await expect(cleanupFiles('/project/my_app', 'full')).resolves.toBeUndefined()
     })
   })
 })

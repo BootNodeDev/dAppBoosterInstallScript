@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getFeatureEntries, getFeatureNames, stackDefinitions } from '../stacks/index.js'
+import { featureDefinitions, featureEntries, featureNames } from '../config.js'
 import {
   deriveStepDisplay,
   describeInstallPlan,
@@ -9,8 +9,6 @@ import {
   isValidName,
   resolveModeFeatures,
 } from '../utils/utils.js'
-
-const evmFeatures = stackDefinitions.evm.features
 
 describe('isValidName', () => {
   it('accepts alphanumeric names', () => {
@@ -71,57 +69,57 @@ describe('isFeatureSelected', () => {
 
 describe('getPackagesToRemove', () => {
   it('returns empty when all features selected', () => {
-    const allFeatures = getFeatureNames('evm')
-    expect(getPackagesToRemove('evm', allFeatures)).toEqual([])
+    const allFeatures = featureNames
+    expect(getPackagesToRemove(allFeatures)).toEqual([])
   })
 
   it('returns all packages when no features selected', () => {
-    const result = getPackagesToRemove('evm', [])
+    const result = getPackagesToRemove([])
 
-    const allPackages = Object.values(evmFeatures).flatMap((def) => def.packages)
+    const allPackages = Object.values(featureDefinitions).flatMap((def) => def.packages)
     expect(result).toEqual(allPackages)
   })
 
   it('returns packages only for deselected features', () => {
-    const result = getPackagesToRemove('evm', ['demo', 'subgraph'])
+    const result = getPackagesToRemove(['demo', 'subgraph'])
 
-    for (const pkg of evmFeatures.subgraph.packages) {
+    for (const pkg of featureDefinitions.subgraph.packages) {
       expect(result).not.toContain(pkg)
     }
-    for (const pkg of evmFeatures.typedoc.packages) {
+    for (const pkg of featureDefinitions.typedoc.packages) {
       expect(result).toContain(pkg)
     }
   })
 
   it('handles demo (which has no packages) correctly', () => {
-    const withDemo = getPackagesToRemove('evm', ['demo'])
-    const withoutDemo = getPackagesToRemove('evm', [])
+    const withDemo = getPackagesToRemove(['demo'])
+    const withoutDemo = getPackagesToRemove([])
     expect(withDemo).toEqual(withoutDemo)
   })
 })
 
 describe('getPostInstallMessages', () => {
   it('returns every message for a scaffold that kept every feature', () => {
-    const result = getPostInstallMessages('evm', getFeatureNames('evm'))
+    const result = getPostInstallMessages(featureNames)
 
-    const allMessages = getFeatureEntries('evm').flatMap(([, def]) => def.postInstall ?? [])
+    const allMessages = featureEntries.flatMap(([, def]) => def.postInstall ?? [])
     expect(result).toEqual(allMessages)
   })
 
   it('returns only the kept features messages', () => {
-    const result = getPostInstallMessages('evm', ['subgraph'])
+    const result = getPostInstallMessages(['subgraph'])
 
-    expect(result).toEqual(evmFeatures.subgraph.postInstall)
+    expect(result).toEqual(featureDefinitions.subgraph.postInstall)
   })
 
   it('returns empty when the kept features carry no guidance', () => {
-    const result = getPostInstallMessages('evm', ['demo'])
+    const result = getPostInstallMessages(['demo'])
 
     expect(result).toEqual([])
   })
 
   it('returns empty when nothing was kept', () => {
-    const result = getPostInstallMessages('evm', [])
+    const result = getPostInstallMessages([])
 
     expect(result).toEqual([])
   })
@@ -154,11 +152,11 @@ describe('describeInstallPlan', () => {
 
 describe('resolveModeFeatures', () => {
   it('returns all features for full mode', () => {
-    expect(resolveModeFeatures('evm', 'full')).toEqual(getFeatureNames('evm'))
+    expect(resolveModeFeatures('full')).toEqual(featureNames)
   })
 
   it('returns the custom selection in config order', () => {
-    expect(resolveModeFeatures('evm', 'custom', ['subgraph', 'demo'])).toEqual(['demo', 'subgraph'])
+    expect(resolveModeFeatures('custom', ['subgraph', 'demo'])).toEqual(['demo', 'subgraph'])
   })
 })
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { featureEntries, featureNames } from '../config.js'
 import { getInfoOutput } from '../info.js'
-import { getFeatureEntries, getFeatureNames } from '../stacks/index.js'
 
 describe('getInfoOutput', () => {
   it('returns valid JSON', () => {
@@ -14,13 +14,13 @@ describe('getInfoOutput', () => {
 
   it('lists every feature', () => {
     const output = JSON.parse(getInfoOutput())
-    expect(Object.keys(output.features)).toEqual(getFeatureNames('evm'))
+    expect(Object.keys(output.features)).toEqual(featureNames)
   })
 
   it('each feature has description and default', () => {
     const output = JSON.parse(getInfoOutput())
 
-    for (const name of getFeatureNames('evm')) {
+    for (const name of featureNames) {
       const feature = output.features[name]
       expect(typeof feature.description).toBe('string')
       expect(typeof feature.default).toBe('boolean')
@@ -30,7 +30,7 @@ describe('getInfoOutput', () => {
   it('includes postInstall only for features that declare it', () => {
     const output = JSON.parse(getInfoOutput())
 
-    for (const [name, def] of getFeatureEntries('evm')) {
+    for (const [name, def] of featureEntries) {
       const feature = output.features[name]
       if (def.postInstall) {
         expect(feature.postInstall).toEqual(def.postInstall)
@@ -43,7 +43,7 @@ describe('getInfoOutput', () => {
   it('does not leak label, packages, or paths into feature output', () => {
     const output = JSON.parse(getInfoOutput())
 
-    for (const name of getFeatureNames('evm')) {
+    for (const name of featureNames) {
       const feature = output.features[name]
       expect(feature).not.toHaveProperty('label')
       expect(feature).not.toHaveProperty('packages')

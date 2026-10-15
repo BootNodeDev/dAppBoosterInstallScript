@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { stackDefinitions } from '../../stacks/index.js'
 
 vi.mock('../../operations/exec.js', () => ({
   exec: vi.fn().mockResolvedValue(undefined),
@@ -14,7 +13,7 @@ const { exec, execFile } = await import('../../operations/exec.js')
 const { rm } = await import('node:fs/promises')
 const { cloneRepo } = await import('../../operations/cloneRepo.js')
 
-const evmRepoUrl = stackDefinitions.evm.repoUrl
+const repoUrl = 'https://github.com/BootNodeDev/dAppBooster.git'
 
 describe('cloneRepo — latest tag', () => {
   beforeEach(() => {
@@ -22,20 +21,20 @@ describe('cloneRepo — latest tag', () => {
   })
 
   it('clones with execFile using the repo url and projectName as arg', async () => {
-    await cloneRepo('evm', 'my_app')
+    await cloneRepo('my_app')
 
     expect(execFile).toHaveBeenCalledWith('git', [
       'clone',
       '--depth',
       '1',
       '--no-checkout',
-      evmRepoUrl,
+      repoUrl,
       'my_app',
     ])
   })
 
   it('fetches tags with execFile', async () => {
-    await cloneRepo('evm', 'my_app')
+    await cloneRepo('my_app')
 
     expect(execFile).toHaveBeenCalledWith('git', ['fetch', '--tags'], {
       cwd: expect.stringContaining('my_app'),
@@ -43,7 +42,7 @@ describe('cloneRepo — latest tag', () => {
   })
 
   it('checks out latest tag with exec (needs shell)', async () => {
-    await cloneRepo('evm', 'my_app')
+    await cloneRepo('my_app')
 
     expect(exec).toHaveBeenCalledWith(expect.stringContaining('git checkout $(git describe'), {
       cwd: expect.stringContaining('my_app'),
@@ -51,7 +50,7 @@ describe('cloneRepo — latest tag', () => {
   })
 
   it('removes .git with fs.rm', async () => {
-    await cloneRepo('evm', 'my_app')
+    await cloneRepo('my_app')
 
     expect(rm).toHaveBeenCalledWith(expect.stringContaining('my_app/.git'), {
       recursive: true,
@@ -60,7 +59,7 @@ describe('cloneRepo — latest tag', () => {
   })
 
   it('initializes fresh git repo with execFile', async () => {
-    await cloneRepo('evm', 'my_app')
+    await cloneRepo('my_app')
 
     expect(execFile).toHaveBeenCalledWith('git', ['init'], {
       cwd: expect.stringContaining('my_app'),
@@ -68,7 +67,7 @@ describe('cloneRepo — latest tag', () => {
   })
 
   it('does not interpolate projectName into shell strings', async () => {
-    await cloneRepo('evm', 'my_app')
+    await cloneRepo('my_app')
 
     for (const call of vi.mocked(exec).mock.calls) {
       expect(call[0]).not.toContain('my_app')
@@ -77,7 +76,7 @@ describe('cloneRepo — latest tag', () => {
 
   it('reports the canonical 5 progress steps in order', async () => {
     const steps: string[] = []
-    await cloneRepo('evm', 'my_app', (step) => steps.push(step))
+    await cloneRepo('my_app', (step) => steps.push(step))
 
     expect(steps).toEqual([
       'Cloning dAppBooster in my_app',
@@ -89,21 +88,21 @@ describe('cloneRepo — latest tag', () => {
   })
 
   it('checks the package manager is on PATH before cloning', async () => {
-    await cloneRepo('evm', 'my_app')
+    await cloneRepo('my_app')
 
     const calls = vi.mocked(execFile).mock.calls
-    expect(calls[0]).toEqual([stackDefinitions.evm.packageManager, ['--version']])
+    expect(calls[0]).toEqual(['pnpm', ['--version']])
   })
 
   it('fails with a plain message when the package manager is missing', async () => {
     vi.mocked(execFile).mockRejectedValueOnce(new Error('spawn pnpm ENOENT'))
 
-    await expect(cloneRepo('evm', 'my_app')).rejects.toThrow(/pnpm was not found/)
+    await expect(cloneRepo('my_app')).rejects.toThrow(/pnpm was not found/)
     expect(execFile).toHaveBeenCalledTimes(1)
   })
 
   it('works without a callback', async () => {
-    await expect(cloneRepo('evm', 'my_app')).resolves.toBeUndefined()
+    await expect(cloneRepo('my_app')).resolves.toBeUndefined()
   })
 })
 
@@ -118,7 +117,7 @@ describe('cloneRepo — pinned to one ref', () => {
   })
 
   it('fetches that ref shallowly and checks it out instead of the latest tag', async () => {
-    await cloneRepo('evm', 'my_app')
+    await cloneRepo('my_app')
 
     expect(execFile).toHaveBeenCalledWith('git', ['fetch', '--depth', '1', 'origin', 'v1.2.3'], {
       cwd: expect.stringContaining('my_app'),
@@ -131,7 +130,7 @@ describe('cloneRepo — pinned to one ref', () => {
 
   it('names the ref in its progress steps', async () => {
     const steps: string[] = []
-    await cloneRepo('evm', 'my_app', (step) => steps.push(step))
+    await cloneRepo('my_app', (step) => steps.push(step))
 
     expect(steps).toEqual([
       'Cloning dAppBooster (v1.2.3) in my_app',

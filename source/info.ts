@@ -1,8 +1,8 @@
-import { getFeatureEntries } from './stacks/index.js'
+import { featureEntries } from './config.js'
 
 export function getInfoOutput(): string {
   const features = Object.fromEntries(
-    getFeatureEntries('evm').map(([name, definition]) => [
+    featureEntries.map(([name, definition]) => [
       name,
       {
         description: definition.description,

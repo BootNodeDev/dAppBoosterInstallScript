@@ -13,7 +13,7 @@ describe('createEnvFile', () => {
   })
 
   it('copies .env.example to .env.local in the project folder', async () => {
-    await createEnvFile('evm', '/project/my_app')
+    await createEnvFile('/project/my_app')
 
     expect(copyFile).toHaveBeenCalledWith(
       '/project/my_app/.env.example',
@@ -22,7 +22,7 @@ describe('createEnvFile', () => {
   })
 
   it('uses the provided project folder for both paths', async () => {
-    await createEnvFile('evm', '/other/path')
+    await createEnvFile('/other/path')
 
     expect(copyFile).toHaveBeenCalledWith('/other/path/.env.example', '/other/path/.env.local')
   })
@@ -30,6 +30,6 @@ describe('createEnvFile', () => {
   it('propagates errors from copyFile', async () => {
     vi.mocked(copyFile).mockRejectedValueOnce(new Error('.env.example not found'))
 
-    await expect(createEnvFile('evm', '/project/my_app')).rejects.toThrow('.env.example not found')
+    await expect(createEnvFile('/project/my_app')).rejects.toThrow('.env.example not found')
   })
 })

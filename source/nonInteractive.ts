@@ -1,8 +1,8 @@
 import process from 'node:process'
+import { featureNames, isFeatureNameValid } from './config.js'
 import { cleanupFiles, cloneRepo, createEnvFile, installPackages } from './operations/index.js'
 import { beginInstall, completeInstall } from './operations/installGuard.js'
-import { getFeatureNames, isFeatureNameValid } from './stacks/index.js'
-import type { FeatureName, InstallationType, Stack } from './types/types.js'
+import type { FeatureName, InstallationType } from './types/types.js'
 import {
   getPostInstallMessages,
   getProjectFolder,
@@ -59,11 +59,11 @@ function parseFeatures(featuresFlag: string | undefined): string[] {
     })
 }
 
-/** The mode and features the flags ask for, once the stack is known to be valid. */
-function resolveModeAndFeatures(
-  stack: Stack,
-  flags: { mode?: string; features?: string },
-): { mode: InstallationType; features: FeatureName[] } {
+/** The mode and features the flags ask for. */
+function resolveModeAndFeatures(flags: { mode?: string; features?: string }): {
+  mode: InstallationType
+  features: FeatureName[]
+} {
   if (!flags.mode) {
     fail('Missing required flag: --mode')
   }
@@ -73,7 +73,7 @@ function resolveModeAndFeatures(
   }
 
   if (flags.mode === 'full') {
-    return { mode: 'full', features: resolveModeFeatures(stack, 'full') }
+    return { mode: 'full', features: resolveModeFeatures('full') }
   }
 
   if (!flags.features) {
@@ -90,7 +90,7 @@ function resolveModeAndFeatures(
   const invalidFeatures: string[] = []
 
   for (const name of requested) {
-    if (isFeatureNameValid(stack, name)) {
+    if (isFeatureNameValid(name)) {
       features.push(name)
     } else {
       invalidFeatures.push(name)
@@ -98,21 +98,18 @@ function resolveModeAndFeatures(
   }
 
   if (invalidFeatures.length > 0) {
-    const validNames = getFeatureNames(stack).join(', ')
+    const validNames = featureNames.join(', ')
     fail(`Unknown features: ${invalidFeatures.join(', ')}. Valid features: ${validNames}`)
   }
 
-  return { mode: 'custom', features: resolveModeFeatures(stack, 'custom', features) }
+  return { mode: 'custom', features: resolveModeFeatures('custom', features) }
 }
 
 function validate(flags: { name?: string; mode?: string; features?: string }): {
-  stack: Stack
   name: string
   mode: InstallationType
   features: FeatureName[]
 } {
-  const stack = 'evm'
-
   if (!flags.name) {
     fail('Missing required flag: --name')
   }
@@ -123,13 +120,13 @@ function validate(flags: { name?: string; mode?: string; features?: string }): {
     )
   }
 
-  const { mode, features } = resolveModeAndFeatures(stack, flags)
+  const { mode, features } = resolveModeAndFeatures(flags)
 
   if (projectDirectoryExists(flags.name)) {
     fail(`Project directory '${flags.name}' already exists`)
   }
 
-  return { stack, name: flags.name, mode, features }
+  return { name: flags.name, mode, features }
 }
 
 export async function runNonInteractive(flags: {
@@ -137,17 +134,17 @@ export async function runNonInteractive(flags: {
   mode?: string
   features?: string
 }): Promise<void> {
-  const { stack, name, mode, features } = validate(flags)
+  const { name, mode, features } = validate(flags)
 
   const projectFolder = getProjectFolder(name)
 
   try {
     beginInstall(projectFolder)
 
-    await cloneRepo(stack, name)
-    await cleanupFiles(stack, projectFolder, mode, features)
-    await createEnvFile(stack, projectFolder)
-    await installPackages(stack, projectFolder, mode, features)
+    await cloneRepo(name)
+    await cleanupFiles(projectFolder, mode, features)
+    await createEnvFile(projectFolder)
+    await installPackages(projectFolder, mode, features)
 
     completeInstall()
 
@@ -157,7 +154,7 @@ export async function runNonInteractive(flags: {
       mode,
       features,
       path: projectFolder,
-      postInstall: getPostInstallMessages(stack, features),
+      postInstall: getPostInstallMessages(features),
     }
 
     console.log(JSON.stringify(result, null, 2))
