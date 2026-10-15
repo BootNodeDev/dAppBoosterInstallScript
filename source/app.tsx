@@ -79,14 +79,12 @@ const App: FC = () => {
         key={`clone-repo-${attempt}`}
       />,
       <FileCleanup
-        mode={mode}
         features={features}
         onCompletion={finishStep}
         projectName={projectName}
         key={`file-cleanup-${attempt}`}
       />,
       <Install
-        mode={mode}
         features={features}
         onCompletion={finishStep}
         projectName={projectName}
@@ -102,7 +100,6 @@ const App: FC = () => {
       finishStep,
       onSelectSelectedFeatures,
       onSelectSetupType,
-      mode,
       features,
       projectName,
       skipFeatures,

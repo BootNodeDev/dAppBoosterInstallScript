@@ -142,9 +142,9 @@ export async function runNonInteractive(flags: {
     beginInstall(projectFolder)
 
     await cloneRepo(name)
-    await cleanupFiles(projectFolder, mode, features)
+    await cleanupFiles(projectFolder, features)
     await createEnvFile(projectFolder)
-    await installPackages(projectFolder, mode, features)
+    await installPackages(projectFolder, features)
 
     completeInstall()
 

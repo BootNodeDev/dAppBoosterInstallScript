@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { copyFile, mkdir, rm } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { featureEntries, prepare, staging } from '../config.js'
-import type { FeatureName, InstallationType } from '../types/types.js'
+import type { FeatureName } from '../types/types.js'
 import { isFeatureSelected } from '../utils/utils.js'
 
 const HOME_FOLDER = 'src/components/pageComponents/home'
@@ -21,19 +21,14 @@ async function removePaths(projectFolder: string, relativePaths: string[]): Prom
 
 /**
  * Deletes the files of every feature the user left out and returns the package.json scripts they
- * leave behind. `full` mode keeps everything.
+ * leave behind.
  */
 async function removeDeselectedFeatures(
   projectFolder: string,
-  mode: InstallationType,
   features: FeatureName[],
   onProgress?: (step: string) => void,
 ): Promise<string[]> {
   const scripts: string[] = []
-
-  if (mode === 'full') {
-    return scripts
-  }
 
   for (const [name, definition] of featureEntries) {
     const { paths = [], scripts: featureScripts = [] } = definition
@@ -131,19 +126,14 @@ function patchPackageJson(projectFolder: string, scripts: string[]): void {
  */
 export async function cleanupFiles(
   projectFolder: string,
-  mode: InstallationType,
-  features: FeatureName[] = [],
+  features: FeatureName[],
   onProgress?: (step: string) => void,
 ): Promise<void> {
   onProgress?.(prepare.label)
   await removePaths(projectFolder, prepare.paths)
 
-  const scripts = await removeDeselectedFeatures(projectFolder, mode, features, onProgress)
-
-  if (mode !== 'full') {
-    await restoreStagedHomePage(projectFolder, features)
-  }
-
+  const scripts = await removeDeselectedFeatures(projectFolder, features, onProgress)
+  await restoreStagedHomePage(projectFolder, features)
   patchPackageJson(projectFolder, scripts)
 
   onProgress?.(staging.label)

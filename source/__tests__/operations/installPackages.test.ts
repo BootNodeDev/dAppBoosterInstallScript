@@ -14,40 +14,23 @@ describe('installPackages', () => {
     vi.clearAllMocks()
   })
 
-  describe('full mode', () => {
+  describe('every feature kept', () => {
     it('runs pnpm install via execFile', async () => {
-      await installPackages('/project/my_app', 'full')
+      await installPackages('/project/my_app', featureNames)
 
       expect(execFile).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/project/my_app' })
     })
 
     it('runs only one command', async () => {
-      await installPackages('/project/my_app', 'full')
+      await installPackages('/project/my_app', featureNames)
 
       expect(execFile).toHaveBeenCalledTimes(1)
-    })
-
-    it('ignores features argument', async () => {
-      await installPackages('/project/my_app', 'full', ['demo', 'subgraph'])
-
-      expect(execFile).toHaveBeenCalledTimes(1)
-      expect(execFile).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/project/my_app' })
     })
   })
 
-  describe('custom mode — all features selected', () => {
-    it('runs pnpm install when no packages to remove', async () => {
-      const allFeatures = featureNames
-      await installPackages('/project/my_app', 'custom', allFeatures)
-
-      expect(execFile).toHaveBeenCalledTimes(1)
-      expect(execFile).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/project/my_app' })
-    })
-  })
-
-  describe('custom mode — some features deselected', () => {
+  describe('some features deselected', () => {
     it('runs pnpm remove with deselected feature packages', async () => {
-      await installPackages('/project/my_app', 'custom', ['demo'])
+      await installPackages('/project/my_app', ['demo'])
 
       const removeCall = vi
         .mocked(execFile)
@@ -74,13 +57,13 @@ describe('installPackages', () => {
         }
       })
 
-      await installPackages('/project/my_app', 'custom', ['demo'])
+      await installPackages('/project/my_app', ['demo'])
 
       expect(callOrder).toEqual(['remove', 'postinstall'])
     })
 
     it('does not include selected feature packages in remove command', async () => {
-      await installPackages('/project/my_app', 'custom', ['demo', 'subgraph'])
+      await installPackages('/project/my_app', ['demo', 'subgraph'])
 
       const removeCall = vi
         .mocked(execFile)
@@ -94,7 +77,7 @@ describe('installPackages', () => {
     })
 
     it('uses execFile for pnpm remove to avoid shell interpolation', async () => {
-      await installPackages('/project/my_app', 'custom', ['demo'])
+      await installPackages('/project/my_app', ['demo'])
 
       expect(execFile).toHaveBeenCalledWith('pnpm', expect.arrayContaining(['remove']), {
         cwd: '/project/my_app',
@@ -102,7 +85,7 @@ describe('installPackages', () => {
     })
 
     it('passes each package as a separate arg to execFile', async () => {
-      await installPackages('/project/my_app', 'custom', ['demo'])
+      await installPackages('/project/my_app', ['demo'])
 
       const removeCall = vi
         .mocked(execFile)
@@ -117,7 +100,7 @@ describe('installPackages', () => {
     })
 
     it('runs postinstall via execFile', async () => {
-      await installPackages('/project/my_app', 'custom', ['demo'])
+      await installPackages('/project/my_app', ['demo'])
 
       expect(execFile).toHaveBeenCalledWith('pnpm', ['run', '--if-present', 'postinstall'], {
         cwd: '/project/my_app',
@@ -128,36 +111,28 @@ describe('installPackages', () => {
   it('never uses exec (shell) for any command', async () => {
     const { exec } = await import('../../operations/exec.js')
 
-    await installPackages('/project/my_app', 'custom', ['demo'])
+    await installPackages('/project/my_app', ['demo'])
 
     expect(exec).not.toHaveBeenCalled()
   })
 
   describe('onProgress callback', () => {
-    it('reports one step for full mode', async () => {
+    it('reports one step when every feature is kept', async () => {
       const steps: string[] = []
-      await installPackages('/project/my_app', 'full', [], (step) => steps.push(step))
+      await installPackages('/project/my_app', featureNames, (step) => steps.push(step))
 
       expect(steps).toEqual(['Installing packages'])
     })
 
-    it('reports two steps for custom mode with packages to remove', async () => {
+    it('reports two steps when packages are removed', async () => {
       const steps: string[] = []
-      await installPackages('/project/my_app', 'custom', ['demo'], (step) => steps.push(step))
+      await installPackages('/project/my_app', ['demo'], (step) => steps.push(step))
 
       expect(steps).toEqual(['Installing packages', 'Executing post-install scripts'])
     })
 
-    it('reports one step for custom mode with all features selected', async () => {
-      const allFeatures = featureNames
-      const steps: string[] = []
-      await installPackages('/project/my_app', 'custom', allFeatures, (step) => steps.push(step))
-
-      expect(steps).toEqual(['Installing packages'])
-    })
-
     it('works without a callback', async () => {
-      await expect(installPackages('/project/my_app', 'full')).resolves.toBeUndefined()
+      await expect(installPackages('/project/my_app', featureNames)).resolves.toBeUndefined()
     })
   })
 })

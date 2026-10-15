@@ -172,16 +172,8 @@ describe('nonInteractive — full mode execution', () => {
 
     expect(cloneRepo).toHaveBeenCalledWith('my_app')
     expect(createEnvFile).toHaveBeenCalledWith(expect.stringContaining('my_app'))
-    expect(installPackages).toHaveBeenCalledWith(
-      expect.stringContaining('my_app'),
-      'full',
-      featureNames,
-    )
-    expect(cleanupFiles).toHaveBeenCalledWith(
-      expect.stringContaining('my_app'),
-      'full',
-      featureNames,
-    )
+    expect(installPackages).toHaveBeenCalledWith(expect.stringContaining('my_app'), featureNames)
+    expect(cleanupFiles).toHaveBeenCalledWith(expect.stringContaining('my_app'), featureNames)
   })
 
   it('outputs success JSON with all features', async () => {
@@ -236,11 +228,11 @@ describe('nonInteractive — custom mode execution', () => {
   it('passes selected features to operations', async () => {
     await runNonInteractive({ name: 'my_app', mode: 'custom', features: 'demo,subgraph' })
 
-    expect(installPackages).toHaveBeenCalledWith(expect.stringContaining('my_app'), 'custom', [
+    expect(installPackages).toHaveBeenCalledWith(expect.stringContaining('my_app'), [
       'demo',
       'subgraph',
     ])
-    expect(cleanupFiles).toHaveBeenCalledWith(expect.stringContaining('my_app'), 'custom', [
+    expect(cleanupFiles).toHaveBeenCalledWith(expect.stringContaining('my_app'), [
       'demo',
       'subgraph',
     ])

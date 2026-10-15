@@ -1,4 +1,4 @@
-import type { FeatureName, InstallationType } from '../types/types.js'
+import type { FeatureName } from '../types/types.js'
 import { getPackagesToRemove } from '../utils/utils.js'
 import { execFile } from './exec.js'
 
@@ -8,11 +8,10 @@ import { execFile } from './exec.js'
  */
 export async function installPackages(
   projectFolder: string,
-  mode: InstallationType,
-  features: FeatureName[] = [],
+  features: FeatureName[],
   onProgress?: (step: string) => void,
 ): Promise<void> {
-  const packagesToRemove = mode === 'full' ? [] : getPackagesToRemove(features)
+  const packagesToRemove = getPackagesToRemove(features)
 
   onProgress?.('Installing packages')
 
