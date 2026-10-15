@@ -1,6 +1,6 @@
 # dAppBooster installer
 
-Scaffolds a new project from [dAppBooster](https://dappbooster.dev/), our blockchain boilerplate built to quickly get you started with your next EVM project.
+Scaffolds a new project from [dAppBooster](https://dappbooster.dev/), our blockchain boilerplate for EVM projects.
 
 Looking for Canton? It has its own installer: [`create-canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-create).
 
@@ -17,9 +17,9 @@ Looking for Canton? It has its own installer: [`create-canton-dappbooster`](http
 pnpm dlx dappbooster
 ```
 
-The wizard will guide you through the different choices available: project name, installation mode, features, etc.
+The wizard guides you through the choices: project name, installation mode and features.
 
-## Non-interactive mode (Agents & CI)
+## Non-interactive mode (agents & CI)
 
 | Flag | Purpose |
 |---|---|
@@ -27,7 +27,7 @@ The wizard will guide you through the different choices available: project name,
 | `--mode <full\|custom>` | `full` installs every feature; `custom` needs `--features` |
 | `--features <a,b,c>` | Comma-separated feature keys (custom mode only) |
 | `--info` | Print the features as JSON and exit |
-| `--ni`, `--non-interactive` | Force non-interactive mode. Auto-enabled when stdout is not a TTY |
+| `--ni`, `--non-interactive` | Force non-interactive mode. It turns on by itself when stdout is not a TTY |
 | `--help` | Show the usage text |
 | `--version` | Show the installer version |
 
