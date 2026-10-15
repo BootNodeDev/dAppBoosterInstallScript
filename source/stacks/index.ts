@@ -1,11 +1,5 @@
 import process from 'node:process'
-import type {
-  FeatureDefinition,
-  FeatureName,
-  InstallationType,
-  Stack,
-  StackConfig,
-} from '../types/types.js'
+import type { FeatureDefinition, FeatureName, Stack, StackConfig } from '../types/types.js'
 import { evm } from './evm.js'
 
 export const stackDefinitions = { evm } satisfies Record<Stack, StackConfig>
@@ -39,13 +33,4 @@ export function getDefaultFeatureNames(stack: Stack): FeatureName[] {
   return getFeatureEntries(stack)
     .filter(([, definition]) => definition.default)
     .map(([name]) => name)
-}
-
-/**
- * Installation modes a stack offers. `default` (keep only the `default: true` features) needs at
- * least one opt-out feature, or it would be identical to `full`.
- */
-export function getInstallationModes(stack: Stack): InstallationType[] {
-  const hasOptOutFeature = getDefaultFeatureNames(stack).length < getFeatureNames(stack).length
-  return hasOptOutFeature ? ['default', 'full', 'custom'] : ['full', 'custom']
 }

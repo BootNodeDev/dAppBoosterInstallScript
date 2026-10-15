@@ -36,7 +36,7 @@ const App: FC = () => {
     setAttempt((prev) => prev + 1)
   }, [])
 
-  const skipFeatures = setupType?.value === 'full' || setupType?.value === 'default'
+  const skipFeatures = setupType?.value === 'full'
 
   const mode = setupType?.value ?? 'full'
 
@@ -59,7 +59,6 @@ const App: FC = () => {
         key={`project-name-${attempt}`}
       />,
       <InstallationMode
-        stack={stack}
         onCompletion={finishStep}
         onSelect={onSelectSetupType}
         key={`installation-mode-${attempt}`}

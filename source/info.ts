@@ -8,7 +8,6 @@ export function getInfoOutput(): string {
         description: definition.description,
         default: definition.default,
         ...(definition.postInstall ? { postInstall: definition.postInstall } : {}),
-        ...(definition.requires ? { requires: definition.requires } : {}),
       },
     ]),
   )

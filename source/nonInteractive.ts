@@ -1,7 +1,7 @@
 import process from 'node:process'
 import { cleanupFiles, cloneRepo, createEnvFile, installPackages } from './operations/index.js'
 import { beginInstall, completeInstall } from './operations/installGuard.js'
-import { getFeatureNames, getInstallationModes, isFeatureNameValid } from './stacks/index.js'
+import { getFeatureNames, isFeatureNameValid } from './stacks/index.js'
 import type { FeatureName, InstallationType, Stack } from './types/types.js'
 import {
   getPostInstallMessages,
@@ -64,22 +64,16 @@ function resolveModeAndFeatures(
   stack: Stack,
   flags: { mode?: string; features?: string },
 ): { mode: InstallationType; features: FeatureName[] } {
-  const modes = getInstallationModes(stack)
-
   if (!flags.mode) {
     fail('Missing required flag: --mode')
   }
 
-  if (flags.mode !== 'full' && flags.mode !== 'default' && flags.mode !== 'custom') {
-    fail("Invalid mode: must be 'full', 'default', or 'custom'")
+  if (flags.mode !== 'full' && flags.mode !== 'custom') {
+    fail("Invalid mode: must be 'full' or 'custom'")
   }
 
-  if (!modes.includes(flags.mode)) {
-    fail(`Invalid mode: '${flags.mode}' is not available. Valid modes: ${modes.join(', ')}`)
-  }
-
-  if (flags.mode !== 'custom') {
-    return { mode: flags.mode, features: resolveModeFeatures(stack, flags.mode) }
+  if (flags.mode === 'full') {
+    return { mode: 'full', features: resolveModeFeatures(stack, 'full') }
   }
 
   if (!flags.features) {

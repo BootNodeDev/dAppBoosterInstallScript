@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  getDefaultFeatureNames,
-  getFeatureNames,
-  getInstallationModes,
-  stackDefinitions,
-} from '../stacks/index.js'
+import { getDefaultFeatureNames, getFeatureNames, stackDefinitions } from '../stacks/index.js'
 
 describe('getDefaultFeatureNames', () => {
   it('returns only features whose default flag is true, in config order', () => {
@@ -19,11 +14,5 @@ describe('getDefaultFeatureNames', () => {
     for (const name of getDefaultFeatureNames('evm')) {
       expect(all.has(name)).toBe(true)
     }
-  })
-})
-
-describe('getInstallationModes', () => {
-  it('offers full/custom for evm, where every feature is on by default', () => {
-    expect(getInstallationModes('evm')).toEqual(['full', 'custom'])
   })
 })

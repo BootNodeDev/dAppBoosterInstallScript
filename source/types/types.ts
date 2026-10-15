@@ -5,7 +5,7 @@ export type PackageManager = 'pnpm'
 /** Every feature name the EVM stack defines. `stacks/evm.ts` fails to compile if they disagree. */
 export type FeatureName = 'demo' | 'subgraph' | 'typedoc' | 'vocs' | 'husky'
 
-export type InstallationType = 'full' | 'default' | 'custom'
+export type InstallationType = 'full' | 'custom'
 
 export type MultiSelectItem = { label: string; value: FeatureName }
 
@@ -20,10 +20,7 @@ export type PlanSummaryItem = { label: string; value: string }
  * @property packages - Dependencies the package manager removes (`pnpm remove`) when the feature
  * is deselected, so package.json and the lockfile stay in step.
  * @property paths - Relative files and directories deleted when the feature is deselected.
- * Removed directories also drive script stripping in cleanupFiles.
  * @property scripts - package.json script names deleted when the feature is deselected.
- * @property requires - Other features this one depends on. Selecting it pulls these in;
- * deselecting one of these cascades this feature out. Resolved transitively (see utils.ts).
  */
 export type FeatureDefinition = {
   description: string
@@ -33,7 +30,6 @@ export type FeatureDefinition = {
   postInstall?: string[]
   paths?: string[]
   scripts?: string[]
-  requires?: FeatureName[]
 }
 
 export type EnvFile = {

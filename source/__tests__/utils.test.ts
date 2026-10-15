@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { getFeatureEntries, getFeatureNames, stackDefinitions } from '../stacks/index.js'
 import {
-  getDefaultFeatureNames,
-  getFeatureEntries,
-  getFeatureNames,
-  stackDefinitions,
-} from '../stacks/index.js'
-import {
-  applyFeatureToggle,
   deriveStepDisplay,
   describeInstallPlan,
   getPackagesToRemove,
@@ -14,7 +8,6 @@ import {
   isFeatureSelected,
   isValidName,
   resolveModeFeatures,
-  resolveSelectedFeatures,
 } from '../utils/utils.js'
 
 const evmFeatures = stackDefinitions.evm.features
@@ -134,24 +127,11 @@ describe('getPostInstallMessages', () => {
   })
 })
 
-describe('resolveSelectedFeatures — evm (no requires)', () => {
-  it('returns the selection unchanged, in config order', () => {
-    expect(resolveSelectedFeatures('evm', ['subgraph', 'demo'])).toEqual(['demo', 'subgraph'])
-  })
-})
-
 describe('describeInstallPlan', () => {
   it('returns one labelled setting per line, naming the mode as the selector did', () => {
     expect(describeInstallPlan('my_app', 'full', [])).toEqual([
       { label: 'Project', value: 'my_app' },
       { label: 'Mode', value: 'Full' },
-    ])
-  })
-
-  it('names the default mode as the selector did', () => {
-    expect(describeInstallPlan('my_app', 'default', [])).toEqual([
-      { label: 'Project', value: 'my_app' },
-      { label: 'Mode', value: 'Default (recommended)' },
     ])
   })
 
@@ -177,26 +157,8 @@ describe('resolveModeFeatures', () => {
     expect(resolveModeFeatures('evm', 'full')).toEqual(getFeatureNames('evm'))
   })
 
-  it('returns the default:true set for default mode', () => {
-    expect(resolveModeFeatures('evm', 'default')).toEqual(getDefaultFeatureNames('evm'))
-  })
-
-  it('resolves requires for default mode too, not only for custom', () => {
-    expect(resolveModeFeatures('evm', 'default')).toEqual(
-      resolveSelectedFeatures('evm', getDefaultFeatureNames('evm')),
-    )
-  })
-})
-
-describe('applyFeatureToggle — evm (no dependencies)', () => {
-  it('selecting a feature adds it in config order', () => {
-    expect(applyFeatureToggle('evm', ['subgraph'], 'demo', 'select')).toEqual(['demo', 'subgraph'])
-  })
-
-  it('unselecting a feature removes only that feature', () => {
-    expect(applyFeatureToggle('evm', ['demo', 'subgraph', 'vocs'], 'subgraph', 'unselect')).toEqual(
-      ['demo', 'vocs'],
-    )
+  it('returns the custom selection in config order', () => {
+    expect(resolveModeFeatures('evm', 'custom', ['subgraph', 'demo'])).toEqual(['demo', 'subgraph'])
   })
 })
 

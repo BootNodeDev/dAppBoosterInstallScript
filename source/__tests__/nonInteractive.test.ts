@@ -219,7 +219,7 @@ describe('nonInteractive — default mode', () => {
     await expect(runNonInteractive({ name: 'my_app', mode: 'default' })).rejects.toThrow()
     const output = getLastJsonOutput()
     expect(output.success).toBe(false)
-    expect(output.error).toMatch(/'default' is not available/)
+    expect(output.error).toBe("Invalid mode: must be 'full' or 'custom'")
   })
 })
 

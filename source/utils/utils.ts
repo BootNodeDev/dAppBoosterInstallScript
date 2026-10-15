@@ -1,12 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
-import {
-  getDefaultFeatureNames,
-  getFeatureEntries,
-  getFeatureNames,
-  getStackConfig,
-} from '../stacks/index.js'
+import { getFeatureEntries, getFeatureNames, getStackConfig } from '../stacks/index.js'
 import type { FeatureName, InstallationType, PlanSummaryItem, Stack } from '../types/types.js'
 
 export function getProjectFolder(projectName: string) {
@@ -31,82 +26,8 @@ export function isFeatureSelected(feature: FeatureName, selectedFeatures: Featur
   return selectedFeatures.includes(feature)
 }
 
-type FeatureToggleAction = 'select' | 'unselect'
-
-/** Walks a feature's `requires` chain, adding every transitive requirement to `accumulator`. */
-function collectRequiredFeatures(
-  stack: Stack,
-  feature: FeatureName,
-  accumulator: Set<FeatureName>,
-): void {
-  const definition = getStackConfig(stack).features[feature]
-  if (!definition?.requires) {
-    return
-  }
-
-  for (const required of definition.requires) {
-    if (accumulator.has(required)) {
-      continue
-    }
-
-    accumulator.add(required)
-    collectRequiredFeatures(stack, required, accumulator)
-  }
-}
-
-/** Features that depend on `target`, directly or through another one. They go when it goes. */
-function getDependentFeatures(stack: Stack, target: FeatureName): Set<FeatureName> {
-  const dependents = new Set<FeatureName>()
-
-  for (const name of getFeatureNames(stack)) {
-    const required = new Set<FeatureName>()
-    collectRequiredFeatures(stack, name, required)
-    if (required.has(target)) {
-      dependents.add(name)
-    }
-  }
-
-  return dependents
-}
-
-/** Expands a selection to include every transitive requirement, returned in config order. */
-export function resolveSelectedFeatures(
-  stack: Stack,
-  selectedFeatures: FeatureName[],
-): FeatureName[] {
-  const resolved = new Set<FeatureName>(selectedFeatures)
-  for (const feature of selectedFeatures) {
-    collectRequiredFeatures(stack, feature, resolved)
-  }
-
-  return getFeatureNames(stack).filter((name) => resolved.has(name))
-}
-
-/**
- * Interactive toggle that keeps the selection consistent: selecting a feature pulls its
- * requirements in, unselecting one drops its dependents. Result is in config order.
- */
-export function applyFeatureToggle(
-  stack: Stack,
-  selectedFeatures: FeatureName[],
-  toggledFeature: FeatureName,
-  action: FeatureToggleAction,
-): FeatureName[] {
-  if (action === 'select') {
-    return resolveSelectedFeatures(stack, [...selectedFeatures, toggledFeature])
-  }
-
-  const toRemove = getDependentFeatures(stack, toggledFeature)
-  toRemove.add(toggledFeature)
-
-  return getFeatureNames(stack).filter(
-    (name) => selectedFeatures.includes(name) && !toRemove.has(name),
-  )
-}
-
 /** How each mode is named on screen, in the selector and in the review that follows it. */
 export const MODE_LABELS: Record<InstallationType, string> = {
-  default: 'Default (recommended)',
   full: 'Full',
   custom: 'Custom',
 }
@@ -143,24 +64,16 @@ export function getPostInstallMessages(stack: Stack, features: FeatureName[]): s
 }
 
 /**
- * The features a mode keeps: full → all of them, default → the ones on by default, custom → the
- * user's own selection. Both selections come back with their `requires` resolved. Shared by the
- * non-interactive path and the interactive steps.
+ * The features a mode keeps, in config order: full → all of them, custom → the user's own
+ * selection. Shared by the non-interactive path and the interactive steps.
  */
 export function resolveModeFeatures(
   stack: Stack,
   mode: InstallationType,
   customSelection: FeatureName[] = [],
 ): FeatureName[] {
-  if (mode === 'full') {
-    return getFeatureNames(stack)
-  }
-
-  if (mode === 'default') {
-    return resolveSelectedFeatures(stack, getDefaultFeatureNames(stack))
-  }
-
-  return resolveSelectedFeatures(stack, customSelection)
+  const names = getFeatureNames(stack)
+  return mode === 'full' ? names : names.filter((name) => customSelection.includes(name))
 }
 
 export function projectDirectoryExists(projectName: string): boolean {

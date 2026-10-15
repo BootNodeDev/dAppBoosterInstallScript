@@ -12,28 +12,9 @@ vi.mock('../../operations/exec.js', () => ({
   execFile: vi.fn().mockResolvedValue(undefined),
 }))
 
-/**
- * Directories in the template. Everything else the installer removes is a file, and only
- * removed directories drive script stripping.
- */
-const TEMPLATE_DIRECTORIES = [
-  '.claude',
-  '.github',
-  '.husky',
-  '.install-files',
-  'docs',
-  'src/subgraphs',
-  'src/components/pageComponents/home',
-]
-
-function isTemplateDirectory(target: string): boolean {
-  return TEMPLATE_DIRECTORIES.some((dir) => target.endsWith(`/${dir}`))
-}
-
 vi.mock('node:fs', () => ({
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
-  statSync: vi.fn((target: string) => ({ isDirectory: () => isTemplateDirectory(target) })),
 }))
 
 const { rm, mkdir, copyFile } = await import('node:fs/promises')

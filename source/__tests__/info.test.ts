@@ -40,19 +40,6 @@ describe('getInfoOutput', () => {
     }
   })
 
-  it('surfaces requires only for features that declare a dependency', () => {
-    const output = JSON.parse(getInfoOutput())
-
-    for (const [name, def] of getFeatureEntries('evm')) {
-      const feature = output.features[name]
-      if (def.requires) {
-        expect(feature.requires).toEqual(def.requires)
-      } else {
-        expect(feature).not.toHaveProperty('requires')
-      }
-    }
-  })
-
   it('does not leak label, packages, or paths into feature output', () => {
     const output = JSON.parse(getInfoOutput())
 

@@ -23,15 +23,6 @@ type MultiSelectProps<T> = {
   onUnselect?: (unselectedItem: Item<T>) => void
   onSubmit?: (selectedItems: Item<T>[]) => void
   onHighlight?: (highlightedItem: Item<T>) => void
-  /**
-   * Post-processes a toggle, for instance to enforce feature dependencies. Receives the plain
-   * post-toggle selection, the item that was toggled, and the action taken.
-   */
-  transformSelection?: (
-    nextSelected: Item<T>[],
-    toggledItem: Item<T>,
-    action: 'select' | 'unselect',
-  ) => Item<T>[]
 }
 
 const MultiSelect = <T,>({
@@ -47,7 +38,6 @@ const MultiSelect = <T,>({
   onUnselect = () => {},
   onSubmit = () => {},
   onHighlight = () => {},
-  transformSelection,
 }: MultiSelectProps<T>) => {
   const [highlightedIndex, setHighlightedIndex] = useState(initialIndex)
   const [selectedItems, setSelectedItems] = useState(defaultSelected)
@@ -69,26 +59,15 @@ const MultiSelect = <T,>({
 
   const handleSelect = useCallback(
     (item: Item<T>) => {
-      const isCurrentlySelected = includesItems(item, selectedItems)
-      const action = isCurrentlySelected ? 'unselect' : 'select'
-
-      const naiveSelection = isCurrentlySelected
-        ? selectedItems.filter((selectedItem) => !isSameItem(selectedItem, item))
-        : [...selectedItems, item]
-
-      const nextSelection = transformSelection
-        ? transformSelection(naiveSelection, item, action)
-        : naiveSelection
-
-      setSelectedItems(nextSelection)
-
-      if (isCurrentlySelected) {
+      if (includesItems(item, selectedItems)) {
+        setSelectedItems(selectedItems.filter((selectedItem) => !isSameItem(selectedItem, item)))
         onUnselect(item)
       } else {
+        setSelectedItems([...selectedItems, item])
         onSelect(item)
       }
     },
-    [selectedItems, onSelect, onUnselect, includesItems, isSameItem, transformSelection],
+    [selectedItems, onSelect, onUnselect, includesItems, isSameItem],
   )
 
   const handleSubmit = useCallback(() => {

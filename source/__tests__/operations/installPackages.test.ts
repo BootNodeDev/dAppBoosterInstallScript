@@ -6,22 +6,14 @@ vi.mock('../../operations/exec.js', () => ({
   execFile: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('node:fs', () => ({ readFileSync: vi.fn() }))
-
 const { execFile } = await import('../../operations/exec.js')
-const { readFileSync } = await import('node:fs')
 const { installPackages } = await import('../../operations/installPackages.js')
-
-function mockPackageJson(scripts: Record<string, string> = { postinstall: 'wagmi generate' }) {
-  vi.mocked(readFileSync).mockReturnValue(JSON.stringify({ scripts }))
-}
 
 const evmFeatures = stackDefinitions.evm.features
 
 describe('installPackages', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPackageJson()
   })
 
   describe('full mode', () => {

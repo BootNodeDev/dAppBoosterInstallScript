@@ -1,8 +1,7 @@
 import { Text } from 'ink'
-import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
-import { getFeatureEntries } from '../../stacks/index.js'
+import { type FC, useEffect, useMemo, useState } from 'react'
+import { getDefaultFeatureNames, getFeatureEntries } from '../../stacks/index.js'
 import type { MultiSelectItem, Stack } from '../../types/types.js'
-import { applyFeatureToggle, resolveModeFeatures } from '../../utils/utils.js'
 import MultiSelect from '../Multiselect/index.js'
 
 interface Props {
@@ -25,28 +24,9 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
   )
 
   const defaultSelected: Array<MultiSelectItem> = useMemo(() => {
-    const defaults = resolveModeFeatures(stack, 'default')
+    const defaults = getDefaultFeatureNames(stack)
     return customPackages.filter((pkg) => defaults.includes(pkg.value))
   }, [stack, customPackages])
-
-  const transformSelection = useCallback(
-    (
-      nextSelected: Array<MultiSelectItem>,
-      toggledItem: MultiSelectItem,
-      action: 'select' | 'unselect',
-    ): Array<MultiSelectItem> => {
-      const resolved = applyFeatureToggle(
-        stack,
-        nextSelected.map((item) => item.value),
-        toggledItem.value,
-        action,
-      )
-      return resolved
-        .map((value) => customPackages.find((pkg) => pkg.value === value))
-        .filter((pkg): pkg is MultiSelectItem => pkg !== undefined)
-    },
-    [stack, customPackages],
-  )
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Run this only once, no matter what
   useEffect(() => {
@@ -56,8 +36,11 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
   }, [])
 
   const onHandleSubmit = (selectedItems: Array<MultiSelectItem>) => {
-    onSubmit(selectedItems)
-    setSubmitted(selectedItems)
+    const inConfigOrder = customPackages.filter((pkg) =>
+      selectedItems.some((item) => item.value === pkg.value),
+    )
+    onSubmit(inConfigOrder)
+    setSubmitted(inConfigOrder)
     onCompletion()
   }
 
@@ -87,7 +70,6 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
         focus
         items={customPackages}
         onSubmit={onHandleSubmit}
-        transformSelection={transformSelection}
       />
     </>
   )

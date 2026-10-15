@@ -2,23 +2,21 @@ import figures from 'figures'
 import { Text } from 'ink'
 import SelectInput from 'ink-select-input'
 import { type FC, useState } from 'react'
-import { getInstallationModes } from '../../stacks/index.js'
-import type { InstallationSelectItem, Stack } from '../../types/types.js'
+import type { InstallationSelectItem } from '../../types/types.js'
 import { MODE_LABELS } from '../../utils/utils.js'
 import Divider from '../Divider.js'
 
 interface Props {
-  stack: Stack
   onCompletion: () => void
   onSelect: (item: InstallationSelectItem) => void
 }
 
-const InstallationMode: FC<Props> = ({ stack, onCompletion, onSelect }) => {
-  const [selected, setSelected] = useState<InstallationSelectItem>()
+const installationTypeItems: Array<InstallationSelectItem> = (['full', 'custom'] as const).map(
+  (value) => ({ label: MODE_LABELS[value], value }),
+)
 
-  const installationTypeItems: Array<InstallationSelectItem> = getInstallationModes(stack).map(
-    (value) => ({ label: MODE_LABELS[value], value }),
-  )
+const InstallationMode: FC<Props> = ({ onCompletion, onSelect }) => {
+  const [selected, setSelected] = useState<InstallationSelectItem>()
 
   const handleSelect = (item: InstallationSelectItem) => {
     onSelect(item)

@@ -1,4 +1,4 @@
-import { readFileSync, statSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { copyFile, mkdir, rm } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { getFeatureEntries, getStackConfig } from '../stacks/index.js'
@@ -11,62 +11,44 @@ type PackageJson = {
   scripts?: Record<string, string | undefined>
 }
 
-/**
- * What the deleted paths leave for the package.json pass to apply.
- *
- * @property removedDirs - Directories that were deleted. Scripts that run one of them go too.
- */
-type CleanupPlan = {
-  scripts: string[]
-  removedDirs: string[]
-}
-
-function isDirectory(path: string): boolean {
-  return statSync(path, { throwIfNoEntry: false })?.isDirectory() ?? false
-}
-
-/** Removes the given paths and reports which of them were directories. */
-async function removePaths(projectFolder: string, relativePaths: string[]): Promise<string[]> {
-  const directories = relativePaths.filter((relativePath) =>
-    isDirectory(resolve(projectFolder, relativePath)),
-  )
-
+async function removePaths(projectFolder: string, relativePaths: string[]): Promise<void> {
   await Promise.all(
     relativePaths.map((relativePath) =>
       rm(resolve(projectFolder, relativePath), { recursive: true, force: true }),
     ),
   )
-
-  return directories
 }
 
 /**
- * Deletes the files of every feature the user left out and adds what the package.json pass still
- * has to remove to `plan`. `full` mode keeps everything.
+ * Deletes the files of every feature the user left out and returns the package.json scripts they
+ * leave behind. `full` mode keeps everything.
  */
 async function removeDeselectedFeatures(
   stack: Stack,
   projectFolder: string,
   mode: InstallationType,
   features: FeatureName[],
-  plan: CleanupPlan,
   onProgress?: (step: string) => void,
-): Promise<void> {
+): Promise<string[]> {
+  const scripts: string[] = []
+
   if (mode === 'full') {
-    return
+    return scripts
   }
 
   for (const [name, definition] of getFeatureEntries(stack)) {
-    const { paths = [], scripts = [] } = definition
+    const { paths = [], scripts: featureScripts = [] } = definition
 
-    if (isFeatureSelected(name, features) || (paths.length === 0 && scripts.length === 0)) {
+    if (isFeatureSelected(name, features) || (paths.length === 0 && featureScripts.length === 0)) {
       continue
     }
 
     onProgress?.(definition.label)
-    plan.removedDirs.push(...(await removePaths(projectFolder, paths)))
-    plan.scripts.push(...scripts)
+    await removePaths(projectFolder, paths)
+    scripts.push(...featureScripts)
   }
+
+  return scripts
 }
 
 async function restoreFile(projectFolder: string, from: string, to: string): Promise<void> {
@@ -120,34 +102,11 @@ function removeKeys(block: Record<string, unknown> | undefined, keys: string[]):
 }
 
 /**
- * Names the scripts that run a removed directory, so cleanup tracks the removal even when the
- * template renames its scripts.
+ * Removes the given scripts from the project's package.json in a single pass, writing only when
+ * something changed. Feature dependencies are left to the package manager, which runs next.
  */
-function scriptsRunningRemovedDirs(
-  scripts: Record<string, string | undefined> | undefined,
-  removedDirs: string[],
-): string[] {
-  if (!scripts) {
-    return []
-  }
-
-  return Object.entries(scripts)
-    .filter(([, command]) =>
-      command
-        ?.split(/\s+/)
-        .some((token) => removedDirs.some((dir) => token === dir || token.startsWith(`${dir}/`))),
-    )
-    .map(([name]) => name)
-}
-
-/**
- * Applies the plan to the project's package.json in a single pass, writing only when something
- * changed. Feature dependencies are left to the package manager, which runs next.
- */
-function patchPackageJson(projectFolder: string, plan: CleanupPlan): void {
-  const { scripts, removedDirs } = plan
-
-  if (scripts.length === 0 && removedDirs.length === 0) {
+function patchPackageJson(projectFolder: string, scripts: string[]): void {
+  if (scripts.length === 0) {
     return
   }
 
@@ -161,12 +120,7 @@ function patchPackageJson(projectFolder: string, plan: CleanupPlan): void {
     return
   }
 
-  const scriptsRemoved = removeKeys(packageJson.scripts, [
-    ...scripts,
-    ...scriptsRunningRemovedDirs(packageJson.scripts, removedDirs),
-  ])
-
-  if (scriptsRemoved) {
+  if (removeKeys(packageJson.scripts, scripts)) {
     writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
   }
 }
@@ -185,21 +139,19 @@ export async function cleanupFiles(
 ): Promise<void> {
   const { prepare, staging } = getStackConfig(stack)
 
-  const plan: CleanupPlan = { scripts: [], removedDirs: [] }
-
   if (prepare) {
     onProgress?.(prepare.label)
-    plan.removedDirs.push(...(await removePaths(projectFolder, prepare.paths)))
+    await removePaths(projectFolder, prepare.paths)
   }
 
-  await removeDeselectedFeatures(stack, projectFolder, mode, features, plan, onProgress)
+  const scripts = await removeDeselectedFeatures(stack, projectFolder, mode, features, onProgress)
 
   // The staged replacements only exist in stacks that ship a staging directory.
   if (staging && mode !== 'full') {
     await restoreStagedHomePage(projectFolder, features)
   }
 
-  patchPackageJson(projectFolder, plan)
+  patchPackageJson(projectFolder, scripts)
 
   if (staging) {
     onProgress?.(staging.label)
