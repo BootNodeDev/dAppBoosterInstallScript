@@ -70,7 +70,7 @@ export const defaultFeatureNames = featureEntries
   .map(([name]) => name)
 
 export function isFeatureNameValid(name: string): name is FeatureName {
-  return name in featureDefinitions
+  return Object.hasOwn(featureDefinitions, name)
 }
 
 /** Paths the template keeps for itself. Every scaffold drops them, whatever the user picked. */

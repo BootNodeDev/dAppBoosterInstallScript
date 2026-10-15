@@ -106,6 +106,14 @@ describe('nonInteractive — validation', () => {
     expect(output.error).toMatch(/Valid features:/)
   })
 
+  it('rejects names inherited from Object.prototype', async () => {
+    await expect(
+      runNonInteractive({ name: 'my_app', mode: 'custom', features: 'constructor' }),
+    ).rejects.toThrow()
+    const output = getLastJsonOutput()
+    expect(output.error).toMatch(/Unknown features: constructor/)
+  })
+
   it('rejects mix of valid and invalid features', async () => {
     await expect(
       runNonInteractive({ name: 'my_app', mode: 'custom', features: 'demo,banana' }),
