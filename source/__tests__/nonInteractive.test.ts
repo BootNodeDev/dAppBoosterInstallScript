@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getFeatureNames } from '../stacks/index.js'
+import { featureNames } from '../config.js'
 
 vi.mock('../operations/index.js', () => ({
   cloneRepo: vi.fn().mockResolvedValue(undefined),
   createEnvFile: vi.fn().mockResolvedValue(undefined),
-  createInitialCommit: vi.fn().mockResolvedValue(undefined),
   installPackages: vi.fn().mockResolvedValue(undefined),
   cleanupFiles: vi.fn().mockResolvedValue(undefined),
 }))
@@ -20,11 +19,10 @@ vi.mock('../utils/utils.js', async (importOriginal) => {
 const mockLog = vi.spyOn(console, 'log').mockImplementation(() => {})
 
 const { runNonInteractive } = await import('../nonInteractive.js')
-const { cloneRepo, createEnvFile, createInitialCommit, installPackages, cleanupFiles } =
-  await import('../operations/index.js')
+const { cloneRepo, createEnvFile, installPackages, cleanupFiles } = await import(
+  '../operations/index.js'
+)
 const { projectDirectoryExists } = await import('../utils/utils.js')
-
-const evmFeatureNames = getFeatureNames('evm')
 
 function getLastJsonOutput(): Record<string, unknown> {
   const lastCall = mockLog.mock.calls.at(-1)
@@ -55,13 +53,7 @@ describe('nonInteractive — validation', () => {
     expect(output.error).toBe('Missing required flag: --mode')
   })
 
-  it('validates stack before --name', async () => {
-    await expect(runNonInteractive({ stack: 'banana' })).rejects.toThrow()
-    const output = getLastJsonOutput()
-    expect(output.error).toMatch(/Invalid stack/)
-  })
-
-  it('validates --name before --mode (when stack is valid)', async () => {
+  it('validates --name before --mode', async () => {
     await expect(runNonInteractive({})).rejects.toThrow()
     const output = getLastJsonOutput()
     expect(output.error).toBe('Missing required flag: --name')
@@ -75,10 +67,10 @@ describe('nonInteractive — validation', () => {
   })
 
   it('rejects invalid mode', async () => {
-    await expect(runNonInteractive({ name: 'my_app', mode: 'banana' })).rejects.toThrow()
+    await expect(runNonInteractive({ name: 'my_app', mode: 'default' })).rejects.toThrow()
     const output = getLastJsonOutput()
     expect(output.success).toBe(false)
-    expect(output.error).toMatch(/Invalid mode/)
+    expect(output.error).toBe("Invalid mode: must be 'full' or 'custom'")
   })
 
   it('rejects --mode=custom without --features', async () => {
@@ -104,14 +96,22 @@ describe('nonInteractive — validation', () => {
     expect(output.error).toMatch(/--features value is empty/)
   })
 
-  it('rejects unknown feature names for evm', async () => {
+  it('rejects unknown feature names', async () => {
     await expect(
       runNonInteractive({ name: 'my_app', mode: 'custom', features: 'banana,apple' }),
     ).rejects.toThrow()
     const output = getLastJsonOutput()
     expect(output.success).toBe(false)
-    expect(output.error).toMatch(/Unknown features for stack 'evm': banana, apple/)
+    expect(output.error).toMatch(/Unknown features: banana, apple/)
     expect(output.error).toMatch(/Valid features:/)
+  })
+
+  it('rejects names inherited from Object.prototype', async () => {
+    await expect(
+      runNonInteractive({ name: 'my_app', mode: 'custom', features: 'constructor' }),
+    ).rejects.toThrow()
+    const output = getLastJsonOutput()
+    expect(output.error).toMatch(/Unknown features: constructor/)
   })
 
   it('rejects mix of valid and invalid features', async () => {
@@ -119,7 +119,7 @@ describe('nonInteractive — validation', () => {
       runNonInteractive({ name: 'my_app', mode: 'custom', features: 'demo,banana' }),
     ).rejects.toThrow()
     const output = getLastJsonOutput()
-    expect(output.error).toMatch(/Unknown features for stack 'evm': banana/)
+    expect(output.error).toMatch(/Unknown features: banana/)
   })
 
   it('rejects when project directory already exists (full mode)', async () => {
@@ -141,7 +141,7 @@ describe('nonInteractive — validation', () => {
   })
 })
 
-describe('nonInteractive — evm full mode execution', () => {
+describe('nonInteractive — full mode execution', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.exitCode = undefined
@@ -165,37 +165,25 @@ describe('nonInteractive — evm full mode execution', () => {
     await runNonInteractive({ name: 'my_app', mode: 'full' })
 
     expect(callOrder).toEqual(['cloneRepo', 'cleanupFiles', 'createEnvFile', 'installPackages'])
-    expect(createInitialCommit).not.toHaveBeenCalled()
   })
 
-  it('passes stack as first arg to all operations', async () => {
+  it('passes the project to all operations', async () => {
     await runNonInteractive({ name: 'my_app', mode: 'full' })
 
-    expect(cloneRepo).toHaveBeenCalledWith('evm', 'my_app')
-    expect(createEnvFile).toHaveBeenCalledWith('evm', expect.stringContaining('my_app'))
-    expect(installPackages).toHaveBeenCalledWith(
-      'evm',
-      expect.stringContaining('my_app'),
-      'full',
-      evmFeatureNames,
-    )
-    expect(cleanupFiles).toHaveBeenCalledWith(
-      'evm',
-      expect.stringContaining('my_app'),
-      'full',
-      evmFeatureNames,
-    )
+    expect(cloneRepo).toHaveBeenCalledWith('my_app')
+    expect(createEnvFile).toHaveBeenCalledWith(expect.stringContaining('my_app'))
+    expect(installPackages).toHaveBeenCalledWith(expect.stringContaining('my_app'), featureNames)
+    expect(cleanupFiles).toHaveBeenCalledWith(expect.stringContaining('my_app'), featureNames)
   })
 
-  it('outputs success JSON with stack=evm and all evm features', async () => {
+  it('outputs success JSON with all features', async () => {
     await runNonInteractive({ name: 'my_app', mode: 'full' })
 
     const output = getLastJsonOutput()
     expect(output.success).toBe(true)
-    expect(output.stack).toBe('evm')
     expect(output.projectName).toBe('my_app')
     expect(output.mode).toBe('full')
-    expect(output.features).toEqual(evmFeatureNames)
+    expect(output.features).toEqual(featureNames)
     expect(output.path).toEqual(expect.stringContaining('my_app'))
     expect(output.postInstall).toBeInstanceOf(Array)
   })
@@ -213,91 +201,7 @@ describe('nonInteractive — evm full mode execution', () => {
     await runNonInteractive({ name: 'my_app', mode: 'full', features: 'demo' })
 
     const output = getLastJsonOutput()
-    expect(output.features).toEqual(evmFeatureNames)
-  })
-})
-
-describe('nonInteractive — canton execution', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    process.exitCode = undefined
-  })
-
-  it('needs only --name, and reports no features', async () => {
-    await runNonInteractive({ stack: 'canton', name: 'my_app' })
-
-    expect(cloneRepo).toHaveBeenCalledWith('canton', 'my_app')
-
-    const output = getLastJsonOutput()
-    expect(output.success).toBe(true)
-    expect(output.stack).toBe('canton')
-    expect(output.mode).toBe('full')
-    expect(output.features).toEqual([])
-  })
-
-  it('rejects --mode, naming the reason', async () => {
-    await expect(
-      runNonInteractive({ stack: 'canton', name: 'my_app', mode: 'full' }),
-    ).rejects.toThrow()
-    const output = getLastJsonOutput()
-    expect(output.success).toBe(false)
-    expect(output.error).toBe(
-      'The canton stack has no optional features, so --mode is not accepted',
-    )
-  })
-
-  it('rejects --features, naming the reason', async () => {
-    await expect(
-      runNonInteractive({ stack: 'canton', name: 'my_app', features: 'llm' }),
-    ).rejects.toThrow()
-    const output = getLastJsonOutput()
-    expect(output.error).toBe(
-      'The canton stack has no optional features, so --features is not accepted',
-    )
-  })
-
-  it('still rejects an existing project directory', async () => {
-    vi.mocked(projectDirectoryExists).mockReturnValueOnce(true)
-    await expect(runNonInteractive({ stack: 'canton', name: 'my_app' })).rejects.toThrow()
-    const output = getLastJsonOutput()
-    expect(output.error).toMatch(/already exists/)
-  })
-
-  it('commits the finished canton scaffold, after the install wrote the lockfile', async () => {
-    const callOrder: string[] = []
-    vi.mocked(installPackages).mockImplementation(async () => {
-      callOrder.push('installPackages')
-    })
-    vi.mocked(createInitialCommit).mockImplementation(async () => {
-      callOrder.push('createInitialCommit')
-    })
-
-    await runNonInteractive({ stack: 'canton', name: 'my_app' })
-
-    expect(callOrder).toEqual(['installPackages', 'createInitialCommit'])
-    expect(createInitialCommit).toHaveBeenCalledWith(expect.stringContaining('my_app'))
-  })
-
-  it('post-install points at dev-stack.sh and the README', async () => {
-    await runNonInteractive({ stack: 'canton', name: 'my_app' })
-
-    const postInstall = getLastJsonOutput().postInstall as string[]
-    expect(postInstall.some((msg) => msg.includes('dev-stack.sh up'))).toBe(true)
-    expect(postInstall.some((msg) => msg.includes('README.md'))).toBe(true)
-  })
-})
-
-describe('nonInteractive — default mode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    process.exitCode = undefined
-  })
-
-  it('rejects --mode default for the evm stack', async () => {
-    await expect(runNonInteractive({ name: 'my_app', mode: 'default' })).rejects.toThrow()
-    const output = getLastJsonOutput()
-    expect(output.success).toBe(false)
-    expect(output.error).toMatch(/'default' is not available for the evm stack/)
+    expect(output.features).toEqual(featureNames)
   })
 })
 
@@ -310,13 +214,11 @@ describe('nonInteractive — custom mode execution', () => {
   it('passes selected features to operations', async () => {
     await runNonInteractive({ name: 'my_app', mode: 'custom', features: 'demo,subgraph' })
 
-    expect(installPackages).toHaveBeenCalledWith(
-      'evm',
-      expect.stringContaining('my_app'),
-      'custom',
-      ['demo', 'subgraph'],
-    )
-    expect(cleanupFiles).toHaveBeenCalledWith('evm', expect.stringContaining('my_app'), 'custom', [
+    expect(installPackages).toHaveBeenCalledWith(expect.stringContaining('my_app'), [
+      'demo',
+      'subgraph',
+    ])
+    expect(cleanupFiles).toHaveBeenCalledWith(expect.stringContaining('my_app'), [
       'demo',
       'subgraph',
     ])
@@ -446,7 +348,6 @@ describe('nonInteractive — JSON output format', () => {
 
     const output = getLastJsonOutput()
     expect(output).toHaveProperty('success')
-    expect(output).toHaveProperty('stack')
     expect(output).toHaveProperty('projectName')
     expect(output).toHaveProperty('mode')
     expect(output).toHaveProperty('features')

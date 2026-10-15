@@ -1,52 +1,24 @@
 import { Text } from 'ink'
-import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
-import { getFeatureEntries } from '../../stacks/index.js'
-import type { MultiSelectItem, Stack } from '../../types/types.js'
-import { applyFeatureToggle, resolveModeFeatures } from '../../utils/utils.js'
+import { type FC, useEffect, useState } from 'react'
+import { defaultFeatureNames, featureEntries } from '../../config.js'
+import type { MultiSelectItem } from '../../types/types.js'
 import MultiSelect from '../Multiselect/index.js'
 
+const customPackages: Array<MultiSelectItem> = featureEntries.map(([name, definition]) => ({
+  label: definition.label,
+  value: name,
+}))
+
+const defaultSelected = customPackages.filter((pkg) => defaultFeatureNames.includes(pkg.value))
+
 interface Props {
-  stack: Stack
   onCompletion: () => void
   onSubmit: (selectedItems: Array<MultiSelectItem>) => void
   skip?: boolean
 }
 
-const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = false }) => {
+const OptionalPackages: FC<Props> = ({ onCompletion, onSubmit, skip = false }) => {
   const [submitted, setSubmitted] = useState<Array<MultiSelectItem>>()
-
-  const customPackages: Array<MultiSelectItem> = useMemo(
-    () =>
-      getFeatureEntries(stack).map(([name, definition]) => ({
-        label: definition.label,
-        value: name,
-      })),
-    [stack],
-  )
-
-  const defaultSelected: Array<MultiSelectItem> = useMemo(() => {
-    const defaults = resolveModeFeatures(stack, 'default')
-    return customPackages.filter((pkg) => defaults.includes(pkg.value))
-  }, [stack, customPackages])
-
-  const transformSelection = useCallback(
-    (
-      nextSelected: Array<MultiSelectItem>,
-      toggledItem: MultiSelectItem,
-      action: 'select' | 'unselect',
-    ): Array<MultiSelectItem> => {
-      const resolved = applyFeatureToggle(
-        stack,
-        nextSelected.map((item) => item.value),
-        toggledItem.value,
-        action,
-      )
-      return resolved
-        .map((value) => customPackages.find((pkg) => pkg.value === value))
-        .filter((pkg): pkg is MultiSelectItem => pkg !== undefined)
-    },
-    [stack, customPackages],
-  )
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Run this only once, no matter what
   useEffect(() => {
@@ -87,7 +59,6 @@ const OptionalPackages: FC<Props> = ({ stack, onCompletion, onSubmit, skip = fal
         focus
         items={customPackages}
         onSubmit={onHandleSubmit}
-        transformSelection={transformSelection}
       />
     </>
   )

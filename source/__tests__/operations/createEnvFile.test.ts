@@ -7,13 +7,13 @@ vi.mock('node:fs/promises', () => ({
 const { copyFile } = await import('node:fs/promises')
 const { createEnvFile } = await import('../../operations/createEnvFile.js')
 
-describe('createEnvFile — evm', () => {
+describe('createEnvFile', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('copies .env.example to .env.local in the project folder', async () => {
-    await createEnvFile('evm', '/project/my_app')
+    await createEnvFile('/project/my_app')
 
     expect(copyFile).toHaveBeenCalledWith(
       '/project/my_app/.env.example',
@@ -22,7 +22,7 @@ describe('createEnvFile — evm', () => {
   })
 
   it('uses the provided project folder for both paths', async () => {
-    await createEnvFile('evm', '/other/path')
+    await createEnvFile('/other/path')
 
     expect(copyFile).toHaveBeenCalledWith('/other/path/.env.example', '/other/path/.env.local')
   })
@@ -30,19 +30,6 @@ describe('createEnvFile — evm', () => {
   it('propagates errors from copyFile', async () => {
     vi.mocked(copyFile).mockRejectedValueOnce(new Error('.env.example not found'))
 
-    await expect(createEnvFile('evm', '/project/my_app')).rejects.toThrow('.env.example not found')
-  })
-})
-
-describe('createEnvFile — canton', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('copies the single root .env.example to .env', async () => {
-    await createEnvFile('canton', '/project/my_app')
-
-    expect(copyFile).toHaveBeenCalledTimes(1)
-    expect(copyFile).toHaveBeenCalledWith('/project/my_app/.env.example', '/project/my_app/.env')
+    await expect(createEnvFile('/project/my_app')).rejects.toThrow('.env.example not found')
   })
 })
