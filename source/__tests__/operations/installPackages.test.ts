@@ -69,7 +69,7 @@ describe('installPackages', () => {
         if (args[0] === 'remove') {
           callOrder.push('remove')
         }
-        if (args[0] === 'run' && args[1] === 'postinstall') {
+        if (args[0] === 'run' && args.includes('postinstall')) {
           callOrder.push('postinstall')
         }
       })
@@ -119,7 +119,7 @@ describe('installPackages', () => {
     it('runs postinstall via execFile', async () => {
       await installPackages('/project/my_app', 'custom', ['demo'])
 
-      expect(execFile).toHaveBeenCalledWith('pnpm', ['run', 'postinstall'], {
+      expect(execFile).toHaveBeenCalledWith('pnpm', ['run', '--if-present', 'postinstall'], {
         cwd: '/project/my_app',
       })
     })

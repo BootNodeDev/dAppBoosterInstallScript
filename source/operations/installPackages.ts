@@ -24,5 +24,5 @@ export async function installPackages(
   await execFile('pnpm', ['remove', ...packagesToRemove], { cwd: projectFolder })
 
   onProgress?.('Executing post-install scripts')
-  await execFile('pnpm', ['run', 'postinstall'], { cwd: projectFolder })
+  await execFile('pnpm', ['run', '--if-present', 'postinstall'], { cwd: projectFolder })
 }
