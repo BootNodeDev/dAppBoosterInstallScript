@@ -78,23 +78,6 @@ async function restoreStagedHomePage(
   }
 }
 
-function removeKeys(block: Record<string, unknown> | undefined, keys: string[]): boolean {
-  if (!block) {
-    return false
-  }
-
-  let changed = false
-
-  for (const key of keys) {
-    if (key in block) {
-      delete block[key]
-      changed = true
-    }
-  }
-
-  return changed
-}
-
 /**
  * Removes the given scripts from the project's package.json in a single pass, writing only when
  * something changed. Feature dependencies are left to the package manager, which runs next.
@@ -114,9 +97,18 @@ function patchPackageJson(projectFolder: string, scripts: string[]): void {
     return
   }
 
-  if (removeKeys(packageJson.scripts, scripts)) {
-    writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+  const current = packageJson.scripts ?? {}
+  const present = scripts.filter((name) => name in current)
+
+  if (present.length === 0) {
+    return
   }
+
+  for (const name of present) {
+    delete current[name]
+  }
+
+  writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
 }
 
 /**

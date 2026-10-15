@@ -67,10 +67,10 @@ describe('nonInteractive — validation', () => {
   })
 
   it('rejects invalid mode', async () => {
-    await expect(runNonInteractive({ name: 'my_app', mode: 'banana' })).rejects.toThrow()
+    await expect(runNonInteractive({ name: 'my_app', mode: 'default' })).rejects.toThrow()
     const output = getLastJsonOutput()
     expect(output.success).toBe(false)
-    expect(output.error).toMatch(/Invalid mode/)
+    expect(output.error).toBe("Invalid mode: must be 'full' or 'custom'")
   })
 
   it('rejects --mode=custom without --features', async () => {
@@ -202,20 +202,6 @@ describe('nonInteractive — full mode execution', () => {
 
     const output = getLastJsonOutput()
     expect(output.features).toEqual(featureNames)
-  })
-})
-
-describe('nonInteractive — default mode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    process.exitCode = undefined
-  })
-
-  it('rejects --mode default', async () => {
-    await expect(runNonInteractive({ name: 'my_app', mode: 'default' })).rejects.toThrow()
-    const output = getLastJsonOutput()
-    expect(output.success).toBe(false)
-    expect(output.error).toBe("Invalid mode: must be 'full' or 'custom'")
   })
 })
 

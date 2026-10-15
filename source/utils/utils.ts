@@ -72,7 +72,7 @@ export function resolveModeFeatures(
 ): FeatureName[] {
   return mode === 'full'
     ? featureNames
-    : featureNames.filter((name) => customSelection.includes(name))
+    : featureNames.filter((name) => isFeatureSelected(name, customSelection))
 }
 
 export function projectDirectoryExists(projectName: string): boolean {

@@ -2,7 +2,7 @@ import figures from 'figures'
 import { Text } from 'ink'
 import SelectInput from 'ink-select-input'
 import { type FC, useState } from 'react'
-import type { InstallationSelectItem } from '../../types/types.js'
+import type { InstallationSelectItem, InstallationType } from '../../types/types.js'
 import { MODE_LABELS } from '../../utils/utils.js'
 import Divider from '../Divider.js'
 
@@ -11,8 +11,8 @@ interface Props {
   onSelect: (item: InstallationSelectItem) => void
 }
 
-const installationTypeItems: Array<InstallationSelectItem> = (['full', 'custom'] as const).map(
-  (value) => ({ label: MODE_LABELS[value], value }),
+const installationTypeItems: Array<InstallationSelectItem> = Object.entries(MODE_LABELS).map(
+  ([value, label]) => ({ label, value: value as InstallationType }),
 )
 
 const InstallationMode: FC<Props> = ({ onCompletion, onSelect }) => {

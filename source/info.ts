@@ -7,7 +7,7 @@ export function getInfoOutput(): string {
       {
         description: definition.description,
         default: definition.default,
-        ...(definition.postInstall ? { postInstall: definition.postInstall } : {}),
+        postInstall: definition.postInstall,
       },
     ]),
   )

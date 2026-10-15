@@ -24,18 +24,15 @@ export async function cloneRepo(
     throw new Error('pnpm was not found. Install it, then run the installer again.')
   }
 
+  onProgress?.(`Cloning dAppBooster${ref ? ` (${ref})` : ''} in ${projectName}`)
+  await execFile('git', ['clone', '--depth', '1', '--no-checkout', url, projectName])
+
   if (ref) {
     // Fetching the ref by name keeps the clone shallow. It works for a tag or a branch.
-    onProgress?.(`Cloning dAppBooster (${ref}) in ${projectName}`)
-    await execFile('git', ['clone', '--depth', '1', '--no-checkout', url, projectName])
-
     onProgress?.(`Checking out ${ref}`)
     await execFile('git', ['fetch', '--depth', '1', 'origin', ref], { cwd: projectFolder })
     await execFile('git', ['checkout', 'FETCH_HEAD'], { cwd: projectFolder })
   } else {
-    onProgress?.(`Cloning dAppBooster in ${projectName}`)
-    await execFile('git', ['clone', '--depth', '1', '--no-checkout', url, projectName])
-
     onProgress?.('Fetching tags')
     await execFile('git', ['fetch', '--tags'], { cwd: projectFolder })
 

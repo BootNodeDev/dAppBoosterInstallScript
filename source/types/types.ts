@@ -27,9 +27,3 @@ export type FeatureDefinition = {
   paths?: string[]
   scripts?: string[]
 }
-
-/** A labelled group of paths cleanup removes whatever the user picked. */
-export type CleanupGroup = {
-  label: string
-  paths: string[]
-}

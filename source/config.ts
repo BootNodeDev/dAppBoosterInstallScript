@@ -1,5 +1,5 @@
 import process from 'node:process'
-import type { CleanupGroup, FeatureDefinition, FeatureName } from './types/types.js'
+import type { FeatureDefinition, FeatureName } from './types/types.js'
 
 export const featureDefinitions: Record<FeatureName, FeatureDefinition> = {
   demo: {
@@ -74,7 +74,7 @@ export function isFeatureNameValid(name: string): name is FeatureName {
 }
 
 /** Paths the template keeps for itself. Every scaffold drops them, whatever the user picked. */
-export const prepare: CleanupGroup = {
+export const prepare = {
   label: 'Repository metadata',
   paths: ['.claude', 'AGENTS.md', 'CLAUDE.md', 'architecture.md', '.github'],
 }
@@ -83,7 +83,7 @@ export const prepare: CleanupGroup = {
  * The template's staging directory, holding the replacement files a deselected feature restores.
  * Removed once cleanup is finished with it.
  */
-export const staging: CleanupGroup = {
+export const staging = {
   label: 'Install script',
   paths: ['.install-files'],
 }
