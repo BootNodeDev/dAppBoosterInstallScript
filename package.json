@@ -1,6 +1,6 @@
 {
   "name": "dappbooster",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Agent-friendly dAppBooster installer that scaffolds Web3 dApps via TUI or non-interactive CLI/CI.",
   "keywords": [
     "dappbooster",
