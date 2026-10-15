@@ -1,6 +1,6 @@
 import { rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { getRepo } from '../config.js'
+import { getRepo, packageManager } from '../config.js'
 import { getProjectFolder } from '../utils/utils.js'
 import { exec, execFile } from './exec.js'
 
@@ -19,9 +19,9 @@ export async function cloneRepo(
 
   // The installer runs this a few steps later. Checking now saves a clone that cannot be used.
   try {
-    await execFile('pnpm', ['--version'])
+    await execFile(packageManager, ['--version'])
   } catch {
-    throw new Error('pnpm was not found. Install it, then run the installer again.')
+    throw new Error(`${packageManager} was not found. Install it, then run the installer again.`)
   }
 
   onProgress?.(`Cloning dAppBooster${ref ? ` (${ref})` : ''} in ${projectName}`)

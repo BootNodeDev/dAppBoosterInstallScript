@@ -73,6 +73,8 @@ export function isFeatureNameValid(name: string): name is FeatureName {
   return Object.hasOwn(featureDefinitions, name)
 }
 
+export const packageManager = 'pnpm'
+
 /** Paths the template keeps for itself. Every scaffold drops them, whatever the user picked. */
 export const prepare = {
   label: 'Repository metadata',

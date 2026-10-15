@@ -1,3 +1,4 @@
+import { packageManager } from '../config.js'
 import type { FeatureName } from '../types/types.js'
 import { getPackagesToRemove } from '../utils/utils.js'
 import { execFile } from './exec.js'
@@ -16,12 +17,12 @@ export async function installPackages(
   onProgress?.('Installing packages')
 
   if (packagesToRemove.length === 0) {
-    await execFile('pnpm', ['install'], { cwd: projectFolder })
+    await execFile(packageManager, ['install'], { cwd: projectFolder })
     return
   }
 
-  await execFile('pnpm', ['remove', ...packagesToRemove], { cwd: projectFolder })
+  await execFile(packageManager, ['remove', ...packagesToRemove], { cwd: projectFolder })
 
   onProgress?.('Executing post-install scripts')
-  await execFile('pnpm', ['run', '--if-present', 'postinstall'], { cwd: projectFolder })
+  await execFile(packageManager, ['run', '--if-present', 'postinstall'], { cwd: projectFolder })
 }
