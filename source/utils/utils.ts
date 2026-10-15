@@ -31,22 +31,6 @@ export function isFeatureSelected(feature: FeatureName, selectedFeatures: Featur
   return selectedFeatures.includes(feature)
 }
 
-/** Whether the running Node is at least `required`, both written as dotted numbers. */
-export function meetsNodeVersion(required: string, current = process.versions.node): boolean {
-  const numbers = (version: string) => version.split('.').map((part) => Number.parseInt(part, 10))
-  const wanted = numbers(required)
-  const running = numbers(current)
-
-  for (const [index, want] of wanted.entries()) {
-    const have = running[index] ?? 0
-    if (have !== want) {
-      return have > want
-    }
-  }
-
-  return true
-}
-
 type FeatureToggleAction = 'select' | 'unselect'
 
 /** Walks a feature's `requires` chain, adding every transitive requirement to `accumulator`. */
@@ -127,18 +111,13 @@ export const MODE_LABELS: Record<InstallationType, string> = {
   custom: 'Custom',
 }
 
-/**
- * The plan as one item per setting, shown on the confirmation step before any disk work begins.
- * Only stacks that ask a question reach that step.
- */
+/** The plan as one item per setting, shown on the confirmation step before any disk work begins. */
 export function describeInstallPlan(
-  stack: Stack,
   projectName: string,
   mode: InstallationType,
   selectedFeatures: FeatureName[],
 ): PlanSummaryItem[] {
   const items: PlanSummaryItem[] = [
-    { label: 'Stack', value: getStackConfig(stack).label },
     { label: 'Project', value: projectName },
     { label: 'Mode', value: MODE_LABELS[mode] },
   ]
@@ -157,14 +136,10 @@ export function getPackagesToRemove(stack: Stack, selectedFeatures: FeatureName[
     .flatMap(([, definition]) => definition.packages)
 }
 
-/** Post-install guidance for a scaffold: the stack's own, then that of each feature it kept. */
+/** Post-install guidance for a scaffold: that of each feature it kept. */
 export function getPostInstallMessages(stack: Stack, features: FeatureName[]): string[] {
   const config = getStackConfig(stack)
-
-  return [
-    ...(config.postInstall ?? []),
-    ...features.flatMap((name) => config.features[name]?.postInstall ?? []),
-  ]
+  return features.flatMap((name) => config.features[name]?.postInstall ?? [])
 }
 
 /**

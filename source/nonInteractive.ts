@@ -1,20 +1,7 @@
 import process from 'node:process'
-import {
-  cleanupFiles,
-  cloneRepo,
-  createEnvFile,
-  createInitialCommit,
-  installPackages,
-} from './operations/index.js'
+import { cleanupFiles, cloneRepo, createEnvFile, installPackages } from './operations/index.js'
 import { beginInstall, completeInstall } from './operations/installGuard.js'
-import {
-  getFeatureNames,
-  getInstallationModes,
-  getStackConfig,
-  isFeatureNameValid,
-  isStackName,
-  stackNames,
-} from './stacks/index.js'
+import { getFeatureNames, getInstallationModes, isFeatureNameValid } from './stacks/index.js'
 import type { FeatureName, InstallationType, Stack } from './types/types.js'
 import {
   getPostInstallMessages,
@@ -26,7 +13,6 @@ import {
 
 type SuccessResult = {
   success: true
-  stack: Stack
   projectName: string
   mode: InstallationType
   features: FeatureName[]
@@ -80,17 +66,6 @@ function resolveModeAndFeatures(
 ): { mode: InstallationType; features: FeatureName[] } {
   const modes = getInstallationModes(stack)
 
-  // A stack with no features has nothing to choose, so both flags are a mistake worth naming.
-  if (modes.length === 0) {
-    for (const flag of ['mode', 'features'] as const) {
-      if (flags[flag]) {
-        fail(`The ${stack} stack has no optional features, so --${flag} is not accepted`)
-      }
-    }
-
-    return { mode: 'full', features: [] }
-  }
-
   if (!flags.mode) {
     fail('Missing required flag: --mode')
   }
@@ -100,9 +75,7 @@ function resolveModeAndFeatures(
   }
 
   if (!modes.includes(flags.mode)) {
-    fail(
-      `Invalid mode: '${flags.mode}' is not available for the ${stack} stack. Valid modes: ${modes.join(', ')}`,
-    )
+    fail(`Invalid mode: '${flags.mode}' is not available. Valid modes: ${modes.join(', ')}`)
   }
 
   if (flags.mode !== 'custom') {
@@ -132,27 +105,19 @@ function resolveModeAndFeatures(
 
   if (invalidFeatures.length > 0) {
     const validNames = getFeatureNames(stack).join(', ')
-    fail(
-      `Unknown features for stack '${stack}': ${invalidFeatures.join(', ')}. Valid features: ${validNames}`,
-    )
+    fail(`Unknown features: ${invalidFeatures.join(', ')}. Valid features: ${validNames}`)
   }
 
   return { mode: 'custom', features: resolveModeFeatures(stack, 'custom', features) }
 }
 
-function validate(flags: { stack?: string; name?: string; mode?: string; features?: string }): {
+function validate(flags: { name?: string; mode?: string; features?: string }): {
   stack: Stack
   name: string
   mode: InstallationType
   features: FeatureName[]
 } {
-  const stackFlag = flags.stack ?? 'evm'
-
-  if (!isStackName(stackFlag)) {
-    fail(`Invalid stack: '${stackFlag}'. Valid stacks: ${stackNames.join(', ')}`)
-  }
-
-  const stack = stackFlag
+  const stack = 'evm'
 
   if (!flags.name) {
     fail('Missing required flag: --name')
@@ -174,7 +139,6 @@ function validate(flags: { stack?: string; name?: string; mode?: string; feature
 }
 
 export async function runNonInteractive(flags: {
-  stack?: string
   name?: string
   mode?: string
   features?: string
@@ -191,15 +155,10 @@ export async function runNonInteractive(flags: {
     await createEnvFile(stack, projectFolder)
     await installPackages(stack, projectFolder, mode, features)
 
-    if (getStackConfig(stack).initialCommit) {
-      await createInitialCommit(projectFolder)
-    }
-
     completeInstall()
 
     const result: SuccessResult = {
       success: true,
-      stack,
       projectName: name,
       mode,
       features,

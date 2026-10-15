@@ -4,7 +4,6 @@ import {
   getFeatureEntries,
   getFeatureNames,
   stackDefinitions,
-  stackNames,
 } from '../stacks/index.js'
 import {
   applyFeatureToggle,
@@ -14,7 +13,6 @@ import {
   getPostInstallMessages,
   isFeatureSelected,
   isValidName,
-  meetsNodeVersion,
   resolveModeFeatures,
   resolveSelectedFeatures,
 } from '../utils/utils.js'
@@ -78,7 +76,7 @@ describe('isFeatureSelected', () => {
   })
 })
 
-describe('getPackagesToRemove — evm', () => {
+describe('getPackagesToRemove', () => {
   it('returns empty when all features selected', () => {
     const allFeatures = getFeatureNames('evm')
     expect(getPackagesToRemove('evm', allFeatures)).toEqual([])
@@ -109,35 +107,8 @@ describe('getPackagesToRemove — evm', () => {
   })
 })
 
-describe('getPackagesToRemove — canton', () => {
-  it('returns empty: the stack has no features, so nothing is optional', () => {
-    expect(getPackagesToRemove('canton', [])).toEqual([])
-  })
-})
-
-describe('meetsNodeVersion', () => {
-  it('accepts the exact version', () => {
-    expect(meetsNodeVersion('24.15.0', '24.15.0')).toBe(true)
-  })
-
-  it('accepts a newer minor or patch', () => {
-    expect(meetsNodeVersion('24.15.0', '24.20.0')).toBe(true)
-    expect(meetsNodeVersion('24.15.0', '24.15.3')).toBe(true)
-  })
-
-  it('accepts a newer major even with a lower minor', () => {
-    expect(meetsNodeVersion('24.15.0', '25.0.0')).toBe(true)
-  })
-
-  it('rejects an older major, minor, or patch', () => {
-    expect(meetsNodeVersion('24.15.0', '22.20.0')).toBe(false)
-    expect(meetsNodeVersion('24.15.0', '24.14.9')).toBe(false)
-    expect(meetsNodeVersion('24.15.1', '24.15.0')).toBe(false)
-  })
-})
-
 describe('getPostInstallMessages', () => {
-  it('returns every evm message for a scaffold that kept every feature', () => {
+  it('returns every message for a scaffold that kept every feature', () => {
     const result = getPostInstallMessages('evm', getFeatureNames('evm'))
 
     const allMessages = getFeatureEntries('evm').flatMap(([, def]) => def.postInstall ?? [])
@@ -161,12 +132,6 @@ describe('getPostInstallMessages', () => {
 
     expect(result).toEqual([])
   })
-
-  it('returns the canton stack-level guidance, which no feature adds to', () => {
-    const result = getPostInstallMessages('canton', [])
-
-    expect(result).toEqual(stackDefinitions.canton.postInstall)
-  })
 })
 
 describe('resolveSelectedFeatures — evm (no requires)', () => {
@@ -177,24 +142,21 @@ describe('resolveSelectedFeatures — evm (no requires)', () => {
 
 describe('describeInstallPlan', () => {
   it('returns one labelled setting per line, naming the mode as the selector did', () => {
-    expect(describeInstallPlan('evm', 'my_app', 'full', [])).toEqual([
-      { label: 'Stack', value: 'EVM' },
+    expect(describeInstallPlan('my_app', 'full', [])).toEqual([
       { label: 'Project', value: 'my_app' },
       { label: 'Mode', value: 'Full' },
     ])
   })
 
   it('names the default mode as the selector did', () => {
-    expect(describeInstallPlan('evm', 'my_app', 'default', [])).toEqual([
-      { label: 'Stack', value: 'EVM' },
+    expect(describeInstallPlan('my_app', 'default', [])).toEqual([
       { label: 'Project', value: 'my_app' },
       { label: 'Mode', value: 'Default (recommended)' },
     ])
   })
 
   it('lists the selected features for a custom-mode plan', () => {
-    expect(describeInstallPlan('evm', 'my_app', 'custom', ['demo', 'subgraph'])).toEqual([
-      { label: 'Stack', value: 'EVM' },
+    expect(describeInstallPlan('my_app', 'custom', ['demo', 'subgraph'])).toEqual([
       { label: 'Project', value: 'my_app' },
       { label: 'Mode', value: 'Custom' },
       { label: 'Features', value: 'demo, subgraph' },
@@ -202,8 +164,7 @@ describe('describeInstallPlan', () => {
   })
 
   it('shows "none" when a custom plan selects no features', () => {
-    expect(describeInstallPlan('evm', 'demo_app', 'custom', [])).toEqual([
-      { label: 'Stack', value: 'EVM' },
+    expect(describeInstallPlan('demo_app', 'custom', [])).toEqual([
       { label: 'Project', value: 'demo_app' },
       { label: 'Mode', value: 'Custom' },
       { label: 'Features', value: 'none' },
@@ -221,16 +182,9 @@ describe('resolveModeFeatures', () => {
   })
 
   it('resolves requires for default mode too, not only for custom', () => {
-    for (const stack of stackNames) {
-      expect(resolveModeFeatures(stack, 'default')).toEqual(
-        resolveSelectedFeatures(stack, getDefaultFeatureNames(stack)),
-      )
-    }
-  })
-
-  it('returns nothing for a stack with no features, whatever the mode', () => {
-    expect(resolveModeFeatures('canton', 'full')).toEqual([])
-    expect(resolveModeFeatures('canton', 'custom', [])).toEqual([])
+    expect(resolveModeFeatures('evm', 'default')).toEqual(
+      resolveSelectedFeatures('evm', getDefaultFeatureNames('evm')),
+    )
   })
 })
 

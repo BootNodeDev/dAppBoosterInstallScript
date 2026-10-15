@@ -1,7 +1,6 @@
 import { type FC, useCallback, useMemo } from 'react'
-import { createEnvFile, createInitialCommit, installPackages } from '../../../operations/index.js'
+import { createEnvFile, installPackages } from '../../../operations/index.js'
 import { completeInstall } from '../../../operations/installGuard.js'
-import { getStackConfig } from '../../../stacks/index.js'
 import type { FeatureName, InstallationType, Stack } from '../../../types/types.js'
 import { getProjectFolder } from '../../../utils/utils.js'
 import StepProgress from '../StepProgress.js'
@@ -22,12 +21,6 @@ const Install: FC<Props> = ({ stack, mode, features, projectName, onCompletion }
       onProgress('Creating env files')
       await createEnvFile(stack, projectFolder)
       await installPackages(stack, projectFolder, mode, features, onProgress)
-
-      if (getStackConfig(stack).initialCommit) {
-        onProgress('Initial commit')
-        await createInitialCommit(projectFolder)
-      }
-
       completeInstall()
     },
     [stack, projectFolder, mode, features],

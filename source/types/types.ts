@@ -1,13 +1,8 @@
-import type { FC } from 'react'
-
-export type Stack = 'evm' | 'canton'
+export type Stack = 'evm'
 
 export type PackageManager = 'pnpm'
 
-/**
- * Every feature name the stacks define. Only the EVM stack has features; `stacks/evm.ts` fails to
- * compile if its feature map and this list disagree.
- */
+/** Every feature name the EVM stack defines. `stacks/evm.ts` fails to compile if they disagree. */
 export type FeatureName = 'demo' | 'subgraph' | 'typedoc' | 'vocs' | 'husky'
 
 export type InstallationType = 'full' | 'default' | 'custom'
@@ -53,48 +48,21 @@ export type CleanupGroup = {
 }
 
 /**
- * What every scaffold of a stack drops, whatever the user picked: paths the template keeps for
- * itself, and the package.json keys that point at them. Applied before the package manager runs,
- * so it resolves the pruned manifest once and the lockfile it writes needs no repair.
- */
-export type PrepareStep = CleanupGroup & {
-  scripts?: string[]
-  devDependencies?: string[]
-}
-
-export type PostInstallProps = {
-  projectName: string
-  features: FeatureName[]
-}
-
-/**
  * A stack the installer can scaffold.
  *
  * @property ref - Tag or branch to clone. Left out, the stack is cloned at its newest tag. Today
- * only `DAPPBOOSTER_<STACK>_REF` sets it, for forks and pre-release testing.
- * @property minNodeVersion - Node the scaffolded project needs. Checked before cloning, so a too
- * old Node fails with a plain message instead of a confusing install error later.
- * @property postInstall - Guidance shown for every scaffold of this stack, in any mode.
- * @property postInstallComponent - Richer post-install screen for the wizard, as a function that
- * imports it. It stays a function so the terminal UI is only loaded by the wizard: `--info` and
- * the non-interactive path read this same config and must not pull Ink in. Stacks without one get
- * their `postInstall` lines printed.
+ * only `DAPPBOOSTER_REF` sets it, for forks and pre-release testing.
+ * @property prepare - What every scaffold drops, whatever the user picked: paths the template
+ * keeps for itself. Applied before the package manager runs.
  * @property staging - The template's staging directory, holding the replacement files a
  * deselected feature restores. Removed once cleanup is finished with it.
- * @property initialCommit - Whether to commit the finished scaffold as the project's baseline.
  */
 export type StackConfig = {
-  label: string
-  description: string
   repoUrl: string
   ref?: string
   packageManager: PackageManager
-  minNodeVersion?: string
-  prepare?: PrepareStep
-  postInstall?: string[]
-  postInstallComponent?: () => Promise<{ default: FC<PostInstallProps> }>
+  prepare?: CleanupGroup
   staging?: CleanupGroup
-  initialCommit?: boolean
   envFiles: EnvFile[]
   features: Record<string, FeatureDefinition>
 }

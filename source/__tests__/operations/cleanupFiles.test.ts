@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getFeatureNames, stackDefinitions } from '../../stacks/index.js'
+import { getFeatureNames } from '../../stacks/index.js'
 
 vi.mock('node:fs/promises', () => ({
   rm: vi.fn().mockResolvedValue(undefined),
@@ -13,7 +13,7 @@ vi.mock('../../operations/exec.js', () => ({
 }))
 
 /**
- * Directories in the two templates. Everything else the installer removes is a file, and only
+ * Directories in the template. Everything else the installer removes is a file, and only
  * removed directories drive script stripping.
  */
 const TEMPLATE_DIRECTORIES = [
@@ -24,10 +24,6 @@ const TEMPLATE_DIRECTORIES = [
   'docs',
   'src/subgraphs',
   'src/components/pageComponents/home',
-  'canton-connect',
-  'canton-dappbooster',
-  'canton-theme',
-  'kit',
 ]
 
 function isTemplateDirectory(target: string): boolean {
@@ -97,42 +93,7 @@ function mockEvmPackageJson() {
   )
 }
 
-/** Mirrors the root package.json of the canton-dappbooster tag the installer clones. */
-const CANTON_SCRIPTS = {
-  'app:dev': 'pnpm -C dapp/frontend run dev',
-  build: 'pnpm -r run --if-present build',
-  'check:anatomy': 'node kit/check-anatomy.mjs',
-  'check:versions': 'node kit/check-versions.mjs',
-  'docs:build': 'typedoc --options kit/typedoc.json',
-  'docs:check': 'typedoc --options kit/typedoc.json --emit none && node kit/docs-check.mjs',
-  knip: 'knip',
-  lint: 'biome check --error-on-warnings',
-  prepare: 'husky',
-  release: "pnpm -r --filter './canton-*' publish --no-git-checks",
-  'release:dry': "pnpm -r --filter './canton-*' publish --dry-run --no-git-checks",
-  'release:version': 'node kit/release-version.mjs',
-  test: 'pnpm -r run --if-present test',
-  typecheck: 'pnpm -r run --if-present typecheck',
-}
-
-const CANTON_DEV_DEPS = {
-  '@biomejs/biome': '2.5.11',
-  '@mermaid-js/mermaid-cli': '^11.15.0',
-  husky: '^9.1.7',
-  knip: '6.33.0',
-  'lint-staged': '^17.0.4',
-  postcss: '^8.5.26',
-  typedoc: '^0.28.20',
-  typescript: '^5.9.3',
-}
-
-function mockCantonPackageJson() {
-  vi.mocked(readFileSync).mockReturnValue(
-    JSON.stringify({ scripts: CANTON_SCRIPTS, devDependencies: CANTON_DEV_DEPS }),
-  )
-}
-
-describe('cleanupFiles — evm', () => {
+describe('cleanupFiles', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockEvmPackageJson()
@@ -416,115 +377,5 @@ describe('cleanupFiles — evm', () => {
     it('works without a callback', async () => {
       await expect(cleanupFiles('evm', '/project/my_app', 'full')).resolves.toBeUndefined()
     })
-  })
-})
-
-describe('cleanupFiles — canton', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockCantonPackageJson()
-  })
-
-  it('removes every path the stack lists, libraries and repo tooling alike', async () => {
-    await cleanupFiles('canton', '/project/my_app', 'full')
-
-    const paths = getRmPaths()
-    for (const relativePath of stackDefinitions.canton.prepare.paths) {
-      expect(paths).toContain(resolve('/project/my_app', relativePath))
-    }
-  })
-
-  it('deletes the lockfile, so the install resolves the libraries from npm', async () => {
-    await cleanupFiles('canton', '/project/my_app', 'full')
-
-    expect(getRmPaths()).toContain(resolve('/project/my_app', 'pnpm-lock.yaml'))
-  })
-
-  it('keeps the hygiene tooling and the deployment example the project still wants', async () => {
-    await cleanupFiles('canton', '/project/my_app', 'full')
-
-    const paths = getRmPaths()
-    for (const kept of [
-      'biome.json',
-      'knip.json',
-      'commitlint.config.js',
-      '.husky',
-      'README.md',
-      'scripts',
-      'dapp/daml',
-      'dapp/frontend/vercel.json',
-    ]) {
-      expect(paths).not.toContain(resolve('/project/my_app', kept))
-    }
-  })
-
-  it('removes the scripts that run the deleted kit folder', async () => {
-    await cleanupFiles('canton', '/project/my_app', 'full')
-
-    const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
-    for (const name of [
-      'check:anatomy',
-      'check:versions',
-      'docs:build',
-      'docs:check',
-      'release:version',
-    ]) {
-      expect(scripts[name]).toBeUndefined()
-    }
-  })
-
-  it('removes the declared scripts that no deleted path names', async () => {
-    await cleanupFiles('canton', '/project/my_app', 'full')
-
-    const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
-    for (const name of stackDefinitions.canton.prepare.scripts) {
-      expect(scripts[name]).toBeUndefined()
-    }
-  })
-
-  it('keeps the scripts the project still needs', async () => {
-    await cleanupFiles('canton', '/project/my_app', 'full')
-
-    const scripts = getWrittenPackageJson().scripts as Record<string, unknown>
-    expect(scripts.lint).toBe('biome check --error-on-warnings')
-    expect(scripts.knip).toBe('knip')
-    expect(scripts.prepare).toBe('husky')
-    expect(scripts['app:dev']).toBe('pnpm -C dapp/frontend run dev')
-  })
-
-  it('removes the dev-dependencies that only served the deleted tooling', async () => {
-    await cleanupFiles('canton', '/project/my_app', 'full')
-
-    const devDeps = getWrittenPackageJson().devDependencies as Record<string, unknown>
-    for (const name of stackDefinitions.canton.prepare.devDependencies) {
-      expect(devDeps[name]).toBeUndefined()
-    }
-    expect(devDeps.knip).toBe('6.33.0')
-    expect(devDeps.husky).toBe('^9.1.7')
-  })
-
-  it('never restores a staged file: the stack ships no staging directory', async () => {
-    await cleanupFiles('canton', '/project/my_app', 'full')
-
-    expect(copyFile).not.toHaveBeenCalled()
-    expect(mkdir).not.toHaveBeenCalled()
-  })
-
-  it('has no features, so the mode changes nothing', async () => {
-    await cleanupFiles('canton', '/project/my_app', 'custom', [])
-    const custom = getRmPaths()
-
-    vi.clearAllMocks()
-    mockCantonPackageJson()
-
-    await cleanupFiles('canton', '/project/my_app', 'full')
-    expect(getRmPaths()).toEqual(custom)
-  })
-
-  it('reports one progress step, since there are no features to report', async () => {
-    const steps: string[] = []
-    await cleanupFiles('canton', '/project/my_app', 'full', [], (step) => steps.push(step))
-
-    expect(steps).toEqual([stackDefinitions.canton.prepare.label])
   })
 })

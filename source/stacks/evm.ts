@@ -1,8 +1,6 @@
 import type { FeatureDefinition, FeatureName, StackConfig } from '../types/types.js'
 
 export const evm = {
-  label: 'EVM',
-  description: 'dAppBooster for EVM chains (Ethereum, Polygon, Base, …)',
   repoUrl: 'https://github.com/BootNodeDev/dAppBooster.git',
   packageManager: 'pnpm',
   prepare: {
@@ -13,7 +11,6 @@ export const evm = {
     label: 'Install script',
     paths: ['.install-files'],
   },
-  postInstallComponent: () => import('../components/steps/EvmPostInstall.js'),
   envFiles: [{ from: '.env.example', to: '.env.local' }],
   features: {
     demo: {

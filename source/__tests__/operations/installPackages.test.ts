@@ -12,14 +12,13 @@ const { execFile } = await import('../../operations/exec.js')
 const { readFileSync } = await import('node:fs')
 const { installPackages } = await import('../../operations/installPackages.js')
 
-/** The EVM template ships a postinstall script; the Canton one does not. */
 function mockPackageJson(scripts: Record<string, string> = { postinstall: 'wagmi generate' }) {
   vi.mocked(readFileSync).mockReturnValue(JSON.stringify({ scripts }))
 }
 
 const evmFeatures = stackDefinitions.evm.features
 
-describe('installPackages — evm', () => {
+describe('installPackages', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPackageJson()
@@ -174,32 +173,5 @@ describe('installPackages — evm', () => {
     it('works without a callback', async () => {
       await expect(installPackages('evm', '/project/my_app', 'full')).resolves.toBeUndefined()
     })
-  })
-})
-
-describe('installPackages — canton', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockPackageJson({})
-  })
-
-  it('runs a single pnpm install: the stack has no packages to remove', async () => {
-    await installPackages('canton', '/project/my_app', 'full')
-
-    expect(execFile).toHaveBeenCalledTimes(1)
-    expect(execFile).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/project/my_app' })
-  })
-
-  it('installs the same way whatever the mode, since nothing is optional', async () => {
-    await installPackages('canton', '/project/my_app', 'custom', [])
-
-    expect(execFile).toHaveBeenCalledTimes(1)
-    expect(execFile).toHaveBeenCalledWith('pnpm', ['install'], { cwd: '/project/my_app' })
-  })
-
-  it('skips the postinstall script the canton template does not have', async () => {
-    await installPackages('canton', '/project/my_app', 'custom', [])
-
-    expect(execFile).not.toHaveBeenCalledWith('pnpm', ['run', 'postinstall'], expect.anything())
   })
 })

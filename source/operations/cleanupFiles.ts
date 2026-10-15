@@ -7,12 +7,8 @@ import { isFeatureSelected } from '../utils/utils.js'
 
 const HOME_FOLDER = 'src/components/pageComponents/home'
 
-type DependencyGroup = Record<string, unknown> | undefined
-
 type PackageJson = {
   scripts?: Record<string, string | undefined>
-  dependencies?: DependencyGroup
-  devDependencies?: DependencyGroup
 }
 
 /**
@@ -22,7 +18,6 @@ type PackageJson = {
  */
 type CleanupPlan = {
   scripts: string[]
-  devDependencies: string[]
   removedDirs: string[]
 }
 
@@ -147,13 +142,12 @@ function scriptsRunningRemovedDirs(
 
 /**
  * Applies the plan to the project's package.json in a single pass, writing only when something
- * changed. Feature dependencies are left to the package manager, which runs next; the prepare
- * step's dependencies go here instead, because the package manager must never see them.
+ * changed. Feature dependencies are left to the package manager, which runs next.
  */
 function patchPackageJson(projectFolder: string, plan: CleanupPlan): void {
-  const { scripts, devDependencies, removedDirs } = plan
+  const { scripts, removedDirs } = plan
 
-  if (scripts.length === 0 && devDependencies.length === 0 && removedDirs.length === 0) {
+  if (scripts.length === 0 && removedDirs.length === 0) {
     return
   }
 
@@ -172,9 +166,7 @@ function patchPackageJson(projectFolder: string, plan: CleanupPlan): void {
     ...scriptsRunningRemovedDirs(packageJson.scripts, removedDirs),
   ])
 
-  const dependenciesRemoved = removeKeys(packageJson.devDependencies, devDependencies)
-
-  if (scriptsRemoved || dependenciesRemoved) {
+  if (scriptsRemoved) {
     writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
   }
 }
@@ -193,11 +185,7 @@ export async function cleanupFiles(
 ): Promise<void> {
   const { prepare, staging } = getStackConfig(stack)
 
-  const plan: CleanupPlan = {
-    scripts: [...(prepare?.scripts ?? [])],
-    devDependencies: [...(prepare?.devDependencies ?? [])],
-    removedDirs: [],
-  }
+  const plan: CleanupPlan = { scripts: [], removedDirs: [] }
 
   if (prepare) {
     onProgress?.(prepare.label)
