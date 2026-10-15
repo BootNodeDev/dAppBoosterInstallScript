@@ -8,7 +8,7 @@
 
 ## What this is
 
-A CLI installer for [dAppBooster](https://github.com/BootNodeDev/dAppBooster), the dApp boilerplate for EVM chains. Canton has its own installer, [`create-canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-create). This installer has two modes:
+A CLI installer for [dAppBooster](https://github.com/BootNodeDev/dAppBooster), the dApp boilerplate for EVM chains. It has two modes:
 
 - **Interactive** (default): a React + Ink TUI. It asks for the project name, the installation mode, the optional packages and a final review. Then it clones the template, cleans it up, installs the packages and shows the post-install steps.
 - **Non-interactive**: driven by flags, for AI agents and CI. `--ni` turns it on, and so does a stdout that is not a TTY. It prints JSON to stdout. Run `--info` to discover the features, then pass `--name` and `--mode`, plus `--features` in custom mode.
