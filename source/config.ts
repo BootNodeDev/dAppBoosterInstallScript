@@ -23,8 +23,8 @@ export const featureDefinitions: Record<FeatureName, FeatureDefinition> = {
     paths: ['src/subgraphs'],
     scripts: ['subgraph-codegen'],
     postInstall: [
-      'Provide your own API key for PUBLIC_SUBGRAPHS_API_KEY in .env.local',
-      'Run pnpm subgraph-codegen from the project folder',
+      'Provide your own API key for PUBLIC_SUBGRAPHS_API_KEY in .env.local. You can get one from The Graph Studio: https://thegraph.com/studio/apikeys',
+      'Once the API key is set, run pnpm subgraph-codegen from the project folder',
     ],
   },
   typedoc: {

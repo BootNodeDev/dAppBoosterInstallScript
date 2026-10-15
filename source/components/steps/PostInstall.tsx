@@ -2,6 +2,7 @@ import figures from 'figures'
 import { Box, Text } from 'ink'
 import Link from 'ink-link'
 import type { FC } from 'react'
+import { featureDefinitions } from '../../config.js'
 import type { FeatureName } from '../../types/types.js'
 import { isFeatureSelected } from '../../utils/utils.js'
 import Divider from '../Divider.js'
@@ -33,15 +34,11 @@ const SubgraphWarningMessage: FC = () => (
     </Box>
     <Text color={'whiteBright'}>Follow these steps:</Text>
     <Box flexDirection={'column'}>
-      <Text>
-        1- Provide your own API key for <Text color={'gray'}>PUBLIC_SUBGRAPHS_API_KEY</Text> in{' '}
-        <Text color={'gray'}>.env.local</Text> You can get one from{' '}
-        <Link url="https://thegraph.com/studio/apikeys">The Graph Studio</Link>
-      </Text>
-      <Text>
-        2- After the API key is correctly configured, run{' '}
-        <Text color={'gray'}>pnpm subgraph-codegen</Text> in your console from the project's folder
-      </Text>
+      {featureDefinitions.subgraph.postInstall?.map((step, index) => (
+        <Text key={step}>
+          {index + 1}- {step}
+        </Text>
+      ))}
     </Box>
     <Text>
       More configuration info in the{' '}
