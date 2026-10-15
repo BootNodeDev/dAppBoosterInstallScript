@@ -129,10 +129,6 @@ try:
     pump(0.6)
     send("\r")
 
-    expect(r"Which stack", 15, "stack prompt")
-    pump(1.3)
-    send("\r")                       # EVM is first
-
     expect(r"Choose installation type", 15, "mode prompt")
     pump(1.3)
     send("\r")                       # Full is first
